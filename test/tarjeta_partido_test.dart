@@ -160,6 +160,30 @@ void main() {
 });
 
   group('Organizador ve quién se unió (Issue #8)', () {
+    testWidgets('un jugador inscrito también ve los nombres', (tester) async {
+      await tester.pumpWidget(
+        envolver(TarjetaPartido(
+          partido: crearPartido(soyOrganizador: false, estoyUnido: true),
+          jugadoresUnidos: const ['Diego', 'Ana'],
+        )),
+      );
+
+      expect(find.text('Se unieron (2): Diego, Ana'), findsOneWidget);
+      expect(find.text('Agregar jugador'), findsNothing);
+      expect(find.text('Completar equipo'), findsNothing);
+    });
+
+    testWidgets('quien no se unió no ve los nombres', (tester) async {
+      await tester.pumpWidget(
+        envolver(TarjetaPartido(
+          partido: crearPartido(soyOrganizador: false, estoyUnido: false),
+          jugadoresUnidos: const ['Diego', 'Ana'],
+        )),
+      );
+
+      expect(find.textContaining('Se unieron'), findsNothing);
+    });
+
     testWidgets('muestra los nombres de quienes se unieron', (tester) async {
       await tester.pumpWidget(
         envolver(

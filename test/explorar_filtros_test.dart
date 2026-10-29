@@ -87,6 +87,7 @@ void main() {
 
     expect(find.text('3/10'), findsOneWidget);
     expect(find.text('Ya formas parte de este equipo.'), findsOneWidget);
+    expect(find.text('Se unieron (1): Diego'), findsOneWidget);
     expect(find.text('Unirme al equipo'), findsNothing);
   });
 
@@ -145,6 +146,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('3/10'), findsOneWidget);
 
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Salir del partido'));
     await tester.tap(find.text('Salir del partido'));
     await tester.pumpAndSettle();
     expect(find.text('¿Salir del partido?'), findsOneWidget);
@@ -153,5 +157,6 @@ void main() {
 
     expect(find.text('2/10'), findsOneWidget);
     expect(find.text('Unirme al equipo'), findsOneWidget);
+    expect(find.textContaining('Se unieron'), findsNothing);
   });
 }

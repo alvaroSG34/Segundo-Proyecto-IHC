@@ -170,13 +170,16 @@ class RepositorioSupabase implements RepositorioPartidos {
             .from('partidos')
             .select('id')
             .eq('organizador_id', _usuarioId);
-        final ids = [for (final f in mios) f['id'] as String];
+        final ids = {
+          for (final f in mios) f['id'] as String,
+          ...await _idsInscritos(),
+        };
         if (ids.isEmpty) return <String, List<String>>{};
 
         final filas = await _cliente
             .from('inscripciones')
             .select('partido_id, jugador_nombre')
-            .inFilter('partido_id', ids)
+            .inFilter('partido_id', ids.toList())
             .order('creado_en', ascending: true);
         final resultado = <String, List<String>>{};
         for (final f in filas) {

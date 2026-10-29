@@ -5,7 +5,7 @@ import 'config/configuracion_supabase.dart';
 import 'servicios/servicio_autenticacion.dart';
 import 'tema/tema_app.dart';
 import 'vistas/vista_inicio_publico.dart';
-import 'vistas/vista_mis_partidos.dart';
+import 'vistas/vista_principal.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,15 +39,17 @@ class UniSportApp extends StatelessWidget {
       animation: servicioAuth,
       builder: (context, _) {
         return MaterialApp(
+          // Reiniciar la navegación al entrar o salir de una cuenta.
+          key: ValueKey(servicioAuth.usuarioActual?.id),
           title: 'UniSport - IHC',
           debugShowCheckedModeBanner: false,
           theme: TemaApp.tema,
           // Si el servicio está cargando la sesión, mostrar pantalla de carga
           home: servicioAuth.estaCargando
               ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-              // Si había una sesión guardada, entrar directo a Mis Partidos
+              // Si había una sesión guardada, mostrar el menú principal
               : (servicioAuth.estaAutenticado
-                    ? VistaMisPartidos(servicioAuth: servicioAuth)
+                    ? VistaPrincipal(servicioAuth: servicioAuth)
                     : VistaInicioPublico(servicioAuth: servicioAuth)),
         );
       },

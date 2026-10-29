@@ -468,9 +468,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                       onCompletarEquipo: () => _completarEquipo(p),
                       onEditar: () => _editarPartido(p),
                       onAgregarJugador: () => _agregarJugador(p),
-                      jugadoresUnidos: p.soyOrganizador
-                          ? _jugadoresInscritos[p.id] ?? const []
-                          : null,
+                      jugadoresUnidos: _jugadoresInscritos[p.id] ?? const [],
                       onEliminar: () => _eliminarPartido(p),
                       onSalir: () => _salirDelPartido(p),
                     ),

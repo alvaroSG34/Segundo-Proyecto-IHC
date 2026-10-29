@@ -104,7 +104,8 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   Future<Map<String, List<String>>> obtenerJugadoresInscritos() async {
     final resultado = <String, List<String>>{};
     for (final i in _inscripciones) {
-      if (_partidos[i.partidoId]?.organizadorId == usuarioId) {
+      if (_partidos[i.partidoId]?.organizadorId == usuarioId ||
+          _inscrito(i.partidoId)) {
         resultado.putIfAbsent(i.partidoId, () => []).add(i.nombre);
       }
     }

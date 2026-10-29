@@ -17,7 +17,7 @@ abstract class RepositorioPartidos {
   /// Partidos de otros estudiantes a los que el usuario actual se unió.
   Future<List<ModeloPartido>> obtenerPartidosUnidos();
 
-  /// Quién se unió a cada partido del usuario actual: id de partido -> nombres.
+  /// Quién se unió a los partidos que organiza o integra: id -> nombres.
   Future<Map<String, List<String>>> obtenerJugadoresInscritos();
 
   /// Partidos de otros estudiantes que cumplen [filtro] (requisito #6).

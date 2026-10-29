@@ -9,7 +9,7 @@ import '../widgets/animaciones.dart';
 import '../widgets/boton_accion.dart';
 import '../widgets/campo_clave.dart';
 import 'vista_login.dart';
-import 'vista_mis_partidos.dart';
+import 'vista_principal.dart';
 
 /// Formulario de registro simple para nuevos estudiantes universitarios
 class VistaRegistro extends StatefulWidget {
@@ -93,11 +93,12 @@ class _VistaRegistroState extends State<VistaRegistro> {
     if (!mounted) return;
 
     // Redirigir a la ruta privada protegida
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaMisPartidos(servicioAuth: widget.servicioAuth),
+        builder: (_) => VistaPrincipal(servicioAuth: widget.servicioAuth),
       ),
+      (ruta) => false,
     );
   }
 

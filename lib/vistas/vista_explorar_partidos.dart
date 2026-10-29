@@ -21,6 +21,7 @@ class VistaExplorarPartidos extends StatefulWidget {
 
 class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
   List<ModeloPartido> _partidos = [];
+  Map<String, List<String>> _jugadoresInscritos = {};
   List<String> _lugares = FiltroPartidos.lugaresSugeridos;
   late FiltroPartidos _filtro = widget.servicioAuth.filtroExplorar;
   bool _cargando = true;
@@ -43,9 +44,11 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     final numero = ++_consulta;
     final List<ModeloPartido> partidos;
     final List<String> lugares;
+    final Map<String, List<String>> inscritos;
     try {
       partidos = await widget.servicioAuth.partidos.buscarPartidos(_filtro);
       lugares = await widget.servicioAuth.partidos.obtenerLugares();
+      inscritos = await widget.servicioAuth.partidos.obtenerJugadoresInscritos();
     } on StateError catch (e) {
       if (!mounted || numero != _consulta) return;
       setState(() => _cargando = false);
@@ -56,6 +59,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     setState(() {
       _partidos = partidos;
       _lugares = lugares;
+      _jugadoresInscritos = inscritos;
       _cargando = false;
     });
   }
@@ -126,6 +130,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
         '(${unido.cuposOcupados}/${unido.cuposTotales})'
         '${completo ? ' El equipo quedó completo.' : ''}',
       );
+      await _cargar();
     } on StateError catch (e) {
       // El dato guardado cambió (por ejemplo, otro ocupó el último cupo)
       if (!mounted) return;
@@ -238,6 +243,9 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                       partido: partido,
                       onUnirse: () => _unirse(partido),
                       onSalir: () => _salir(partido),
+                      jugadoresUnidos: partido.estoyUnido
+                          ? _jugadoresInscritos[partido.id] ?? const []
+                          : null,
                     ),
                   ),
                 ],

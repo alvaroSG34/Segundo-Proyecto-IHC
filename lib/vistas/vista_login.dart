@@ -9,7 +9,7 @@ import '../widgets/boton_accion.dart';
 import '../widgets/campo_clave.dart';
 import 'vista_registro.dart';
 import 'vista_recuperar_clave.dart';
-import 'vista_mis_partidos.dart';
+import 'vista_principal.dart';
 
 /// Formulario de inicio de sesión de UniSport
 class VistaLogin extends StatefulWidget {
@@ -87,11 +87,12 @@ class _VistaLoginState extends State<VistaLogin> {
     await Future.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
 
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaMisPartidos(servicioAuth: widget.servicioAuth),
+        builder: (_) => VistaPrincipal(servicioAuth: widget.servicioAuth),
       ),
+      (ruta) => false,
     );
   }
 

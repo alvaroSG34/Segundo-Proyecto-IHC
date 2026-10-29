@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/vistas/vista_inicio_publico.dart';
 import 'package:unisport/vistas/vista_mis_partidos.dart';
+import 'package:unisport/vistas/vista_explorar_partidos.dart';
 
 import 'apoyo/servicio_autenticacion_falso.dart';
 
@@ -30,6 +31,26 @@ ServicioAutenticacionFalso conPartidoDeLorgio() {
 }
 
 void main() {
+  for (final explorar in [false, true]) {
+    testWidgets('inscritos ven a sus compañeros en ${explorar ? 'Explorar' : 'Mis partidos'}', (tester) async {
+      final auth = conPartidoDeLorgio();
+      await auth.iniciarSesion('diego@unisport.edu', '123456');
+      await auth.partidos.unirseAPartido('p-1');
+      auth.repositorio.usarSesionDe('u-ana', 'Ana');
+      await auth.partidos.unirseAPartido('p-1');
+      await auth.iniciarSesion('diego@unisport.edu', '123456');
+
+      await tester.pumpWidget(MaterialApp(
+        home: explorar
+            ? VistaExplorarPartidos(servicioAuth: auth)
+            : VistaMisPartidos(servicioAuth: auth),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Se unieron (2): Diego, Ana'), findsOneWidget);
+    });
+  }
+
   testWidgets('la portada muestra la pestaña Explorar en la barra inferior', (
     tester,
   ) async {

@@ -24,7 +24,7 @@ class TarjetaPartido extends StatelessWidget {
   final VoidCallback? onAgregarJugador;
 
   /// Nombres de quienes se unieron desde Explorar. Si se entrega, el
-  /// organizador ve la lista en la tarjeta (Issue #8).
+  /// organizador y los jugadores inscritos ven la lista en la tarjeta.
   final List<String>? jugadoresUnidos;
 
   const TarjetaPartido({
@@ -203,8 +203,9 @@ class TarjetaPartido extends StatelessWidget {
               ),
             ],
           ),
-          // QUIÉN SE UNIÓ (solo lo ve el organizador)
-          if (partido.soyOrganizador && jugadoresUnidos != null) ...[
+          // QUIÉN SE UNIÓ (organizador y jugadores inscritos)
+          if ((partido.soyOrganizador || partido.estoyUnido) &&
+              jugadoresUnidos != null) ...[
             const SizedBox(height: 12),
             _construirJugadoresUnidos(jugadoresUnidos!),
           ],
