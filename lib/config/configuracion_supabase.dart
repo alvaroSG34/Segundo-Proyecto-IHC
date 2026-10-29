@@ -12,13 +12,13 @@ class ConfiguracionSupabase {
   /// Project URL (solo la dirección base, sin /rest/v1/).
   static const String url = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://lefibfnejennognopexs.supabase.co',
+    defaultValue: 'https://bxntcurkwwczhkngmvvk.supabase.co',
   );
 
   /// Publishable key del proyecto.
   static const String clavePublica = String.fromEnvironment(
     'SUPABASE_KEY',
-    defaultValue: 'sb_publishable_mAOcK3zt05j1zm_xZ80kEg_9wcbAOLB',
+    defaultValue: 'sb_publishable_C41hkBvxQKrcm2bLk8nSoA_E3697ZZf',
   );
 
   static bool get estaConfigurada => url.isNotEmpty && clavePublica.isNotEmpty;
