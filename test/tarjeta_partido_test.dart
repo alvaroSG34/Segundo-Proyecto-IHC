@@ -168,7 +168,11 @@ void main() {
         )),
       );
 
-      expect(find.text('Se unieron (2): Diego, Ana'), findsOneWidget);
+      expect(find.text('Diego'), findsNothing);
+      await tester.tap(find.text('Ver jugadores inscritos (2)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Diego'), findsOneWidget);
+      expect(find.text('Ana'), findsOneWidget);
       expect(find.text('Agregar jugador'), findsNothing);
       expect(find.text('Completar equipo'), findsNothing);
     });
@@ -181,7 +185,7 @@ void main() {
         )),
       );
 
-      expect(find.textContaining('Se unieron'), findsNothing);
+      expect(find.textContaining('Ver jugadores inscritos'), findsNothing);
     });
 
     testWidgets('muestra los nombres de quienes se unieron', (tester) async {
@@ -194,7 +198,14 @@ void main() {
         ),
       );
 
-      expect(find.text('Se unieron (2): Diego, Ana'), findsOneWidget);
+      await tester.tap(find.text('Ver jugadores inscritos (2)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Jugadores inscritos (2)'), findsOneWidget);
+      expect(find.text('Diego'), findsOneWidget);
+      expect(find.text('Ana'), findsOneWidget);
+      await tester.tap(find.text('Cerrar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
     });
 
     testWidgets('avisa cuando todavía no se unió nadie', (tester) async {
@@ -202,11 +213,39 @@ void main() {
         envolver(TarjetaPartido(partido: crearPartido(), jugadoresUnidos: const [])),
       );
 
+      await tester.tap(find.text('Ver jugadores inscritos (0)'));
+      await tester.pumpAndSettle();
       expect(
         find.text('Todavía no se unió nadie desde Explorar.'),
         findsOneWidget,
       );
     });
+  });
+
+  testWidgets('50 nombres no agrandan la tarjeta y la lista permite desplazarse', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(envolver(TarjetaPartido(
+      partido: crearPartido(),
+      jugadoresUnidos: const ['Jugador 1'],
+    )));
+    final altura = tester.getSize(find.byType(TarjetaPartido)).height;
+
+    await tester.pumpWidget(envolver(TarjetaPartido(
+      partido: crearPartido(),
+      jugadoresUnidos: List.generate(50, (i) => 'Jugador ${i + 1}'),
+    )));
+    expect(tester.getSize(find.byType(TarjetaPartido)).height, altura);
+    await tester.tap(find.text('Ver jugadores inscritos (50)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Jugadores inscritos (50)'), findsOneWidget);
+    expect(find.text('Jugador 1'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Jugador 50'), 250,
+      scrollable: find.descendant(of: find.byType(AlertDialog), matching: find.byType(Scrollable)));
+    expect(find.text('Jugador 50').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   group('Clase 16 · Fitts: editar y eliminar fáciles de alcanzar', () {

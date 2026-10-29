@@ -202,3 +202,17 @@ La implementación de la Tarea 5 y las pruebas de la relación nueva quedan para
 **Archivo solicitado:** `evidencias/clase-17.md`.
 
 **Mensaje de commit indicado en clase:** `docs: analizar proyecto recibido`.
+
+## Mejoras posteriores al análisis inicial
+
+### Menú principal
+
+Acceso a Crear partido, Mis partidos, Explorar e Historial.
+
+![Menú principal](menu-principal.png)
+
+### Consulta de jugadores inscritos
+
+El organizador y los participantes pueden abrir la lista de inscritos en una ventana desplazable.
+
+![Lista de jugadores inscritos](jugadores-inscritos.png)

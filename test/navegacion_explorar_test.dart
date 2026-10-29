@@ -47,7 +47,11 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('Se unieron (2): Diego, Ana'), findsOneWidget);
+      await tester.ensureVisible(find.text('Ver jugadores inscritos (2)'));
+      await tester.tap(find.text('Ver jugadores inscritos (2)'));
+      await tester.pumpAndSettle();
+      expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Diego')), findsOneWidget);
+      expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Ana')), findsOneWidget);
     });
   }
 

@@ -131,6 +131,18 @@ class TarjetaPartido extends StatelessWidget {
                   ],
                 ),
               ),
+              if (!partido.soyOrganizador && partido.estoyUnido) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: _avisoUnion(
+                    partido.motivoRechazoUnirse ?? 'Ya formas parte de este equipo.',
+                    icono: LucideIcons.circleCheck,
+                    fondo: TemaApp.azulSuave,
+                    borde: const Color(0xFFBAE6FD),
+                    color: const Color(0xFF075985),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -207,7 +219,7 @@ class TarjetaPartido extends StatelessWidget {
           if ((partido.soyOrganizador || partido.estoyUnido) &&
               jugadoresUnidos != null) ...[
             const SizedBox(height: 12),
-            _construirJugadoresUnidos(jugadoresUnidos!),
+            _construirJugadoresUnidos(context, jugadoresUnidos!),
           ],
           // ACCIONES DEL ORGANIZADOR
           if (partido.soyOrganizador) ...[
@@ -367,15 +379,6 @@ class TarjetaPartido extends StatelessWidget {
                 ),
               ),
             ] else if (partido.estoyUnido) ...[
-              // Rechazo del criterio 4: ya forma parte del equipo
-              const SizedBox(height: 12),
-              _avisoUnion(
-                partido.motivoRechazoUnirse ?? 'Ya formas parte de este equipo.',
-                icono: LucideIcons.circleCheck,
-                fondo: TemaApp.azulSuave,
-                borde: const Color(0xFFBAE6FD),
-                color: const Color(0xFF075985),
-              ),
               if (onSalir != null && partido.puedeSalir) ...[
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
@@ -406,40 +409,51 @@ class TarjetaPartido extends StatelessWidget {
     );
   }
 
-  Widget _construirJugadoresUnidos(List<String> nombres) {
-    return Container(
+  Widget _construirJugadoresUnidos(BuildContext context, List<String> nombres) {
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: TemaApp.superficieSuave,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
-            child: Icon(
-              LucideIcons.users,
-              size: 15,
-              color: TemaApp.textoSecundario,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              nombres.isEmpty
-                  ? 'Todavía no se unió nadie desde Explorar.'
-                  : 'Se unieron (${nombres.length}): ${nombres.join(', ')}',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: TemaApp.textoPrincipal,
-                height: 1.35,
+      child: OutlinedButton.icon(
+        icon: const Icon(LucideIcons.users, size: 18),
+        label: Text('Ver jugadores inscritos (${nombres.length})'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 48),
+          foregroundColor: TemaApp.textoPrincipal,
+          backgroundColor: TemaApp.superficieSuave,
+          side: const BorderSide(color: TemaApp.borde),
+        ),
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text('Jugadores inscritos (${nombres.length})'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(ctx).height * 0.5,
+                  ),
+                  child: nombres.isEmpty
+                      ? const Text('Todavía no se unió nadie desde Explorar.')
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: nombres.length,
+                          itemBuilder: (_, indice) => ListTile(
+                            leading: const Icon(Icons.person_outline),
+                            title: Text(nombres[indice]),
+                          ),
+                        ),
+                ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+                  child: const Text('Cerrar'),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
