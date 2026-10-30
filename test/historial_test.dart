@@ -13,7 +13,7 @@ import 'apoyo/servicio_autenticacion_falso.dart';
 void main() {
   group('Clase 16 · Tarea 4: Modelo y Consulta de Historial (refs #17, #18, #19, #21)', () {
     late RepositorioEnMemoria repo;
-    final ahora = DateTime(2026, 10, 18, 14, 0);
+    final ahora = DateTime.now();
 
     setUp(() {
       repo = RepositorioEnMemoria(usuarioId: 'u-diego', usuarioNombre: 'Diego');
@@ -43,7 +43,7 @@ void main() {
           disciplina: 'Básquetbol',
           icono: 'Básquetbol',
           ubicacion: 'Coliseo',
-          fechaHora: '18/10/2026 · 20:00',
+          fechaHora: _fechaHora(ahora.add(const Duration(days: 2))),
           cuposTotales: 8,
           cuposOcupados: 1,
           organizadorNombre: 'Carlos',
@@ -59,7 +59,7 @@ void main() {
           disciplina: 'Voleibol',
           icono: 'Voleibol',
           ubicacion: 'Cancha 2',
-          fechaHora: '19/10/2026 · 10:00',
+          fechaHora: _fechaHora(ahora.add(const Duration(days: 3))),
           cuposTotales: 12,
           cuposOcupados: 4,
           organizadorNombre: 'Ana',
@@ -84,7 +84,7 @@ void main() {
           disciplina: 'Fútbol',
           icono: 'Fútbol',
           ubicacion: 'Cancha 1',
-          fechaHora: '10/10/2026 · 09:00',
+          fechaHora: _fechaHora(ahora.subtract(const Duration(days: 8))),
           cuposTotales: 10,
           cuposOcupados: 10,
           organizadorNombre: 'Diego',
@@ -99,7 +99,7 @@ void main() {
           disciplina: 'Tenis',
           icono: 'Tenis',
           ubicacion: 'Cancha Tenis',
-          fechaHora: '18/10/2026 · 16:00',
+          fechaHora: _fechaHora(ahora.add(const Duration(hours: 2))),
           cuposTotales: 4,
           cuposOcupados: 2,
           organizadorNombre: 'Diego',
@@ -123,7 +123,7 @@ void main() {
           disciplina: 'Futsal',
           icono: 'Futsal',
           ubicacion: 'Cancha 1',
-          fechaHora: '17/10/2026 · 19:00',
+          fechaHora: _fechaHora(ahora.subtract(const Duration(days: 1))),
           cuposTotales: 10,
           cuposOcupados: 10,
           organizadorNombre: 'Diego',
@@ -138,7 +138,7 @@ void main() {
           disciplina: 'Voleibol',
           icono: 'Voleibol',
           ubicacion: 'Coliseo',
-          fechaHora: '20/10/2026 · 18:00',
+          fechaHora: _fechaHora(ahora.add(const Duration(days: 2))),
           cuposTotales: 2,
           cuposOcupados: 1,
           organizadorNombre: 'María',
@@ -160,6 +160,7 @@ void main() {
     });
 
     test('4. Carga cognitiva: fechaAmigable reduce el esfuerzo mental con Hoy y Ayer', () {
+      final ahora = DateTime(2026, 10, 18, 14, 0);
       final eventoHoy = EventoHistorial(
         id: '1',
         partidoId: 'p-hoy',
@@ -246,6 +247,7 @@ void main() {
     testWidgets('7. Hick: selector de filtros permite cambiar entre Todos, Organizados y Jugador', (
       tester,
     ) async {
+      final ahora = DateTime.now();
       final auth = ServicioAutenticacionFalso();
       auth.repositorio.sembrar(
         'u-diego',
@@ -269,7 +271,7 @@ void main() {
           disciplina: 'Tenis',
           icono: 'Tenis',
           ubicacion: 'Cancha Tenis',
-          fechaHora: '19/10/2026 · 10:00',
+          fechaHora: _fechaHora(ahora.add(const Duration(days: 2))),
           cuposTotales: 4,
           cuposOcupados: 1,
           organizadorNombre: 'Carlos',
@@ -282,7 +284,7 @@ void main() {
         MaterialApp(
           home: VistaHistorial(
             servicioAuth: auth,
-            referenciaTemporal: DateTime(2026, 10, 18, 14, 0),
+            referenciaTemporal: ahora,
           ),
         ),
       );
@@ -304,4 +306,12 @@ void main() {
       expect(find.text('Tenis Carlos'), findsOneWidget);
     });
   });
+}
+
+String _fechaHora(DateTime fecha) {
+  final dia = fecha.day.toString().padLeft(2, '0');
+  final mes = fecha.month.toString().padLeft(2, '0');
+  final hora = fecha.hour.toString().padLeft(2, '0');
+  final minuto = fecha.minute.toString().padLeft(2, '0');
+  return '$dia/$mes/${fecha.year} \u00B7 $hora:$minuto';
 }
