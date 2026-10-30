@@ -1,10 +1,10 @@
 import 'package:unisport/modelos/evento_historial.dart';
 import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
-import 'package:unisport/servicios/repositorio_partidos.dart';
+import 'package:unisport/servicios/partidos/repositorio_partidos.dart';
 
 /// Repositorio en memoria para las pruebas: mismo contrato que
-/// RepositorioSupabase y mismas reglas (las del modelo), sin internet.
+/// RepositorioPartidosSupabase y mismas reglas (las del modelo), sin internet.
 /// Simula una base compartida por varios usuarios: [usuarioId] es quien
 /// tiene la sesión en ese momento.
 class RepositorioEnMemoria implements RepositorioPartidos {

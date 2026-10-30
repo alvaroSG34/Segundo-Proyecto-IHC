@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../modelos/modelo_partido.dart';
-import '../servicios/repositorio_partidos.dart';
-import '../servicios/servicio_autenticacion.dart';
-import '../tema/tema_app.dart';
-import '../widgets/tarjeta_partido.dart';
+import '../../modelos/modelo_partido.dart';
+import '../../servicios/partidos/repositorio_partidos.dart';
+import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../tema/tema_app.dart';
+import '../../widgets/tarjeta_partido.dart';
 import 'vista_crear_partido.dart';
 import 'vista_explorar_partidos.dart';
 import 'vista_historial.dart';
-import 'vista_login.dart';
+import '../autenticacion/vista_login.dart';
 
 /// Ruta Privada: Mis Partidos (Protegida)
 /// Si un usuario sin sesión intenta acceder, se redirige inmediatamente a la pantalla de Login.

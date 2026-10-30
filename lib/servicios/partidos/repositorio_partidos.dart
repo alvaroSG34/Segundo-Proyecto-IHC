@@ -1,6 +1,6 @@
-import '../modelos/evento_historial.dart';
-import '../modelos/filtro_partidos.dart';
-import '../modelos/modelo_partido.dart';
+import '../../modelos/evento_historial.dart';
+import '../../modelos/filtro_partidos.dart';
+import '../../modelos/modelo_partido.dart';
 
 /// Operaciones sobre partidos e inscripciones en la base de datos compartida.
 ///
@@ -8,7 +8,7 @@ import '../modelos/modelo_partido.dart';
 /// negocio rechaza la operación, se lanza [StateError] con el motivo (el mismo
 /// texto que usa ModeloPartido), para que la interfaz lo muestre.
 ///
-/// La implementación real es RepositorioSupabase; las pruebas usan una versión
+/// La implementación real es RepositorioPartidosSupabase; las pruebas usan una versión
 /// en memoria con el mismo contrato.
 abstract class RepositorioPartidos {
   /// Partidos que organiza el usuario actual (más recientes primero).

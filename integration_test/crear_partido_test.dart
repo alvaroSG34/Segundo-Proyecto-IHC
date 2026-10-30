@@ -4,11 +4,11 @@ import 'package:integration_test/integration_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:unisport/main.dart' as app;
 import 'package:unisport/tema/caja_mensaje.dart';
-import 'package:unisport/vistas/vista_crear_partido.dart';
-import 'package:unisport/vistas/vista_inicio_publico.dart';
-import 'package:unisport/vistas/vista_login.dart';
-import 'package:unisport/vistas/vista_mis_partidos.dart';
-import 'package:unisport/vistas/vista_principal.dart';
+import 'package:unisport/vistas/partidos/vista_crear_partido.dart';
+import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
+import 'package:unisport/vistas/autenticacion/vista_login.dart';
+import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
+import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
 
 // Credenciales de una cuenta semilla ya registrada en Supabase.

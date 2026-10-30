@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../servicios/servicio_autenticacion.dart';
+import '../../servicios/autenticacion/servicio_autenticacion.dart';
 
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../tema/iconos_deporte.dart';
-import '../tema/tema_app.dart';
-import 'vista_explorar_partidos.dart';
-import 'vista_login.dart';
-import 'vista_registro.dart';
-import 'vista_mis_partidos.dart';
+import '../../tema/iconos_deporte.dart';
+import '../../tema/tema_app.dart';
+import '../partidos/vista_explorar_partidos.dart';
+import '../autenticacion/vista_login.dart';
+import '../autenticacion/vista_registro.dart';
+import '../partidos/vista_mis_partidos.dart';
 
 /// Ruta Pública: Portada de bienvenida a UniSport accesible sin sesión
 class VistaInicioPublico extends StatefulWidget {

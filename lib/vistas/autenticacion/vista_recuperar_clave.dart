@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../tema/caja_mensaje.dart';
-import '../servicios/servicio_autenticacion.dart';
-import '../tema/tema_app.dart';
+import '../../tema/caja_mensaje.dart';
+import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../tema/tema_app.dart';
 
 /// Flujo de recuperación de contraseña simulado para pruebas de IHC
 class VistaRecuperarClave extends StatefulWidget {

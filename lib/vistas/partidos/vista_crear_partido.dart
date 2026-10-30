@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../modelos/filtro_partidos.dart';
-import '../modelos/modelo_partido.dart';
-import '../tema/iconos_deporte.dart';
-import '../tema/tema_app.dart';
-import '../widgets/animaciones.dart';
-import '../widgets/tarjeta_partido.dart';
+import '../../modelos/filtro_partidos.dart';
+import '../../modelos/modelo_partido.dart';
+import '../../tema/iconos_deporte.dart';
+import '../../tema/tema_app.dart';
+import '../../widgets/animaciones.dart';
+import '../../widgets/tarjeta_partido.dart';
 
 /// Formulario real para crear un partido.
 /// 1 - CAPTURAR: la persona completa los datos (con vista previa en vivo).
@@ -548,6 +548,7 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
 
                     _etiqueta('Título'),
                     TextFormField(
+                      key: const Key('partido_titulo'),
                       controller: _tituloCtrl,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
@@ -575,6 +576,7 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
 
                     _etiqueta('Ubicación'),
                     TextFormField(
+                      key: const Key('partido_ubicacion'),
                       controller: _ubicacionCtrl,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(

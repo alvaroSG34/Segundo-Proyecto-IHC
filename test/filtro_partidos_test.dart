@@ -9,7 +9,7 @@ import 'apoyo/repositorio_en_memoria.dart';
 /// - Los resultados se prueban sobre un repositorio en memoria con los mismos
 ///   datos de varios usuarios y la misma regla que la app.
 /// - El grupo "Consulta enviada a la base de datos" verifica las condiciones
-///   exactas que RepositorioSupabase aplica en la consulta a PostgreSQL.
+///   exactas que RepositorioPartidosSupabase aplica en la consulta a PostgreSQL.
 ///
 /// Ejecutar con:  flutter test test/filtro_partidos_test.dart
 const lorgio = 'u-lorgio';

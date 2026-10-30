@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../servicios/servicio_autenticacion.dart';
-import '../tema/caja_mensaje.dart';
-import '../tema/tema_app.dart';
-import '../widgets/animaciones.dart';
-import '../widgets/boton_accion.dart';
-import '../widgets/campo_clave.dart';
+import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../tema/caja_mensaje.dart';
+import '../../tema/tema_app.dart';
+import '../../widgets/animaciones.dart';
+import '../../widgets/boton_accion.dart';
+import '../../widgets/campo_clave.dart';
 import 'vista_registro.dart';
 import 'vista_recuperar_clave.dart';
-import 'vista_principal.dart';
+import '../inicio/vista_principal.dart';
 
 /// Formulario de inicio de sesión de UniSport
 class VistaLogin extends StatefulWidget {
@@ -148,6 +148,7 @@ class _VistaLoginState extends State<VistaLogin> {
                     Aparecer(
                       indice: 2,
                       child: TextFormField(
+                        key: const Key('login_correo'),
                         controller: _controladorCorreo,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
@@ -185,6 +186,7 @@ class _VistaLoginState extends State<VistaLogin> {
                     Aparecer(
                       indice: 3,
                       child: CampoClave(
+                        key: const Key('login_clave'),
                         controller: _controladorContrasena,
                         etiqueta: 'Contraseña',
                         onSubmitted: _ejecutarLogin,

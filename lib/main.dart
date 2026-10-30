@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/configuracion_supabase.dart';
-import 'servicios/servicio_autenticacion.dart';
+import 'servicios/autenticacion/servicio_autenticacion.dart';
 import 'tema/tema_app.dart';
-import 'vistas/vista_inicio_publico.dart';
-import 'vistas/vista_principal.dart';
+import 'vistas/inicio/vista_inicio_publico.dart';
+import 'vistas/inicio/vista_principal.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../modelos/modelo_partido.dart';
-import '../servicios/servicio_autenticacion.dart';
-import '../tema/tema_app.dart';
-import 'vista_crear_partido.dart';
-import 'vista_explorar_partidos.dart';
-import 'vista_historial.dart';
+import '../../modelos/modelo_partido.dart';
+import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../tema/tema_app.dart';
+import '../partidos/vista_crear_partido.dart';
+import '../partidos/vista_explorar_partidos.dart';
+import '../partidos/vista_historial.dart';
 import 'vista_inicio_publico.dart';
-import 'vista_mis_partidos.dart';
+import '../partidos/vista_mis_partidos.dart';
 
 class VistaPrincipal extends StatelessWidget {
   final ServicioAutenticacion servicioAuth;

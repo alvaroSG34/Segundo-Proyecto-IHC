@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../servicios/servicio_autenticacion.dart';
-import '../tema/caja_mensaje.dart';
-import '../tema/iconos_deporte.dart';
-import '../tema/tema_app.dart';
-import '../widgets/animaciones.dart';
-import '../widgets/boton_accion.dart';
-import '../widgets/campo_clave.dart';
+import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../tema/caja_mensaje.dart';
+import '../../tema/iconos_deporte.dart';
+import '../../tema/tema_app.dart';
+import '../../widgets/animaciones.dart';
+import '../../widgets/boton_accion.dart';
+import '../../widgets/campo_clave.dart';
 import 'vista_login.dart';
-import 'vista_principal.dart';
+import '../inicio/vista_principal.dart';
 
 /// Formulario de registro simple para nuevos estudiantes universitarios
 class VistaRegistro extends StatefulWidget {

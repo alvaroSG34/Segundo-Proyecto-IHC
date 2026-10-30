@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../modelos/evento_historial.dart';
-import '../modelos/modelo_partido.dart';
-import '../servicios/servicio_autenticacion.dart';
-import '../tema/tema_app.dart';
-import '../widgets/tarjeta_historial.dart';
+import '../../modelos/evento_historial.dart';
+import '../../modelos/modelo_partido.dart';
+import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../tema/tema_app.dart';
+import '../../widgets/tarjeta_historial.dart';
 import 'vista_crear_partido.dart';
 import 'vista_explorar_partidos.dart';
-import 'vista_login.dart';
+import '../autenticacion/vista_login.dart';
 
 /// Ruta Privada: Historial de participación del estudiante (Clase 16 · Tarea 4).
 ///

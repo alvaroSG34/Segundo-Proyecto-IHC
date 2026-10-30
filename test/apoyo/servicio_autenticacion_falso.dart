@@ -1,6 +1,6 @@
 import 'package:unisport/modelos/modelo_usuario.dart';
-import 'package:unisport/servicios/repositorio_partidos.dart';
-import 'package:unisport/servicios/servicio_autenticacion.dart';
+import 'package:unisport/servicios/partidos/repositorio_partidos.dart';
+import 'package:unisport/servicios/autenticacion/servicio_autenticacion.dart';
 
 import 'repositorio_en_memoria.dart';
 

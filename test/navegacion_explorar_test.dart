@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
-import 'package:unisport/vistas/vista_inicio_publico.dart';
-import 'package:unisport/vistas/vista_mis_partidos.dart';
-import 'package:unisport/vistas/vista_explorar_partidos.dart';
+import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
+import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
+import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
 
 import 'apoyo/servicio_autenticacion_falso.dart';
 

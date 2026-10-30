@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
-import 'package:unisport/vistas/vista_crear_partido.dart';
+import 'package:unisport/vistas/partidos/vista_crear_partido.dart';
 
 /// Pruebas de la edición de partidos:
 /// - la regla de cupos al editar (el equipo completo no admite más cupos), y

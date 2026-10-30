@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/evento_historial.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
-import 'package:unisport/vistas/vista_explorar_partidos.dart';
-import 'package:unisport/vistas/vista_historial.dart';
-import 'package:unisport/vistas/vista_mis_partidos.dart';
+import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
+import 'package:unisport/vistas/partidos/vista_historial.dart';
+import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/widgets/tarjeta_historial.dart';
 
 import 'apoyo/repositorio_en_memoria.dart';

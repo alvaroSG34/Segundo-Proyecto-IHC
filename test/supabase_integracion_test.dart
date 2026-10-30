@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:unisport/config/configuracion_supabase.dart';
 import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
-import 'package:unisport/servicios/servicio_autenticacion.dart';
+import 'package:unisport/servicios/autenticacion/servicio_autenticacion.dart';
 
 /// Prueba de integración contra la base de datos REAL de Supabase:
 /// dos estudiantes en "dispositivos" distintos (dos clientes) comparten datos.

@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../modelos/filtro_partidos.dart';
-import '../modelos/modelo_usuario.dart';
-import 'repositorio_partidos.dart';
-import 'repositorio_supabase.dart';
+import '../../modelos/filtro_partidos.dart';
+import '../../modelos/modelo_usuario.dart';
+import '../partidos/repositorio_partidos.dart';
+import '../partidos/repositorio_partidos_supabase.dart';
 
 /// Sesión del estudiante y acceso a los datos.
 ///
@@ -49,7 +49,7 @@ abstract class ServicioAutenticacion extends ChangeNotifier {
 /// en el dispositivo, así la app abre directamente en "Mis partidos".
 class ServicioAutenticacionSupabase extends ServicioAutenticacion {
   final SupabaseClient _cliente;
-  late final RepositorioPartidos _partidos = RepositorioSupabase(_cliente);
+  late final RepositorioPartidos _partidos = RepositorioPartidosSupabase(_cliente);
 
   ModeloUsuario? _usuarioActual;
   bool _estaCargando = true;
@@ -120,7 +120,7 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
       return error.message;
     }
     debugPrint('Error de autenticación: $error');
-    return RepositorioSupabase.mensajeSinConexion;
+    return RepositorioPartidosSupabase.mensajeSinConexion;
   }
 
   @override

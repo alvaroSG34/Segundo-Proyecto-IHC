@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../modelos/evento_historial.dart';
-import '../modelos/filtro_partidos.dart';
-import '../modelos/modelo_partido.dart';
+import '../../modelos/evento_historial.dart';
+import '../../modelos/filtro_partidos.dart';
+import '../../modelos/modelo_partido.dart';
 import 'repositorio_partidos.dart';
 
 /// Repositorio sobre la base de datos compartida de Supabase (PostgreSQL).
@@ -12,13 +12,13 @@ import 'repositorio_partidos.dart';
 /// - Cambios con reglas de negocio: funciones del servidor (`rpc`) definidas en
 ///   supabase/esquema.sql, que validan las reglas y bloquean la fila del
 ///   partido, así varios teléfonos no pueden romperlas al mismo tiempo.
-class RepositorioSupabase implements RepositorioPartidos {
+class RepositorioPartidosSupabase implements RepositorioPartidos {
   static const String mensajeSinConexion =
       'No se pudo conectar con el servidor. Revisa tu conexión a internet.';
 
   final SupabaseClient _cliente;
 
-  RepositorioSupabase(this._cliente);
+  RepositorioPartidosSupabase(this._cliente);
 
   String get _usuarioId {
     final usuario = _cliente.auth.currentUser;

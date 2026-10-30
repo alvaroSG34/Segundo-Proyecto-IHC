@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../modelos/filtro_partidos.dart';
-import '../modelos/modelo_partido.dart';
-import '../servicios/servicio_autenticacion.dart';
-import '../tema/tema_app.dart';
-import '../widgets/panel_filtros.dart';
-import '../widgets/tarjeta_partido.dart';
+import '../../modelos/filtro_partidos.dart';
+import '../../modelos/modelo_partido.dart';
+import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../tema/tema_app.dart';
+import '../../widgets/panel_filtros.dart';
+import '../../widgets/tarjeta_partido.dart';
 
 /// Explorar partidos organizados por otros estudiantes, buscarlos, filtrarlos
 /// (requisito #6) y unirse a ellos (requisito #5).
