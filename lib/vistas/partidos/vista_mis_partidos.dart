@@ -7,6 +7,7 @@ import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 import '../../servicios/partidos/controlador_explorar.dart';
+import '../../tema/caja_mensaje.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/tarjeta_partido.dart';
 import 'vista_crear_partido.dart';
@@ -217,33 +218,19 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
   // ACCIÓN "ELIMINAR PARTIDO": solicita confirmación previa antes de borrar
   Future<void> _eliminarPartido(ModeloPartido partido) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('¿Eliminar partido?', style: TemaApp.titulo(tamano: 20)),
-        content: Text(
+    final confirmar = await confirmarAccion(
+      context,
+      titulo: '¿Eliminar partido?',
+      mensaje:
           '¿Estás seguro de que deseas eliminar "${partido.titulo}"? Esta acción no se puede deshacer.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(
-                color: TemaApp.textoSecundario,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: TemaApp.rojoAlerta,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Eliminar'),
-          ),
-        ],
+      textoConfirmar: 'Eliminar',
+      estiloCancelar: const TextStyle(
+        color: TemaApp.textoSecundario,
+        fontWeight: FontWeight.w600,
+      ),
+      estiloConfirmar: ElevatedButton.styleFrom(
+        backgroundColor: TemaApp.rojoAlerta,
+        foregroundColor: Colors.white,
       ),
     );
 
@@ -291,27 +278,15 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
   // ACCIÓN "SALIR DEL PARTIDO" (H3): quien se había unido libera su cupo
   Future<void> _salirDelPartido(ModeloPartido partido) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('¿Salir del partido?', style: TemaApp.titulo(tamano: 20)),
-        content: Text(
+    final confirmar = await confirmarAccion(
+      context,
+      titulo: '¿Salir del partido?',
+      mensaje:
           'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: TemaApp.rojoAlerta,
-              minimumSize: const Size(120, 44),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sí, salir'),
-          ),
-        ],
+      textoConfirmar: 'Sí, salir',
+      estiloConfirmar: ElevatedButton.styleFrom(
+        backgroundColor: TemaApp.rojoAlerta,
+        minimumSize: const Size(120, 44),
       ),
     );
     if (confirmar != true || !mounted) return;
@@ -339,31 +314,18 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   }
 
   Future<void> _cerrarSesion() async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('¿Cerrar sesión?', style: TemaApp.titulo(tamano: 20)),
-        content: const Text('Volverás a la pantalla pública de UniSport.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(
-                color: TemaApp.textoSecundario,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: TemaApp.rojoAlerta,
-              minimumSize: const Size(110, 44),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Salir'),
-          ),
-        ],
+    final confirmar = await confirmarAccion(
+      context,
+      titulo: '¿Cerrar sesión?',
+      mensaje: 'Volverás a la pantalla pública de UniSport.',
+      textoConfirmar: 'Salir',
+      estiloCancelar: const TextStyle(
+        color: TemaApp.textoSecundario,
+        fontWeight: FontWeight.w600,
+      ),
+      estiloConfirmar: ElevatedButton.styleFrom(
+        backgroundColor: TemaApp.rojoAlerta,
+        minimumSize: const Size(110, 44),
       ),
     );
 

@@ -8,6 +8,7 @@ import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
+import '../../tema/caja_mensaje.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/panel_filtros.dart';
 import '../../widgets/tarjeta_partido.dart';
@@ -102,26 +103,13 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     }
 
     // H3/H5: confirmar antes de ocupar un cupo
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('¿Unirte al equipo?', style: TemaApp.titulo(tamano: 20)),
-        content: Text(
+    final confirmar = await confirmarAccion(
+      context,
+      titulo: '¿Unirte al equipo?',
+      mensaje:
           'Ocuparás un cupo en "${partido.titulo}" '
           '(${partido.cuposOcupados}/${partido.cuposTotales}).',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(minimumSize: const Size(120, 44)),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sí, unirme'),
-          ),
-        ],
-      ),
+      textoConfirmar: 'Sí, unirme',
     );
     if (confirmar != true || !mounted) return;
 
@@ -151,27 +139,15 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
 
   // ACCIÓN "SALIR DEL PARTIDO" (H3): pide confirmación y libera el cupo
   Future<void> _salir(ModeloPartido partido) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('¿Salir del partido?', style: TemaApp.titulo(tamano: 20)),
-        content: Text(
+    final confirmar = await confirmarAccion(
+      context,
+      titulo: '¿Salir del partido?',
+      mensaje:
           'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: TemaApp.rojoAlerta,
-              minimumSize: const Size(120, 44),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sí, salir'),
-          ),
-        ],
+      textoConfirmar: 'Sí, salir',
+      estiloConfirmar: ElevatedButton.styleFrom(
+        backgroundColor: TemaApp.rojoAlerta,
+        minimumSize: const Size(120, 44),
       ),
     );
     if (confirmar != true || !mounted) return;

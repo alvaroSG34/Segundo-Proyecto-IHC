@@ -5,6 +5,37 @@ import 'tema_app.dart';
 
 enum TipoMensaje { error, info, exito }
 
+/// Devuelve false al cancelar o cerrar el diálogo sin confirmar.
+Future<bool> confirmarAccion(
+  BuildContext context, {
+  required String titulo,
+  required String mensaje,
+  required String textoConfirmar,
+  ButtonStyle? estiloConfirmar,
+  TextStyle? estiloCancelar,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(titulo, style: TemaApp.titulo(tamano: 20)),
+        content: Text(mensaje),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: estiloCancelar),
+          ),
+          ElevatedButton(
+            style:
+                estiloConfirmar ??
+                ElevatedButton.styleFrom(minimumSize: const Size(120, 44)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(textoConfirmar),
+          ),
+        ],
+      ),
+    ) ??
+    false;
+
 /// Aviso en línea con ícono (reemplaza a los emojis y cajas con borde grueso).
 class CajaMensaje extends StatelessWidget {
   final String texto;
