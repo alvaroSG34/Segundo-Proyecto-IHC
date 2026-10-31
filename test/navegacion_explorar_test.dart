@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
+import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
 
@@ -42,15 +43,15 @@ void main() {
     testWidgets('inscritos ven a sus compañeros en ${explorar ? 'Explorar' : 'Mis partidos'}', (tester) async {
       final auth = conPartidoDeLorgio();
       await auth.iniciarSesion('diego@unisport.edu', '123456');
-      await auth.partidos.unirseAPartido('p-1');
+      await auth.repositorio.unirseAPartido('p-1');
       auth.repositorio.usarSesionDe('u-ana', 'Ana');
-      await auth.partidos.unirseAPartido('p-1');
+      await auth.repositorio.unirseAPartido('p-1');
       await auth.iniciarSesion('diego@unisport.edu', '123456');
 
       await tester.pumpWidget(MaterialApp(
         home: explorar
-            ? VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)
-            : VistaMisPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth),
+            ? VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)
+            : VistaMisPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth),
       ));
       await tester.pumpAndSettle();
 
@@ -78,13 +79,13 @@ void main() {
     );
   });
 
-  testWidgets('con sesión, Explorar abre los partidos de otros estudiantes', (
+  testWidgets('con sesión, el menú abre Explorar con los partidos de otros estudiantes', (
     tester,
   ) async {
     final auth = conPartidoDeLorgio();
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaInicioPublico(servicioAuth: auth)),
+      MaterialApp(home: VistaPrincipal(servicioAuth: auth, repositorioPartidos: auth.repositorio)),
     );
 
     await tester.tap(find.text('Explorar'));
@@ -118,7 +119,7 @@ void main() {
     final auth = conPartidoDeLorgio();
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaMisPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(home: VistaMisPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pumpAndSettle();
 

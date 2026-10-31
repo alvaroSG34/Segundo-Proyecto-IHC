@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/partidos/repositorio_partidos.dart';
+import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/tema_app.dart';
 import '../partidos/vista_crear_partido.dart';
@@ -12,14 +15,23 @@ import '../partidos/vista_mis_partidos.dart';
 
 class VistaPrincipal extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final RepositorioPartidos? repositorioPartidos;
 
-  const VistaPrincipal({super.key, required this.servicioAuth});
+  const VistaPrincipal({
+    super.key,
+    required this.servicioAuth,
+    this.repositorioPartidos,
+  });
 
   @override
   State<VistaPrincipal> createState() => _VistaPrincipalState();
 }
 
 class _VistaPrincipalState extends State<VistaPrincipal> {
+  late final RepositorioPartidos _repositorio =
+      widget.repositorioPartidos ??
+      RepositorioPartidosSupabase(Supabase.instance.client);
+
   // Vive mientras el menú esté abierto y se comparte con sus pantallas.
   final _controladorExplorar = ControladorExplorar();
 
@@ -37,7 +49,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
 
     try {
       // El formulario devuelve el partido; aquí se guarda con el servicio actual.
-      await widget.servicioAuth.partidos.crearPartido(nuevo);
+      await _repositorio.crearPartido(nuevo);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -227,6 +239,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => VistaMisPartidos(
+                              repositorioPartidos: _repositorio,
                               controladorExplorar: _controladorExplorar,
                               servicioAuth: widget.servicioAuth,
                             ),
@@ -238,6 +251,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => VistaExplorarPartidos(
+                              repositorioPartidos: _repositorio,
                               controladorExplorar: _controladorExplorar,
                               servicioAuth: widget.servicioAuth,
                             ),
@@ -249,6 +263,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => VistaHistorial(
+                              repositorioPartidos: _repositorio,
                               controladorExplorar: _controladorExplorar,
                               servicioAuth: widget.servicioAuth,
                             ),

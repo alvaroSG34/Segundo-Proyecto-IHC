@@ -2,21 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../modelos/modelo_usuario.dart';
-import '../partidos/repositorio_partidos.dart';
-import '../partidos/repositorio_partidos_supabase.dart';
 
-/// Sesión del estudiante y acceso a los datos.
+/// Sesión y autenticación del estudiante.
 ///
-/// Las pantallas solo conocen esta clase: la implementación real usa Supabase
-/// (cuentas y base de datos compartidas entre dispositivos); las pruebas usan
-/// una versión en memoria.
+/// Las pantallas dependen de este contrato de autenticación. La implementación
+/// real usa Supabase Auth; las pruebas usan una versión en memoria.
 abstract class ServicioAutenticacion extends ChangeNotifier {
   ModeloUsuario? get usuarioActual;
   bool get estaAutenticado => usuarioActual != null;
   bool get estaCargando;
-
-  /// Partidos e inscripciones del usuario con sesión.
-  RepositorioPartidos get partidos;
 
   /// Recupera la sesión guardada (si el usuario no la cerró).
   Future<void> inicializar();
@@ -44,7 +38,6 @@ abstract class ServicioAutenticacion extends ChangeNotifier {
 /// en el dispositivo, así la app abre directamente en "Mis partidos".
 class ServicioAutenticacionSupabase extends ServicioAutenticacion {
   final SupabaseClient _cliente;
-  late final RepositorioPartidos _partidos = RepositorioPartidosSupabase(_cliente);
 
   ModeloUsuario? _usuarioActual;
   bool _estaCargando = true;
@@ -56,9 +49,6 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
 
   @override
   bool get estaCargando => _estaCargando;
-
-  @override
-  RepositorioPartidos get partidos => _partidos;
 
   /// Lee el perfil del usuario con sesión desde la tabla `perfiles`.
   /// Si no se puede leer (por ejemplo, sin internet), usa los datos de la cuenta.
@@ -115,7 +105,7 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
       return error.message;
     }
     debugPrint('Error de autenticación: $error');
-    return RepositorioPartidosSupabase.mensajeSinConexion;
+    return 'No se pudo conectar con el servidor. Revisa tu conexión a internet.';
   }
 
   @override

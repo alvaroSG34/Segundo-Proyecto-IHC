@@ -4,6 +4,7 @@ import 'package:unisport/config/configuracion_supabase.dart';
 import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/servicios/autenticacion/servicio_autenticacion.dart';
+import 'package:unisport/servicios/partidos/repositorio_partidos_supabase.dart';
 
 /// Prueba de integración contra la base de datos REAL de Supabase:
 /// dos estudiantes en "dispositivos" distintos (dos clientes) comparten datos.
@@ -38,7 +39,9 @@ void main() {
       final marca = DateTime.now().millisecondsSinceEpoch;
 
       // Dispositivo 1: organizador
-      final organizador = ServicioAutenticacionSupabase(nuevoCliente());
+      final clienteOrganizador = nuevoCliente();
+      final organizador = ServicioAutenticacionSupabase(clienteOrganizador);
+      final partidosOrganizador = RepositorioPartidosSupabase(clienteOrganizador);
       expect(
         await organizador.registrarUsuario(
           nombre: 'Organizador $marca',
@@ -53,7 +56,9 @@ void main() {
       );
 
       // Dispositivo 2: jugador
-      final jugador = ServicioAutenticacionSupabase(nuevoCliente());
+      final clienteJugador = nuevoCliente();
+      final jugador = ServicioAutenticacionSupabase(clienteJugador);
+      final partidosJugador = RepositorioPartidosSupabase(clienteJugador);
       expect(
         await jugador.registrarUsuario(
           nombre: 'Jugador $marca',
@@ -66,7 +71,7 @@ void main() {
       );
 
       final titulo = 'Prueba integración $marca';
-      final creado = await organizador.partidos.crearPartido(
+      final creado = await partidosOrganizador.crearPartido(
         ModeloPartido(
           id: '',
           titulo: titulo,
@@ -82,20 +87,20 @@ void main() {
 
       try {
         // El jugador lo encuentra desde su dispositivo con la búsqueda
-        final encontrados = await jugador.partidos.buscarPartidos(
+        final encontrados = await partidosJugador.buscarPartidos(
           FiltroPartidos(texto: titulo, soloConCupos: true),
         );
         expect(encontrados.single.id, creado.id);
         expect(encontrados.single.puedeUnirse, isTrue);
 
         // Se une: ocupa el último cupo y el servidor completa el equipo
-        final unido = await jugador.partidos.unirseAPartido(creado.id);
+        final unido = await partidosJugador.unirseAPartido(creado.id);
         expect(unido.cuposOcupados, 2);
         expect(unido.estado, EstadoPartido.equipoCompleto);
 
         // El servidor rechaza unirse dos veces
         await expectLater(
-          jugador.partidos.unirseAPartido(creado.id),
+          partidosJugador.unirseAPartido(creado.id),
           throwsA(
             isA<StateError>().having(
               (e) => e.message,
@@ -106,18 +111,18 @@ void main() {
         );
 
         // El organizador ve, desde su dispositivo, quién se unió
-        final inscritos = await organizador.partidos
+        final inscritos = await partidosOrganizador
             .obtenerJugadoresInscritos();
         expect(inscritos[creado.id], ['Jugador $marca']);
 
         // RLS: el jugador no puede eliminar un partido ajeno
-        await jugador.partidos.eliminarPartido(creado.id);
+        await partidosJugador.eliminarPartido(creado.id);
         expect(
-          (await organizador.partidos.obtenerMisPartidos()).map((p) => p.id),
+          (await partidosOrganizador.obtenerMisPartidos()).map((p) => p.id),
           contains(creado.id),
         );
       } finally {
-        await organizador.partidos.eliminarPartido(creado.id);
+        await partidosOrganizador.eliminarPartido(creado.id);
         await organizador.cerrarSesion();
         await jugador.cerrarSesion();
       }

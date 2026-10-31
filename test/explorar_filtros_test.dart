@@ -45,7 +45,7 @@ void main() {
     await auth.iniciarSesion('diego@unisport.edu', '123456');
 
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 
@@ -82,7 +82,7 @@ void main() {
     await auth.iniciarSesion('diego@unisport.edu', '123456');
 
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 
@@ -103,7 +103,7 @@ void main() {
     auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 
@@ -121,7 +121,7 @@ void main() {
     auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
     await tester.enterText(find.byType(TextField), 'futsal');
@@ -129,7 +129,7 @@ void main() {
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox()));
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 
@@ -143,7 +143,7 @@ void main() {
     auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 

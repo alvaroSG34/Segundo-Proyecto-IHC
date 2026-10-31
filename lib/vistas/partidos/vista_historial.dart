@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/evento_historial.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/partidos/repositorio_partidos.dart';
+import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/tarjeta_historial.dart';
@@ -24,12 +27,14 @@ import '../autenticacion/vista_login.dart';
 /// - Estado vacío orientador: guía al usuario a la acción siguiente si no tiene historial.
 class VistaHistorial extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final RepositorioPartidos? repositorioPartidos;
   final ControladorExplorar controladorExplorar;
   final DateTime? referenciaTemporal;
 
   const VistaHistorial({
     super.key,
     required this.servicioAuth,
+    this.repositorioPartidos,
     required this.controladorExplorar,
     this.referenciaTemporal,
   });
@@ -39,6 +44,10 @@ class VistaHistorial extends StatefulWidget {
 }
 
 class _VistaHistorialState extends State<VistaHistorial> {
+  late final RepositorioPartidos _repositorio =
+      widget.repositorioPartidos ??
+      RepositorioPartidosSupabase(Supabase.instance.client);
+
   List<EventoHistorial> _eventos = [];
   bool _cargando = true;
   String _filtroRol = 'todos'; // 'todos' | 'organizador' | 'jugador'
@@ -72,7 +81,7 @@ class _VistaHistorialState extends State<VistaHistorial> {
     setState(() => _cargando = true);
 
     try {
-      final eventos = await widget.servicioAuth.partidos.obtenerHistorial(
+      final eventos = await _repositorio.obtenerHistorial(
         ahora: widget.referenciaTemporal,
       );
       if (mounted) {
@@ -101,6 +110,7 @@ class _VistaHistorialState extends State<VistaHistorial> {
       context,
       MaterialPageRoute(
         builder: (_) => VistaExplorarPartidos(
+          repositorioPartidos: _repositorio,
           controladorExplorar: widget.controladorExplorar,
           servicioAuth: widget.servicioAuth,
         ),
@@ -119,7 +129,7 @@ class _VistaHistorialState extends State<VistaHistorial> {
     );
     if (nuevo == null || !mounted) return;
     try {
-      await widget.servicioAuth.partidos.crearPartido(nuevo);
+      await _repositorio.crearPartido(nuevo);
       if (mounted) await _cargarHistorial();
     } catch (_) {}
   }

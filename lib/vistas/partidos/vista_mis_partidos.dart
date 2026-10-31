@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
+import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/tema_app.dart';
@@ -19,11 +21,13 @@ import '../autenticacion/vista_login.dart';
 /// cambios se ven desde cualquier dispositivo y se mantienen al recargar.
 class VistaMisPartidos extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final RepositorioPartidos? repositorioPartidos;
   final ControladorExplorar controladorExplorar;
 
   const VistaMisPartidos({
     super.key,
     required this.servicioAuth,
+    this.repositorioPartidos,
     required this.controladorExplorar,
   });
 
@@ -32,12 +36,14 @@ class VistaMisPartidos extends StatefulWidget {
 }
 
 class _VistaMisPartidosState extends State<VistaMisPartidos> {
+  late final RepositorioPartidos _repositorio =
+      widget.repositorioPartidos ??
+      RepositorioPartidosSupabase(Supabase.instance.client);
+
   List<ModeloPartido> _partidos = [];
   Map<String, List<String>> _jugadoresInscritos = {};
   bool _cargando = true;
   String _filtroActivo = 'todos';
-
-  RepositorioPartidos get _repositorio => widget.servicioAuth.partidos;
 
   @override
   void initState() {
@@ -122,6 +128,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       context,
       MaterialPageRoute(
         builder: (_) => VistaExplorarPartidos(
+          repositorioPartidos: _repositorio,
           controladorExplorar: widget.controladorExplorar,
           servicioAuth: widget.servicioAuth,
         ),
@@ -136,6 +143,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       context,
       MaterialPageRoute(
         builder: (_) => VistaHistorial(
+          repositorioPartidos: _repositorio,
           controladorExplorar: widget.controladorExplorar,
           servicioAuth: widget.servicioAuth,
         ),
@@ -309,7 +317,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     if (confirmar != true || !mounted) return;
 
     try {
-      await widget.servicioAuth.partidos.salirDelPartido(partido.id);
+      await _repositorio.salirDelPartido(partido.id);
       if (!mounted) return;
       setState(
         () => _partidos = _partidos.where((p) => p.id != partido.id).toList(),

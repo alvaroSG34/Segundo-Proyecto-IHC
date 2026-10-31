@@ -211,7 +211,7 @@ void main() {
       await auth.iniciarSesion('diego@unisport.edu', '123456');
 
       await tester.pumpWidget(
-        MaterialApp(home: VistaMisPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+        MaterialApp(home: VistaMisPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
       );
       await tester.pumpAndSettle();
 
@@ -233,7 +233,7 @@ void main() {
       await auth.iniciarSesion('diego@unisport.edu', '123456');
 
       await tester.pumpWidget(
-        MaterialApp(home: VistaHistorial(controladorExplorar: controladorExplorar, servicioAuth: auth)),
+        MaterialApp(home: VistaHistorial(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
       );
       await tester.pumpAndSettle();
 
@@ -285,11 +285,12 @@ void main() {
         ),
       );
       await auth.iniciarSesion('diego@unisport.edu', '123456');
-      await auth.partidos.unirseAPartido(pOtro.id);
+      await auth.repositorio.unirseAPartido(pOtro.id);
 
       await tester.pumpWidget(
         MaterialApp(
           home: VistaHistorial(
+            repositorioPartidos: auth.repositorio,
             controladorExplorar: controladorExplorar,
             servicioAuth: auth,
             referenciaTemporal: ahora,

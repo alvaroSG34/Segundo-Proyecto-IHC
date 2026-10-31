@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../servicios/partidos/controlador_explorar.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/partidos/repositorio_partidos.dart';
+import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/panel_filtros.dart';
 import '../../widgets/tarjeta_partido.dart';
@@ -13,11 +16,13 @@ import '../../widgets/tarjeta_partido.dart';
 /// (requisito #6) y unirse a ellos (requisito #5).
 class VistaExplorarPartidos extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final RepositorioPartidos? repositorioPartidos;
   final ControladorExplorar controladorExplorar;
 
   const VistaExplorarPartidos({
     super.key,
     required this.servicioAuth,
+    this.repositorioPartidos,
     required this.controladorExplorar,
   });
 
@@ -26,6 +31,10 @@ class VistaExplorarPartidos extends StatefulWidget {
 }
 
 class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
+  late final RepositorioPartidos _repositorio =
+      widget.repositorioPartidos ??
+      RepositorioPartidosSupabase(Supabase.instance.client);
+
   List<ModeloPartido> _partidos = [];
   Map<String, List<String>> _jugadoresInscritos = {};
   List<String> _lugares = FiltroPartidos.lugaresSugeridos;
@@ -52,10 +61,9 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     final List<String> lugares;
     final Map<String, List<String>> inscritos;
     try {
-      partidos = await widget.servicioAuth.partidos.buscarPartidos(_filtro);
-      lugares = await widget.servicioAuth.partidos.obtenerLugares();
-      inscritos = await widget.servicioAuth.partidos
-          .obtenerJugadoresInscritos();
+      partidos = await _repositorio.buscarPartidos(_filtro);
+      lugares = await _repositorio.obtenerLugares();
+      inscritos = await _repositorio.obtenerJugadoresInscritos();
     } on StateError catch (e) {
       if (!mounted || numero != _consulta) return;
       setState(() => _cargando = false);
@@ -119,9 +127,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
 
     try {
       // El servidor vuelve a aplicar la regla sobre el dato guardado
-      final unido = await widget.servicioAuth.partidos.unirseAPartido(
-        partido.id,
-      );
+      final unido = await _repositorio.unirseAPartido(partido.id);
       if (!mounted) return;
 
       setState(() {
@@ -171,9 +177,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     if (confirmar != true || !mounted) return;
 
     try {
-      final salido = await widget.servicioAuth.partidos.salirDelPartido(
-        partido.id,
-      );
+      final salido = await _repositorio.salirDelPartido(partido.id);
       if (!mounted) return;
       setState(() {
         _partidos = [
