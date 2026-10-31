@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/tarjeta_partido.dart';
 import 'vista_crear_partido.dart';
@@ -18,8 +19,13 @@ import '../autenticacion/vista_login.dart';
 /// cambios se ven desde cualquier dispositivo y se mantienen al recargar.
 class VistaMisPartidos extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final ControladorExplorar controladorExplorar;
 
-  const VistaMisPartidos({super.key, required this.servicioAuth});
+  const VistaMisPartidos({
+    super.key,
+    required this.servicioAuth,
+    required this.controladorExplorar,
+  });
 
   @override
   State<VistaMisPartidos> createState() => _VistaMisPartidosState();
@@ -115,7 +121,10 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaExplorarPartidos(servicioAuth: widget.servicioAuth),
+        builder: (_) => VistaExplorarPartidos(
+          controladorExplorar: widget.controladorExplorar,
+          servicioAuth: widget.servicioAuth,
+        ),
       ),
     );
     if (mounted) await _cargarPartidos();
@@ -126,7 +135,10 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaHistorial(servicioAuth: widget.servicioAuth),
+        builder: (_) => VistaHistorial(
+          controladorExplorar: widget.controladorExplorar,
+          servicioAuth: widget.servicioAuth,
+        ),
       ),
     );
     if (mounted) await _cargarPartidos();
@@ -299,9 +311,13 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     try {
       await widget.servicioAuth.partidos.salirDelPartido(partido.id);
       if (!mounted) return;
-      setState(() => _partidos = _partidos.where((p) => p.id != partido.id).toList());
+      setState(
+        () => _partidos = _partidos.where((p) => p.id != partido.id).toList(),
+      );
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saliste de "${partido.titulo}". Tu cupo quedó libre.')),
+        SnackBar(
+          content: Text('Saliste de "${partido.titulo}". Tu cupo quedó libre.'),
+        ),
       );
     } on StateError catch (e) {
       if (!mounted) return;
@@ -446,7 +462,10 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                   icon: const Icon(LucideIcons.history, size: 18),
                   label: const Text('Ver historial de participación'),
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48), // Ley de Fitts: >= 48 px
+                    minimumSize: const Size(
+                      double.infinity,
+                      48,
+                    ), // Ley de Fitts: >= 48 px
                   ),
                 ),
                 const SizedBox(height: 24),

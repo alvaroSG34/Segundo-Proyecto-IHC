@@ -6,10 +6,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../tema/iconos_deporte.dart';
 import '../../tema/tema_app.dart';
-import '../partidos/vista_explorar_partidos.dart';
 import '../autenticacion/vista_login.dart';
 import '../autenticacion/vista_registro.dart';
-import '../partidos/vista_mis_partidos.dart';
+import 'vista_principal.dart';
 
 /// Ruta Pública: Portada de bienvenida a UniSport accesible sin sesión
 class VistaInicioPublico extends StatefulWidget {
@@ -29,28 +28,24 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
   // encontrar partidos de otros no debe depender de recordar dónde está.
   void _alSeleccionarPestana(int indice) {
     if (indice == 0) return;
-    final destino = indice == 1
-        ? VistaExplorarPartidos(servicioAuth: widget.servicioAuth)
-        : VistaMisPartidos(servicioAuth: widget.servicioAuth);
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => widget.servicioAuth.estaAutenticado
-            ? destino
-            // Ruta privada: sin sesión se redirige al login explicando el motivo
-            : VistaLogin(
-                servicioAuth: widget.servicioAuth,
-                mensajeRedireccion: indice == 1
-                    ? 'Inicia sesión para explorar partidos.'
-                    : 'Inicia sesión para ver tus partidos.',
-              ),
+        builder: (_) => VistaLogin(
+          servicioAuth: widget.servicioAuth,
+          mensajeRedireccion: indice == 1
+              ? 'Inicia sesión para explorar partidos.'
+              : 'Inicia sesión para ver tus partidos.',
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.servicioAuth.estaAutenticado) {
+      return VistaPrincipal(servicioAuth: widget.servicioAuth);
+    }
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -97,50 +92,33 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
                   ],
                 ),
                 const SizedBox(height: 28),
-                if (!widget.servicioAuth.estaAutenticado) ...[
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              VistaLogin(servicioAuth: widget.servicioAuth),
-                        ),
-                      );
-                    },
-                    icon: const Icon(LucideIcons.logIn, size: 19),
-                    label: const Text('Iniciar sesión'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              VistaRegistro(servicioAuth: widget.servicioAuth),
-                        ),
-                      );
-                    },
-                    icon: const Icon(LucideIcons.userPlus, size: 19),
-                    label: const Text('Crear nueva cuenta'),
-                  ),
-                ] else ...[
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => VistaMisPartidos(
-                            servicioAuth: widget.servicioAuth,
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(LucideIcons.calendarDays, size: 19),
-                    label: const Text('Ver mis partidos'),
-                  ),
-                ],
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            VistaLogin(servicioAuth: widget.servicioAuth),
+                      ),
+                    );
+                  },
+                  icon: const Icon(LucideIcons.logIn, size: 19),
+                  label: const Text('Iniciar sesión'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            VistaRegistro(servicioAuth: widget.servicioAuth),
+                      ),
+                    );
+                  },
+                  icon: const Icon(LucideIcons.userPlus, size: 19),
+                  label: const Text('Crear nueva cuenta'),
+                ),
               ],
             ),
           ),

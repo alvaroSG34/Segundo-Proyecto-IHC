@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/tema_app.dart';
 import '../partidos/vista_crear_partido.dart';
 import '../partidos/vista_explorar_partidos.dart';
@@ -9,13 +10,21 @@ import '../partidos/vista_historial.dart';
 import 'vista_inicio_publico.dart';
 import '../partidos/vista_mis_partidos.dart';
 
-class VistaPrincipal extends StatelessWidget {
+class VistaPrincipal extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
 
   const VistaPrincipal({super.key, required this.servicioAuth});
 
+  @override
+  State<VistaPrincipal> createState() => _VistaPrincipalState();
+}
+
+class _VistaPrincipalState extends State<VistaPrincipal> {
+  // Vive mientras el menú esté abierto y se comparte con sus pantallas.
+  final _controladorExplorar = ControladorExplorar();
+
   Future<void> _crearPartido(BuildContext context) async {
-    final usuario = servicioAuth.usuarioActual;
+    final usuario = widget.servicioAuth.usuarioActual;
     if (usuario == null) return;
 
     final nuevo = await Navigator.push<ModeloPartido>(
@@ -28,7 +37,7 @@ class VistaPrincipal extends StatelessWidget {
 
     try {
       // El formulario devuelve el partido; aquí se guarda con el servicio actual.
-      await servicioAuth.partidos.crearPartido(nuevo);
+      await widget.servicioAuth.partidos.crearPartido(nuevo);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -52,12 +61,12 @@ class VistaPrincipal extends StatelessWidget {
 
   Future<void> _cerrarSesion(BuildContext context) async {
     try {
-      await servicioAuth.cerrarSesion();
+      await widget.servicioAuth.cerrarSesion();
       if (!context.mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) => VistaInicioPublico(servicioAuth: servicioAuth),
+          builder: (_) => VistaInicioPublico(servicioAuth: widget.servicioAuth),
         ),
         (ruta) => false,
       );
@@ -99,9 +108,9 @@ class VistaPrincipal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final usuario = servicioAuth.usuarioActual;
+    final usuario = widget.servicioAuth.usuarioActual;
     if (usuario == null) {
-      return VistaInicioPublico(servicioAuth: servicioAuth);
+      return VistaInicioPublico(servicioAuth: widget.servicioAuth);
     }
 
     return Scaffold(
@@ -217,8 +226,10 @@ class VistaPrincipal extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                VistaMisPartidos(servicioAuth: servicioAuth),
+                            builder: (_) => VistaMisPartidos(
+                              controladorExplorar: _controladorExplorar,
+                              servicioAuth: widget.servicioAuth,
+                            ),
                           ),
                         );
                       }),
@@ -227,7 +238,8 @@ class VistaPrincipal extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (_) => VistaExplorarPartidos(
-                              servicioAuth: servicioAuth,
+                              controladorExplorar: _controladorExplorar,
+                              servicioAuth: widget.servicioAuth,
                             ),
                           ),
                         );
@@ -236,8 +248,10 @@ class VistaPrincipal extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                VistaHistorial(servicioAuth: servicioAuth),
+                            builder: (_) => VistaHistorial(
+                              controladorExplorar: _controladorExplorar,
+                              servicioAuth: widget.servicioAuth,
+                            ),
                           ),
                         );
                       }),

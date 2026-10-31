@@ -5,6 +5,8 @@ import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
 
+import 'package:unisport/servicios/partidos/controlador_explorar.dart';
+
 import 'apoyo/servicio_autenticacion_falso.dart';
 
 /// Clase 15 · Hallazgo #1 (H6 Reconocimiento): "Explorar" debe estar visible
@@ -31,6 +33,11 @@ ServicioAutenticacionFalso conPartidoDeLorgio() {
 }
 
 void main() {
+  late ControladorExplorar controladorExplorar;
+  setUp(() {
+    controladorExplorar = ControladorExplorar();
+  });
+
   for (final explorar in [false, true]) {
     testWidgets('inscritos ven a sus compañeros en ${explorar ? 'Explorar' : 'Mis partidos'}', (tester) async {
       final auth = conPartidoDeLorgio();
@@ -42,8 +49,8 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: explorar
-            ? VistaExplorarPartidos(servicioAuth: auth)
-            : VistaMisPartidos(servicioAuth: auth),
+            ? VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)
+            : VistaMisPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth),
       ));
       await tester.pumpAndSettle();
 
@@ -111,7 +118,7 @@ void main() {
     final auth = conPartidoDeLorgio();
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaMisPartidos(servicioAuth: auth)),
+      MaterialApp(home: VistaMisPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pumpAndSettle();
 

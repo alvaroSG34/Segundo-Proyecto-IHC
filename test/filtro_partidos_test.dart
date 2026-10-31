@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
+import 'package:unisport/servicios/partidos/repositorio_partidos_supabase.dart';
 
 import 'apoyo/repositorio_en_memoria.dart';
 
@@ -206,7 +207,7 @@ void main() {
 
   group('Consulta enviada a la base de datos (Supabase)', () {
     List<String> describir(FiltroPartidos filtro) => [
-      for (final c in filtro.condicionesConsulta(ahora))
+      for (final c in RepositorioPartidosSupabase.condicionesConsulta(filtro, ahora))
         '${c.columna} ${c.operador} ${c.valor}',
     ];
 
@@ -230,9 +231,10 @@ void main() {
     });
 
     test('próximos 7 días: desde hoy 00:00 hasta el final del 7.º día', () {
-      final condiciones = const FiltroPartidos(
-        fecha: FiltroFecha.proximos7Dias,
-      ).condicionesConsulta(ahora);
+      final condiciones = RepositorioPartidosSupabase.condicionesConsulta(
+        const FiltroPartidos(fecha: FiltroFecha.proximos7Dias),
+        ahora,
+      );
 
       expect(condiciones, hasLength(2));
       expect(condiciones[0].operador, 'gte');

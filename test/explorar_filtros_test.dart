@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
 
+import 'package:unisport/servicios/partidos/controlador_explorar.dart';
+
 import 'apoyo/servicio_autenticacion_falso.dart';
 
 /// Prueba de punta a punta del requisito #6 con la pantalla real:
@@ -26,6 +28,11 @@ ModeloPartido partido(String id, String titulo, String disciplina) {
 }
 
 void main() {
+  late ControladorExplorar controladorExplorar;
+  setUp(() {
+    controladorExplorar = ControladorExplorar();
+  });
+
   testWidgets('filtrar desde la pantalla consulta los partidos de otros', (
     tester,
   ) async {
@@ -38,7 +45,7 @@ void main() {
     await auth.iniciarSesion('diego@unisport.edu', '123456');
 
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 
@@ -75,7 +82,7 @@ void main() {
     await auth.iniciarSesion('diego@unisport.edu', '123456');
 
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 
@@ -96,7 +103,7 @@ void main() {
     auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 
@@ -114,7 +121,7 @@ void main() {
     auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
     await tester.enterText(find.byType(TextField), 'futsal');
@@ -122,7 +129,7 @@ void main() {
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox()));
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 
@@ -136,7 +143,7 @@ void main() {
     auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(servicioAuth: auth)),
+      MaterialApp(home: VistaExplorarPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
     );
     await tester.pump();
 

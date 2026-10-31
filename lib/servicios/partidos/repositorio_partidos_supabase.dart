@@ -20,6 +20,54 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
 
   RepositorioPartidosSupabase(this._cliente);
 
+  /// Traduce el filtro a las condiciones que se envían a la base de datos
+  /// (todas se combinan con AND).
+  /// Es una función pura para poder probar qué consulta se envía.
+  static List<CondicionConsulta> condicionesConsulta(
+    FiltroPartidos filtro,
+    DateTime ahora,
+  ) {
+    String instante(DateTime fecha) => fecha.toUtc().toIso8601String();
+    final intervalo = filtro.intervaloFechas(ahora);
+    return [
+      // El nombre no se envía a la base: se compara sin tildes en la app
+      // (ver FiltroPartidos.coincideTitulo), porque ILIKE distingue "Vóley" de "voley".
+      if (filtro.deporte != null)
+        (columna: 'disciplina', operador: 'eq', valor: filtro.deporte!),
+      if (filtro.lugar != null)
+        (
+          columna: 'ubicacion',
+          operador: 'ilike',
+          valor: '%${_escaparComodines(filtro.lugar!)}%',
+        ),
+      if (intervalo != null) ...[
+        (
+          columna: 'fecha_inicio',
+          operador: 'gte',
+          valor: instante(intervalo.$1),
+        ),
+        (
+          columna: 'fecha_inicio',
+          operador: 'lt',
+          valor: instante(intervalo.$2),
+        ),
+      ],
+      // Misma regla que ModeloPartido.estaDisponible (#5): cupos abiertos,
+      // quedan lugares y la fecha todavía no pasó.
+      if (filtro.soloConCupos) ...[
+        (columna: 'estado', operador: 'eq', valor: 'cuposAbiertos'),
+        (columna: 'hay_cupos', operador: 'eq', valor: true),
+        (columna: 'fecha_inicio', operador: 'gte', valor: instante(ahora)),
+      ],
+    ];
+  }
+
+  // Evita que % y _ escritos por el usuario actúen como comodines en ILIKE
+  static String _escaparComodines(String texto) => texto
+      .replaceAll(r'\', r'\\')
+      .replaceAll('%', r'\%')
+      .replaceAll('_', r'\_');
+
   String get _usuarioId {
     final usuario = _cliente.auth.currentUser;
     if (usuario == null) throw StateError('Debes iniciar sesión.');
@@ -202,7 +250,7 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
         .select()
         .neq('organizador_id', _usuarioId);
 
-    for (final c in filtro.condicionesConsulta(ahora ?? DateTime.now())) {
+    for (final c in condicionesConsulta(filtro, ahora ?? DateTime.now())) {
       consulta = switch (c.operador) {
         'eq' => consulta.eq(c.columna, c.valor),
         'ilike' => consulta.ilike(c.columna, c.valor as String),
@@ -292,3 +340,6 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
     return salido.copyWith(estoyUnido: false);
   }
 }
+
+/// Una condición de la consulta: columna, operador (eq, ilike, gte, lt) y valor.
+typedef CondicionConsulta = ({String columna, String operador, Object valor});

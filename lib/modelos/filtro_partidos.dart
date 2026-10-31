@@ -109,51 +109,6 @@ class FiltroPartidos {
   static DateTime _sumarDias(DateTime dia, int dias) =>
       DateTime(dia.year, dia.month, dia.day + dias);
 
-  /// Traduce el filtro a las condiciones que se envían a la base de datos
-  /// (todas se combinan con AND). La aplica el repositorio de Supabase.
-  /// Es una función pura para poder probar qué consulta se envía.
-  List<CondicionConsulta> condicionesConsulta(DateTime ahora) {
-    String instante(DateTime fecha) => fecha.toUtc().toIso8601String();
-    final intervalo = intervaloFechas(ahora);
-    return [
-      // El nombre no se envía a la base: se compara sin tildes en la app
-      // (ver coincideTitulo), porque ILIKE distingue "Vóley" de "voley".
-      if (deporte != null)
-        (columna: 'disciplina', operador: 'eq', valor: deporte!),
-      if (lugar != null)
-        (
-          columna: 'ubicacion',
-          operador: 'ilike',
-          valor: '%${_escaparComodines(lugar!)}%',
-        ),
-      if (intervalo != null) ...[
-        (
-          columna: 'fecha_inicio',
-          operador: 'gte',
-          valor: instante(intervalo.$1),
-        ),
-        (
-          columna: 'fecha_inicio',
-          operador: 'lt',
-          valor: instante(intervalo.$2),
-        ),
-      ],
-      // Misma regla que ModeloPartido.estaDisponible (#5): cupos abiertos,
-      // quedan lugares y la fecha todavía no pasó.
-      if (soloConCupos) ...[
-        (columna: 'estado', operador: 'eq', valor: 'cuposAbiertos'),
-        (columna: 'hay_cupos', operador: 'eq', valor: true),
-        (columna: 'fecha_inicio', operador: 'gte', valor: instante(ahora)),
-      ],
-    ];
-  }
-
-  // Evita que % y _ escritos por el usuario actúen como comodines en ILIKE
-  static String _escaparComodines(String texto) => texto
-      .replaceAll(r'\', r'\\')
-      .replaceAll('%', r'\%')
-      .replaceAll('_', r'\_');
-
   /// Minúsculas y sin tildes: "Vóley" y "voley" se consideran iguales.
   static String normalizar(String texto) {
     const con = 'áàäâãéèëêíìïîóòöôõúùüûñÁÀÄÂÃÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑ';
@@ -195,6 +150,3 @@ class FiltroPartidos {
     return true;
   }
 }
-
-/// Una condición de la consulta: columna, operador (eq, ilike, gte, lt) y valor.
-typedef CondicionConsulta = ({String columna, String operador, Object valor});

@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../modelos/evento_historial.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/tarjeta_historial.dart';
 import 'vista_crear_partido.dart';
@@ -23,11 +24,13 @@ import '../autenticacion/vista_login.dart';
 /// - Estado vacío orientador: guía al usuario a la acción siguiente si no tiene historial.
 class VistaHistorial extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final ControladorExplorar controladorExplorar;
   final DateTime? referenciaTemporal;
 
   const VistaHistorial({
     super.key,
     required this.servicioAuth,
+    required this.controladorExplorar,
     this.referenciaTemporal,
   });
 
@@ -83,7 +86,9 @@ class _VistaHistorialState extends State<VistaHistorial> {
         setState(() => _cargando = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No se pudo cargar el historial. Intenta nuevamente.'),
+            content: Text(
+              'No se pudo cargar el historial. Intenta nuevamente.',
+            ),
             backgroundColor: TemaApp.rojoAlerta,
           ),
         );
@@ -95,7 +100,10 @@ class _VistaHistorialState extends State<VistaHistorial> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaExplorarPartidos(servicioAuth: widget.servicioAuth),
+        builder: (_) => VistaExplorarPartidos(
+          controladorExplorar: widget.controladorExplorar,
+          servicioAuth: widget.servicioAuth,
+        ),
       ),
     ).then((_) => _cargarHistorial());
   }
@@ -124,7 +132,9 @@ class _VistaHistorialState extends State<VistaHistorial> {
     }
 
     final eventosFiltrados = _eventos.where((e) {
-      if (_filtroRol == 'organizador') return e.rol == RolParticipacion.organizador;
+      if (_filtroRol == 'organizador') {
+        return e.rol == RolParticipacion.organizador;
+      }
       if (_filtroRol == 'jugador') return e.rol == RolParticipacion.jugador;
       return true;
     }).toList();
@@ -195,22 +205,32 @@ class _VistaHistorialState extends State<VistaHistorial> {
 
   Widget _construirResumenTrayectoria(String nombre) {
     final finalizados = _eventos.where((e) => e.yaDisputado).length;
-    final organizados = _eventos.where((e) => e.rol == RolParticipacion.organizador).length;
-    final unidos = _eventos.where((e) => e.rol == RolParticipacion.jugador).length;
+    final organizados = _eventos
+        .where((e) => e.rol == RolParticipacion.organizador)
+        .length;
+    final unidos = _eventos
+        .where((e) => e.rol == RolParticipacion.jugador)
+        .length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       decoration: BoxDecoration(
         color: TemaApp.verdeSuave.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: TemaApp.verdeDeportivo.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: TemaApp.verdeDeportivo.withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.history, color: TemaApp.verdeOscuro, size: 20),
+              const Icon(
+                LucideIcons.history,
+                color: TemaApp.verdeOscuro,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -223,9 +243,15 @@ class _VistaHistorialState extends State<VistaHistorial> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _construirIndicador('Total', '${_eventos.length}')),
-              Expanded(child: _construirIndicador('Disputados', '$finalizados')),
-              Expanded(child: _construirIndicador('Organizados', '$organizados')),
+              Expanded(
+                child: _construirIndicador('Total', '${_eventos.length}'),
+              ),
+              Expanded(
+                child: _construirIndicador('Disputados', '$finalizados'),
+              ),
+              Expanded(
+                child: _construirIndicador('Organizados', '$organizados'),
+              ),
               Expanded(child: _construirIndicador('Como jugador', '$unidos')),
             ],
           ),
@@ -345,7 +371,11 @@ class _VistaHistorialState extends State<VistaHistorial> {
                 ? 'Prueba cambiando el filtro o súmate a nuevos partidos para enriquecer tu historial.'
                 : 'Cuando organices un partido o te unas al equipo de otro estudiante, podrás consultar aquí toda tu trayectoria deportiva.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: TemaApp.textoSecundario, height: 1.4),
+            style: const TextStyle(
+              fontSize: 13,
+              color: TemaApp.textoSecundario,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 24),
 

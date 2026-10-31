@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_usuario.dart';
 import '../partidos/repositorio_partidos.dart';
 import '../partidos/repositorio_partidos_supabase.dart';
@@ -15,10 +14,6 @@ abstract class ServicioAutenticacion extends ChangeNotifier {
   ModeloUsuario? get usuarioActual;
   bool get estaAutenticado => usuarioActual != null;
   bool get estaCargando;
-
-  /// Búsqueda y filtros de Explorar: se conservan al salir y volver a la
-  /// pantalla durante la sesión (H7). Se reinicia al cerrar sesión.
-  FiltroPartidos filtroExplorar = const FiltroPartidos();
 
   /// Partidos e inscripciones del usuario con sesión.
   RepositorioPartidos get partidos;
@@ -193,7 +188,6 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
       debugPrint('Error al cerrar sesión: $e');
     }
     _usuarioActual = null;
-    filtroExplorar = const FiltroPartidos();
     notifyListeners();
   }
 }

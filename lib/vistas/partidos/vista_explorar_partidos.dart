@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../servicios/partidos/controlador_explorar.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
@@ -12,8 +13,13 @@ import '../../widgets/tarjeta_partido.dart';
 /// (requisito #6) y unirse a ellos (requisito #5).
 class VistaExplorarPartidos extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final ControladorExplorar controladorExplorar;
 
-  const VistaExplorarPartidos({super.key, required this.servicioAuth});
+  const VistaExplorarPartidos({
+    super.key,
+    required this.servicioAuth,
+    required this.controladorExplorar,
+  });
 
   @override
   State<VistaExplorarPartidos> createState() => _VistaExplorarPartidosState();
@@ -23,7 +29,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
   List<ModeloPartido> _partidos = [];
   Map<String, List<String>> _jugadoresInscritos = {};
   List<String> _lugares = FiltroPartidos.lugaresSugeridos;
-  late FiltroPartidos _filtro = widget.servicioAuth.filtroExplorar;
+  FiltroPartidos get _filtro => widget.controladorExplorar.filtro;
   bool _cargando = true;
 
   // Evita que una consulta lenta pise el resultado de una más reciente
@@ -48,7 +54,8 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     try {
       partidos = await widget.servicioAuth.partidos.buscarPartidos(_filtro);
       lugares = await widget.servicioAuth.partidos.obtenerLugares();
-      inscritos = await widget.servicioAuth.partidos.obtenerJugadoresInscritos();
+      inscritos = await widget.servicioAuth.partidos
+          .obtenerJugadoresInscritos();
     } on StateError catch (e) {
       if (!mounted || numero != _consulta) return;
       setState(() => _cargando = false);
@@ -65,8 +72,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
   }
 
   void _cambiarFiltro(FiltroPartidos nuevo) {
-    widget.servicioAuth.filtroExplorar = nuevo;
-    setState(() => _filtro = nuevo);
+    setState(() => widget.controladorExplorar.actualizarFiltro(nuevo));
     _cargar();
   }
 
@@ -119,9 +125,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       if (!mounted) return;
 
       setState(() {
-        _partidos = [
-          for (final p in _partidos) p.id == partido.id ? unido : p,
-        ];
+        _partidos = [for (final p in _partidos) p.id == partido.id ? unido : p];
       });
 
       final completo = unido.estado == EstadoPartido.equipoCompleto;

@@ -8,9 +8,16 @@ import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/widgets/tarjeta_historial.dart';
 
 import 'apoyo/repositorio_en_memoria.dart';
+import 'package:unisport/servicios/partidos/controlador_explorar.dart';
+
 import 'apoyo/servicio_autenticacion_falso.dart';
 
 void main() {
+  late ControladorExplorar controladorExplorar;
+  setUp(() {
+    controladorExplorar = ControladorExplorar();
+  });
+
   group('Clase 16 · Tarea 4: Modelo y Consulta de Historial (refs #17, #18, #19, #21)', () {
     late RepositorioEnMemoria repo;
     final ahora = DateTime.now();
@@ -204,7 +211,7 @@ void main() {
       await auth.iniciarSesion('diego@unisport.edu', '123456');
 
       await tester.pumpWidget(
-        MaterialApp(home: VistaMisPartidos(servicioAuth: auth)),
+        MaterialApp(home: VistaMisPartidos(controladorExplorar: controladorExplorar, servicioAuth: auth)),
       );
       await tester.pumpAndSettle();
 
@@ -226,7 +233,7 @@ void main() {
       await auth.iniciarSesion('diego@unisport.edu', '123456');
 
       await tester.pumpWidget(
-        MaterialApp(home: VistaHistorial(servicioAuth: auth)),
+        MaterialApp(home: VistaHistorial(controladorExplorar: controladorExplorar, servicioAuth: auth)),
       );
       await tester.pumpAndSettle();
 
@@ -283,6 +290,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: VistaHistorial(
+            controladorExplorar: controladorExplorar,
             servicioAuth: auth,
             referenciaTemporal: ahora,
           ),
