@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
+import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../tema/iconos_deporte.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/animaciones.dart';
@@ -11,7 +12,7 @@ import '../../widgets/tarjeta_partido.dart';
 /// Formulario real para crear un partido.
 /// 1 - CAPTURAR: la persona completa los datos (con vista previa en vivo).
 /// 2 - CONSTRUIR: se arma un ModeloPartido y se devuelve con Navigator.pop.
-/// (Guardar, Mostrar y Recuperar los hace VistaMisPartidos.)
+/// El flujo compartido [abrirYGuardar] abre el formulario y guarda su resultado.
 class VistaCrearPartido extends StatefulWidget {
   final String organizadorNombre;
   final ModeloPartido? partidoAEditar;
@@ -21,6 +22,39 @@ class VistaCrearPartido extends StatefulWidget {
     required this.organizadorNombre,
     this.partidoAEditar,
   });
+
+  /// Devuelve el partido guardado, o null si se cancela, falla o no hay sesión.
+  static Future<ModeloPartido?> abrirYGuardar(
+    BuildContext context, {
+    required String? organizadorNombre,
+    required RepositorioPartidos repositorio,
+  }) async {
+    if (organizadorNombre == null) return null;
+    final nuevo = await Navigator.push<ModeloPartido>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VistaCrearPartido(organizadorNombre: organizadorNombre),
+      ),
+    );
+    if (nuevo == null || !context.mounted) return null;
+    try {
+      return await repositorio.crearPartido(nuevo);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'No se pudo guardar el partido. Intenta nuevamente.',
+            ),
+            backgroundColor: TemaApp.rojoAlerta,
+          ),
+        );
+      }
+      return null;
+    }
+  }
 
   @override
   State<VistaCrearPartido> createState() => _VistaCrearPartidoState();

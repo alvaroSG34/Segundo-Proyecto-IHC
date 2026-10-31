@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/evento_historial.dart';
-import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
@@ -119,19 +118,12 @@ class _VistaHistorialState extends State<VistaHistorial> {
   }
 
   Future<void> _irACrear() async {
-    final usuario = widget.servicioAuth.usuarioActual;
-    if (usuario == null) return;
-    final nuevo = await Navigator.push<ModeloPartido>(
+    final creado = await VistaCrearPartido.abrirYGuardar(
       context,
-      MaterialPageRoute(
-        builder: (_) => VistaCrearPartido(organizadorNombre: usuario.nombre),
-      ),
+      organizadorNombre: widget.servicioAuth.usuarioActual?.nombre,
+      repositorio: _repositorio,
     );
-    if (nuevo == null || !mounted) return;
-    try {
-      await _repositorio.crearPartido(nuevo);
-      if (mounted) await _cargarHistorial();
-    } catch (_) {}
+    if (creado != null && mounted) await _cargarHistorial();
   }
 
   @override

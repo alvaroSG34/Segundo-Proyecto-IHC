@@ -153,27 +153,13 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     if (mounted) await _cargarPartidos();
   }
 
-  // 1-4: CAPTURAR (formulario) -> CONSTRUIR -> GUARDAR -> MOSTRAR
   Future<void> _crearPartido() async {
-    final usuario = widget.servicioAuth.usuarioActual;
-    if (usuario == null) return;
-
-    // 1 y 2: el formulario captura los datos y devuelve el ModeloPartido construido
-    final nuevo = await Navigator.push<ModeloPartido>(
+    final guardado = await VistaCrearPartido.abrirYGuardar(
       context,
-      MaterialPageRoute(
-        builder: (_) => VistaCrearPartido(organizadorNombre: usuario.nombre),
-      ),
+      organizadorNombre: widget.servicioAuth.usuarioActual?.nombre,
+      repositorio: _repositorio,
     );
-
-    // Si la persona volvió atrás sin guardar, no se hace nada
-    if (nuevo == null || !mounted) return;
-
-    // 3: GUARDAR en la base de datos (devuelve el partido con su id)
-    final guardado = await _intentar(() => _repositorio.crearPartido(nuevo));
     if (guardado == null || !mounted) return;
-
-    // 4: MOSTRAR
     setState(() => _partidos = [guardado, ..._partidos]);
     _avisar('Partido "${guardado.titulo}" creado y guardado');
   }

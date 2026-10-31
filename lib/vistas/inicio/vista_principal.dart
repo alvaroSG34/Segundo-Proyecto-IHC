@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
@@ -36,39 +35,15 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
   final _controladorExplorar = ControladorExplorar();
 
   Future<void> _crearPartido(BuildContext context) async {
-    final usuario = widget.servicioAuth.usuarioActual;
-    if (usuario == null) return;
-
-    final nuevo = await Navigator.push<ModeloPartido>(
+    final creado = await VistaCrearPartido.abrirYGuardar(
       context,
-      MaterialPageRoute(
-        builder: (_) => VistaCrearPartido(organizadorNombre: usuario.nombre),
-      ),
+      organizadorNombre: widget.servicioAuth.usuarioActual?.nombre,
+      repositorio: _repositorio,
     );
-    if (nuevo == null || !context.mounted) return;
-
-    try {
-      // El formulario devuelve el partido; aquí se guarda con el servicio actual.
-      await _repositorio.crearPartido(nuevo);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Partido creado y guardado correctamente.'),
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is StateError
-                ? error.message
-                : 'No se pudo guardar el partido. Intenta nuevamente.',
-          ),
-          backgroundColor: TemaApp.rojoAlerta,
-        ),
-      );
-    }
+    if (creado == null || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Partido creado y guardado correctamente.')),
+    );
   }
 
   Future<void> _cerrarSesion(BuildContext context) async {
