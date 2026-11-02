@@ -58,6 +58,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     if (usuario == null) return;
 
     final numero = ++_consulta;
+    setState(() => _cargando = true);
     final List<ModeloPartido> partidos;
     final List<String> lugares;
     final Map<String, List<String>> inscritos;
@@ -110,6 +111,14 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
           'Ocuparás un cupo en "${partido.titulo}" '
           '(${partido.cuposOcupados}/${partido.cuposTotales}).',
       textoConfirmar: 'Sí, unirme',
+      estiloBotonCancelar: TextButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(48, 48),
+      ),
+      estiloConfirmar: ElevatedButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(48, 48),
+      ),
     );
     if (confirmar != true || !mounted) return;
 
@@ -197,9 +206,14 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                 ),
                 const SizedBox(height: 14),
                 if (_cargando)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 30),
-                    child: Center(child: CircularProgressIndicator()),
+                  Semantics(
+                    key: const Key('explorar_cargando'),
+                    label: 'Cargando partidos',
+                    liveRegion: true,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   )
                 else if (_partidos.isEmpty && _filtro.estaActivo)
                   MensajeSinResultados(
@@ -215,6 +229,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                       _partidos.length == 1
                           ? '1 partido encontrado'
                           : '${_partidos.length} partidos encontrados',
+                      key: const Key('explorar_cantidad'),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

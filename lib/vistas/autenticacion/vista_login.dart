@@ -207,6 +207,10 @@ class _VistaLoginState extends State<VistaLogin> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.standard,
+                          minimumSize: const Size(48, 48),
+                        ),
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -231,6 +235,7 @@ class _VistaLoginState extends State<VistaLogin> {
                     Aparecer(
                       indice: 4,
                       child: BotonAccion(
+                        key: const Key('login_enviar'),
                         texto: 'Entrar a UniSport',
                         estado: _estadoBoton,
                         onPressed: _ejecutarLogin,
@@ -241,15 +246,20 @@ class _VistaLoginState extends State<VistaLogin> {
 
                     Aparecer(
                       indice: 5,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           const Text(
                             '¿Aún no tienes cuenta? ',
                             style: TextStyle(color: TemaApp.textoSecundario),
                           ),
-                          GestureDetector(
-                            onTap: () {
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.standard,
+                              minimumSize: const Size(48, 48),
+                            ),
+                            onPressed: () {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
