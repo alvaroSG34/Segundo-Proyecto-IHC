@@ -68,8 +68,10 @@ void main() {
     );
 
     // Quitar filtros vuelve a mostrar todo
+    await tester.ensureVisible(find.text('Quitar filtros'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Quitar filtros'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('2 partidos encontrados'), findsOneWidget);
   });
 
