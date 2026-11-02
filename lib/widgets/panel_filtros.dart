@@ -152,10 +152,7 @@ class _PanelFiltrosState extends State<PanelFiltros> {
     if (_filtro.deporte != null)
       ('Deporte: ${_filtro.deporte}', _filtro.copiarCon(quitarDeporte: true)),
     if (_filtro.fecha != FiltroFecha.cualquiera)
-      (
-        'Fecha: $_textoFecha',
-        _filtro.copiarCon(fecha: FiltroFecha.cualquiera),
-      ),
+      ('Fecha: $_textoFecha', _filtro.copiarCon(fecha: FiltroFecha.cualquiera)),
     if (_filtro.lugar != null)
       ('Lugar: ${_filtro.lugar}', _filtro.copiarCon(quitarLugar: true)),
     if (_filtro.soloConCupos)
@@ -169,11 +166,12 @@ class _PanelFiltrosState extends State<PanelFiltros> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
+          key: const Key('explorar_busqueda'),
           controller: _busqueda,
           textInputAction: TextInputAction.search,
           onChanged: (texto) => _cambiar(_filtro.copiarCon(texto: texto)),
           decoration: InputDecoration(
-            hintText: 'Buscar partido por nombre',
+            labelText: 'Buscar partido por nombre',
             prefixIcon: const Icon(LucideIcons.search, size: 20),
             suffixIcon: _busqueda.text.isEmpty
                 ? null
@@ -190,6 +188,7 @@ class _PanelFiltrosState extends State<PanelFiltros> {
           child: Row(
             children: [
               _BotonFiltro(
+                key: const Key('explorar_deporte'),
                 icono: LucideIcons.trophy,
                 texto: _filtro.deporte ?? 'Deporte',
                 activo: _filtro.deporte != null,
@@ -282,6 +281,7 @@ class _BotonFiltro extends StatelessWidget {
   final VoidCallback alTocar;
 
   const _BotonFiltro({
+    super.key,
     required this.icono,
     required this.texto,
     required this.activo,
@@ -292,38 +292,48 @@ class _BotonFiltro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = activo ? TemaApp.verdeOscuro : TemaApp.textoSecundario;
-    return Material(
-      color: activo ? TemaApp.verdeSuave : TemaApp.superficie,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: activo ? TemaApp.verdeDeportivo : TemaApp.borde,
-          width: activo ? 1.5 : 1.2,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: alTocar,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icono, size: 15, color: color),
-              const SizedBox(width: 6),
-              Text(
-                texto,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
+    return Semantics(
+      label: texto,
+      button: true,
+      selected: activo,
+      excludeSemantics: true,
+      onTap: alTocar,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        child: Material(
+          color: activo ? TemaApp.verdeSuave : TemaApp.superficie,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: activo ? TemaApp.verdeDeportivo : TemaApp.borde,
+              width: activo ? 1.5 : 1.2,
+            ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: alTocar,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icono, size: 15, color: color),
+                  const SizedBox(width: 6),
+                  Text(
+                    texto,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                  if (conFlecha) ...[
+                    const SizedBox(width: 2),
+                    Icon(LucideIcons.chevronDown, size: 15, color: color),
+                  ],
+                ],
               ),
-              if (conFlecha) ...[
-                const SizedBox(width: 2),
-                Icon(LucideIcons.chevronDown, size: 15, color: color),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -374,7 +384,10 @@ class MensajeSinResultados extends StatelessWidget {
             onPressed: alQuitarFiltros,
             icon: const Icon(LucideIcons.filterX, size: 17),
             label: const Text('Quitar filtros'),
-            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
+            style: OutlinedButton.styleFrom(
+              visualDensity: VisualDensity.standard,
+              minimumSize: const Size(48, 48),
+            ),
           ),
         ],
       ),

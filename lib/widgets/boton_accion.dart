@@ -36,21 +36,36 @@ class BotonAccion extends StatelessWidget {
       EstadoBoton.normal => Text(texto, key: const ValueKey('texto')),
     };
 
-    return ElevatedButton(
-      onPressed: estado == EstadoBoton.normal ? onPressed : null,
-      style: ElevatedButton.styleFrom(
-        disabledBackgroundColor: estado == EstadoBoton.exito
-            ? TemaApp.verdeOscuro
-            : TemaApp.verdeDeportivo,
-        disabledForegroundColor: Colors.white,
-      ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        transitionBuilder: (hijo, animacion) => ScaleTransition(
-          scale: animacion,
-          child: FadeTransition(opacity: animacion, child: hijo),
+    return Semantics(
+      label: texto,
+      button: true,
+      enabled: estado == EstadoBoton.normal,
+      excludeSemantics: true,
+      onTap: estado == EstadoBoton.normal ? onPressed : null,
+      value: switch (estado) {
+        EstadoBoton.normal => '',
+        EstadoBoton.cargando => 'Cargando',
+        EstadoBoton.exito => 'Completado',
+      },
+      liveRegion: estado != EstadoBoton.normal,
+      child: ElevatedButton(
+        onPressed: estado == EstadoBoton.normal ? onPressed : null,
+        style: ElevatedButton.styleFrom(
+          visualDensity: VisualDensity.standard,
+          minimumSize: const Size(double.infinity, 52),
+          disabledBackgroundColor: estado == EstadoBoton.exito
+              ? TemaApp.verdeOscuro
+              : TemaApp.verdeDeportivo,
+          disabledForegroundColor: Colors.white,
         ),
-        child: contenido,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          transitionBuilder: (hijo, animacion) => ScaleTransition(
+            scale: animacion,
+            child: FadeTransition(opacity: animacion, child: hijo),
+          ),
+          child: ExcludeSemantics(key: ValueKey(estado), child: contenido),
+        ),
       ),
     );
   }

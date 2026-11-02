@@ -135,7 +135,8 @@ class TarjetaPartido extends StatelessWidget {
                 const SizedBox(width: 8),
                 Flexible(
                   child: _avisoUnion(
-                    partido.motivoRechazoUnirse ?? 'Ya formas parte de este equipo.',
+                    partido.motivoRechazoUnirse ??
+                        'Ya formas parte de este equipo.',
                     icono: LucideIcons.circleCheck,
                     fondo: TemaApp.azulSuave,
                     borde: const Color(0xFFBAE6FD),
@@ -224,7 +225,8 @@ class TarjetaPartido extends StatelessWidget {
           // ACCIONES DEL ORGANIZADOR
           if (partido.soyOrganizador) ...[
             if (onAgregarJugador != null ||
-                (onCompletarEquipo != null && partido.puedeCompletarEquipo)) ...[
+                (onCompletarEquipo != null &&
+                    partido.puedeCompletarEquipo)) ...[
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -281,8 +283,10 @@ class TarjetaPartido extends StatelessWidget {
             if (!partido.puedeAgregarJugador) ...[
               const SizedBox(height: 12),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF2F2),
                   borderRadius: BorderRadius.circular(10),
@@ -333,6 +337,7 @@ class TarjetaPartido extends StatelessWidget {
                         icon: const Icon(LucideIcons.pencil, size: 17),
                         label: const Text('Editar'),
                         style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.standard,
                           minimumSize: const Size(0, 48),
                           textStyle: const TextStyle(
                             fontSize: 14,
@@ -350,6 +355,7 @@ class TarjetaPartido extends StatelessWidget {
                         icon: const Icon(LucideIcons.trash2, size: 17),
                         label: const Text('Eliminar'),
                         style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.standard,
                           foregroundColor: TemaApp.rojoAlerta,
                           backgroundColor: TemaApp.rojoSuave,
                           minimumSize: const Size(0, 48),
@@ -375,7 +381,8 @@ class TarjetaPartido extends StatelessWidget {
                 icon: const Icon(LucideIcons.userPlus, size: 18),
                 label: const Text('Unirme al equipo'),
                 style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 46),
+                  visualDensity: VisualDensity.standard,
+                  minimumSize: const Size(double.infinity, 48),
                 ),
               ),
             ] else if (partido.estoyUnido) ...[

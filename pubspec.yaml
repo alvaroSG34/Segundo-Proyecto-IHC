@@ -39,6 +39,7 @@ dependencies:
   supabase_flutter: ^2.18.3
 
 dev_dependencies:
+  dependency_graph: ^0.4.0
   flutter_test:
     sdk: flutter
   integration_test:
