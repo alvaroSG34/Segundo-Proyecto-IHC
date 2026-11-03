@@ -15,6 +15,8 @@ class TarjetaPartido extends StatelessWidget {
   final VoidCallback? onEditar;
   final VoidCallback? onEliminar;
   final VoidCallback? onUnirse;
+  final VoidCallback? onEntrarEnEspera;
+  final VoidCallback? onSalirDeEspera;
 
   /// "Salir del partido" (H3): lo ve quien se unió, mientras la regla lo permita.
   final VoidCallback? onSalir;
@@ -26,6 +28,7 @@ class TarjetaPartido extends StatelessWidget {
   /// Nombres de quienes se unieron desde Explorar. Si se entrega, el
   /// organizador y los jugadores inscritos ven la lista en la tarjeta.
   final List<String>? jugadoresUnidos;
+  final List<String>? suplentes;
 
   const TarjetaPartido({
     super.key,
@@ -34,9 +37,12 @@ class TarjetaPartido extends StatelessWidget {
     this.onEditar,
     this.onEliminar,
     this.onUnirse,
+    this.onEntrarEnEspera,
+    this.onSalirDeEspera,
     this.onSalir,
     this.onAgregarJugador,
     this.jugadoresUnidos,
+    this.suplentes,
   });
 
   @override
@@ -222,6 +228,12 @@ class TarjetaPartido extends StatelessWidget {
             const SizedBox(height: 12),
             _construirJugadoresUnidos(context, jugadoresUnidos!),
           ],
+          if (partido.soyOrganizador &&
+              suplentes != null &&
+              suplentes!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _construirSuplentes(context, suplentes!),
+          ],
           // ACCIONES DEL ORGANIZADOR
           if (partido.soyOrganizador) ...[
             if (onAgregarJugador != null ||
@@ -401,6 +413,37 @@ class TarjetaPartido extends StatelessWidget {
                   ),
                 ),
               ],
+            ] else if (partido.estoyEnEspera) ...[
+              const SizedBox(height: 12),
+              _avisoUnion(
+                'Estás en la lista de suplentes. Turno ${partido.posicionEspera}. '
+                'Si se libera un cupo, el primero entra automáticamente.',
+                icono: LucideIcons.clock,
+                fondo: TemaApp.azulSuave,
+                borde: const Color(0xFFBAE6FD),
+                color: const Color(0xFF075985),
+              ),
+              if (onSalirDeEspera != null) ...[
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: onSalirDeEspera,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  child: const Text('Cancelar espera'),
+                ),
+              ],
+            ] else if (partido.puedeEntrarEnEspera &&
+                onEntrarEnEspera != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onEntrarEnEspera,
+                icon: const Icon(LucideIcons.userPlus, size: 18),
+                label: const Text('Entrar como suplente'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
             ] else if (!partido.puedeUnirse) ...[
               // Rechazo del criterio 3: equipo completo (se explica el motivo)
               const SizedBox(height: 12),
@@ -468,6 +511,40 @@ class TarjetaPartido extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _construirSuplentes(BuildContext context, List<String> nombres) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        icon: const Icon(LucideIcons.clock, size: 18),
+        label: Text('Ver suplentes (${nombres.length})'),
+        style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Suplentes (${nombres.length})'),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 250,
+              child: ListView.builder(
+                itemCount: nombres.length,
+                itemBuilder: (_, indice) => ListTile(
+                  leading: CircleAvatar(child: Text('${indice + 1}')),
+                  title: Text(nombres[indice]),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

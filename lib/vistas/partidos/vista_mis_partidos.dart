@@ -43,6 +43,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
   List<ModeloPartido> _partidos = [];
   Map<String, List<String>> _jugadoresInscritos = {};
+  Map<String, List<String>> _suplentes = {};
   bool _cargando = true;
   String? _errorCarga;
   int _consulta = 0;
@@ -107,6 +108,24 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   // otros estudiantes a los que me uní.
   Future<void> _cargarPartidos() async {
     if (widget.servicioAuth.usuarioActual == null) return;
+
+    final datos = await _intentar(
+      () async => (
+        propios: await _repositorio.obtenerMisPartidos(),
+        unidos: await _repositorio.obtenerPartidosUnidos(),
+        inscritos: await _repositorio.obtenerJugadoresInscritos(),
+        suplentes: await _repositorio.obtenerSuplentes(),
+      ),
+    );
+    if (!mounted) return;
+
+    setState(() {
+      if (datos != null) {
+        _partidos = [...datos.propios, ...datos.unidos];
+        _jugadoresInscritos = datos.inscritos;
+        _suplentes = datos.suplentes;
+      }
+      _cargando = false;
     final consulta = ++_consulta;
     setState(() {
       _cargando = true;
@@ -292,16 +311,21 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     if (confirmar != true || !mounted) return;
 
     try {
-      await _repositorio.salirDelPartido(partido.id);
+      final salido = await _repositorio.salirDelPartido(partido.id);
       if (!mounted) return;
       setState(
         () => _partidos = _partidos.where((p) => p.id != partido.id).toList(),
       );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Saliste de "${partido.titulo}". Tu cupo quedó libre.'),
+          content: Text(
+            salido.estaLleno
+                ? 'Saliste de "${partido.titulo}". Entró el primer suplente.'
+                : 'Saliste de "${partido.titulo}". Tu cupo quedó libre.',
+          ),
         ),
       );
+      await _cargarPartidos();
     } on StateError catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -519,6 +543,9 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                       onEditar: () => _editarPartido(p),
                       onAgregarJugador: () => _agregarJugador(p),
                       jugadoresUnidos: _jugadoresInscritos[p.id] ?? const [],
+                      suplentes: p.soyOrganizador
+                          ? _suplentes[p.id] ?? const []
+                          : null,
                       onEliminar: () => _eliminarPartido(p),
                       onSalir: () => _salirDelPartido(p),
                     ),

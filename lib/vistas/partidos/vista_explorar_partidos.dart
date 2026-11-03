@@ -174,10 +174,43 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
           for (final p in _partidos) p.id == partido.id ? salido : p,
         ];
       });
-      _avisar('Saliste de "${salido.titulo}". Tu cupo quedó libre.');
+      _avisar(
+        salido.estaLleno
+            ? 'Saliste de "${salido.titulo}". Entró el primer suplente.'
+            : 'Saliste de "${salido.titulo}". Tu cupo quedó libre.',
+      );
+      await _cargar();
     } on StateError catch (e) {
       if (!mounted) return;
       _avisar('No puedes salir. ${e.message}', error: true);
+      await _cargar();
+    }
+  }
+
+  Future<void> _entrarEnEspera(ModeloPartido partido) async {
+    try {
+      final actualizado = await _repositorio.entrarEnEspera(partido.id);
+      if (!mounted) return;
+      _avisar(
+        'Estás en la lista de suplentes. Turno ${actualizado.posicionEspera}.',
+      );
+      await _cargar();
+    } on StateError catch (e) {
+      if (!mounted) return;
+      _avisar(e.message, error: true);
+      await _cargar();
+    }
+  }
+
+  Future<void> _salirDeEspera(ModeloPartido partido) async {
+    try {
+      await _repositorio.salirDeEspera(partido.id);
+      if (!mounted) return;
+      _avisar('Saliste de la lista de suplentes.');
+      await _cargar();
+    } on StateError catch (e) {
+      if (!mounted) return;
+      _avisar(e.message, error: true);
       await _cargar();
     }
   }
@@ -196,7 +229,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
                 const Text(
-                  'Partidos organizados por otros estudiantes. Únete a los que tengan cupos abiertos.',
+                  'Partidos de otros estudiantes. Únete si hay cupos o espera como suplente si está completo.',
                   style: TextStyle(
                     fontSize: 13,
                     color: TemaApp.textoSecundario,
@@ -247,6 +280,8 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                       partido: partido,
                       onUnirse: () => _unirse(partido),
                       onSalir: () => _salir(partido),
+                      onEntrarEnEspera: () => _entrarEnEspera(partido),
+                      onSalirDeEspera: () => _salirDeEspera(partido),
                       jugadoresUnidos: partido.estoyUnido
                           ? _jugadoresInscritos[partido.id] ?? const []
                           : null,
