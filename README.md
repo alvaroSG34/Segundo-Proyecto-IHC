@@ -92,6 +92,28 @@ Prueba contra la **base de datos real de Supabase** (dos clientes, como dos tel�
 flutter test test/supabase_integracion_test.dart --dart-define=PRUEBAS_SUPABASE=true
 ```
 
+### Prueba E2E: Crear partido → Mis partidos
+
+Con Android iniciado y visible en `flutter devices`, ejecutar desde la raíz:
+
+```powershell
+flutter test integration_test/crear_partido_test.dart -d emulator-5554 --dart-define=E2E_CORREO=diego@unisport.edu --dart-define=E2E_CLAVE=123456
+```
+
+Reemplazar el identificador del dispositivo y las credenciales si corresponde.
+La cuenta debe estar registrada previamente y Supabase debe estar configurado
+con el esquema aplicado; esta prueba requiere internet. También se puede usar
+`-d windows`. No necesita ejecutar `flutter run` antes.
+
+La prueba abre la app real, inicia sesión (cierra cualquier sesión previa del
+dispositivo), completa Crear partido con un título único, ubicación, mañana a
+las 19:00 y los valores iniciales de Futsal y 10 cupos. Comprueba el mensaje de
+guardado y que la tarjeta aparece en Mis partidos. Luego vuelve al menú y abre
+la lista otra vez para verificar la persistencia en Supabase. Al terminar,
+elimina solamente el partido de esa ejecución, incluso si falla la comprobación.
+
+Referencia: [pruebas de integración de Flutter](https://docs.flutter.dev/testing/integration-tests).
+
 ---
 
 ## ⚡ Cuentas Semilla para Pruebas (Seeds)
