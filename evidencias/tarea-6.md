@@ -20,13 +20,13 @@ visual (H4). El inventario queda pendiente de contraste con el app map formal.
 | 8 | Eliminar partido | [eliminar_partido_test.dart](../integration_test/eliminar_partido_test.dart) | Cancelar conserva datos; confirmar borra en Supabase y no reaparece al reabrir; semántica, áreas ≥48 × 48 y 3 toques | Aprobada 2 veces consecutivas |
 | 9 | Explorar, buscar y filtrar partidos | [explorar_partidos_test.dart](../integration_test/explorar_partidos_test.dart) | Búsqueda por nombre, deporte combinado, sin resultados y quitar filtros; IDs/conteos, semántica, áreas ≥48 × 48 y acceso en 1 toque | Aprobada 2 veces consecutivas |
 | 10 | Unirse a un partido | [unirse_partido_test.dart](../integration_test/unirse_partido_test.dart) | Cancelar sin inscripción; confirmar 1/6 → 2/6, inscripción única y persistencia como jugador; semántica, áreas ≥48 × 48 y acceso a Explorar en 1 toque | Aprobada 2 veces consecutivas |
-| 11 | Salir de un partido | Pendiente | — | Pendiente |
-| 12 | Agregar jugador sin cuenta | Pendiente | — | Pendiente |
-| 13 | Completar equipo | Pendiente | — | Pendiente |
-| 14 | Consultar jugadores inscritos | Pendiente | — | Pendiente |
-| 15 | Consultar y filtrar historial | Pendiente | — | Pendiente |
+| 11 | Salir de un partido | [salir_partido_test.dart](../integration_test/salir_partido_test.dart) | Desde Explorar: unirse al último cupo, cancelar sin cambios y confirmar salida; inscripción eliminada, equipo reabierto, persistencia, semántica y áreas ≥48 × 48 | Aprobada 2 veces consecutivas |
+| 12 | Agregar jugador sin cuenta | [agregar_jugador_test.dart](../integration_test/agregar_jugador_test.dart) | Incremento 1/6 → 2/6 sin inscripción, persistencia al reabrir y mismo organizador; semántica, áreas ≥48 × 48 y 2 toques desde menú | Aprobada 2 veces consecutivas |
+| 13 | Completar equipo | [completar_equipo_test.dart](../integration_test/completar_equipo_test.dart) | 1/6 → 6/6 y estado completo sin inscripciones; persistencia, botón ausente y aviso de bloqueo; semántica, áreas ≥48 × 48 y 2 toques | Aprobada 2 veces consecutivas |
+| 14 | Consultar jugadores inscritos | [jugadores_inscritos_test.dart](../integration_test/jugadores_inscritos_test.dart) | Organizador consulta un inscrito real, cierra y reabre; nombre persistido y datos intactos; semántica, áreas ≥48 × 48 y 2 toques | Aprobada 2 veces consecutivas |
+| 15 | Consultar y filtrar historial | [historial_test.dart](../integration_test/historial_test.dart) | Todos y filtros por rol con IDs/conteos completos y orden descendente; restauración, reapertura y datos intactos; semántica, áreas ≥48 × 48 y acceso en 1 toque | Aprobada 2 veces consecutivas |
 
-**Avance:** 10 E2E implementadas y 5 pendientes. La creación amplía su E2E existente,
+**Avance:** 15 E2E implementadas y aprobadas individualmente; ninguna pendiente de implementar. La creación amplía su E2E existente,
 sin aumentar el número de flujos cubiertos. La regla de tres toques
 se aplica al acceso al formulario o al cierre desde menú, no a la preparación; accesibilidad automática no
 sustituye revisión con lector de pantalla.
@@ -78,6 +78,22 @@ al estado local inmediatamente previo al cambio indicado.
 | Unión | Suite de `test/` | 108 aprobadas, 1 omitida | 108 aprobadas, 1 omitida |
 | Unión | E2E de unión | Prueba nueva | Aprobada 2 veces consecutivas |
 | Unión | Análisis de archivos modificados | Sin nueva ejecución previa | Sin problemas |
+| Salida | E2E de salida | Primer intento ejecutado con Supabase real | Falló por una condición de carrera en la espera de la unión; se añadió una primera espera |
+| Corrección de salida | Suite de `test/` | 108 aprobadas, 1 omitida | 108 aprobadas, 1 omitida |
+| Corrección de salida | E2E de salida | Falló: botón de salida de 40 px en Linux | Aprobada 2 veces consecutivas |
+| Corrección de salida | Análisis de archivos modificados | Sin problemas | Sin problemas |
+| Agregar jugador | Suite de `test/` | 108 aprobadas, 1 omitida | 108 aprobadas, 1 omitida |
+| Agregar jugador | E2E de agregado sin cuenta | Prueba nueva | Aprobada 2 veces consecutivas |
+| Agregar jugador | Análisis de archivos modificados | Sin nueva ejecución previa | Sin problemas |
+| Completar equipo | Suite de `test/` | 108 aprobadas, 1 omitida | 108 aprobadas, 1 omitida |
+| Completar equipo | E2E de completar equipo | Prueba nueva | Aprobada 2 veces consecutivas |
+| Completar equipo | Análisis de archivos modificados | Sin nueva ejecución previa | Sin problemas |
+| Consultar inscritos | Suite de `test/` | 108 aprobadas, 1 omitida | 108 aprobadas, 1 omitida |
+| Consultar inscritos | E2E de consulta | Prueba nueva | Aprobada 2 veces consecutivas |
+| Consultar inscritos | Análisis de archivos modificados | Sin nueva ejecución previa | Sin problemas |
+| Historial | Suite de `test/` | 108 aprobadas, 1 omitida | 108 aprobadas, 1 omitida |
+| Historial | E2E de consulta y filtros | Prueba nueva | Aprobada 2 veces consecutivas |
+| Historial | Análisis de archivos modificados | Sin nueva ejecución previa | Sin problemas |
 
 La omitida es la integración de servicios con Supabase, que requiere
 `PRUEBAS_SUPABASE=true`. El registro conserva su resultado histórico de dos
@@ -86,45 +102,97 @@ ejecución anterior a implementar registro**; las comparaciones posteriores no l
 
 ## Ejecución y datos
 
-Comandos y requisitos en el [README](../README.md#e2e-del-flujo-registrarse).
+Requisitos: Flutter, dispositivo o emulador compatible, conexión a internet y
+esquema de Supabase aplicado. Las cuentas existentes deben estar habilitadas,
+confirmadas y tener perfil completo. Registro requiere confirmación de correo
+desactivada. Usar cuentas de prueba sin modificaciones concurrentes.
+
+Ejecutar el archivo indicado en la matriz. Ejemplo para iniciar sesión en Linux,
+reemplazando los valores por credenciales válidas:
+
+```bash
+flutter test integration_test/login_test.dart -d linux \
+  --dart-define=E2E_CORREO=correo-principal \
+  '--dart-define=E2E_CLAVE=clave-principal'
+```
+
+| Flujos | Parámetros `--dart-define` necesarios |
+| --- | --- |
+| 1 · Registro | `E2E_CORREO_EXISTENTE` de una cuenta semilla existente |
+| 3 · Recuperación | Ninguno; genera un correo único sin registrar |
+| 2, 4, 5, 7, 8, 12 y 13 | `E2E_CORREO` y `E2E_CLAVE` |
+| 6, 9, 10, 11, 14 y 15 | Los dos anteriores más `E2E_CORREO_AUXILIAR` y `E2E_CLAVE_AUXILIAR`, de otra cuenta existente |
+
+Para cada parámetro usar `--dart-define=VARIABLE=valor`; encerrar el argumento
+completo entre comillas simples si contiene caracteres especiales. En otros
+dispositivos, sustituir `linux` por su identificador de `flutter devices`.
+Ejecutar cada E2E dos veces consecutivas para comprobar repetibilidad.
+
 Registro requiere `E2E_CORREO_EXISTENTE` de una cuenta real ya registrada;
-[login](../README.md#e2e-del-flujo-iniciar-sesión) y creación requieren `E2E_CORREO`
+login y creación requieren `E2E_CORREO`
 y `E2E_CLAVE` válidos. Login reutiliza una cuenta existente, sin crear cuentas ni
 modificar su perfil, y cierra sesión al terminar. La creación se verificó con una cuenta E2E
-porque las credenciales de la semilla del README fueron rechazadas.
+porque las credenciales de la cuenta semilla fueron rechazadas.
 
-[Recuperación](../README.md#e2e-del-flujo-solicitar-recuperación-de-contraseña)
+Recuperación
 usa un correo único sin registrar, sin credenciales ni cuentas nuevas. Verifica
 aceptación de la solicitud, no entrega del mensaje ni cambio de contraseña.
 
-[Cierre](../README.md#e2e-del-flujo-cerrar-sesión) usa `E2E_CORREO` y `E2E_CLAVE`,
+Cierre usa `E2E_CORREO` y `E2E_CLAVE`,
 sin cuentas nuevas. Solo cubre el cierre de Mis partidos; la limpieza posterior
 no se utiliza como evidencia de cierre correcto.
 
-[Creación](../README.md#e2e-del-flujo-crear-partido) espera a Supabase dentro del
+Creación espera a Supabase dentro del
 formulario. Borra automáticamente solo sus partidos de prueba y cierra sesión;
 no crea cuentas. El fallo y reintento se verifican con widgets, sin provocar errores de red.
 
-[Mis partidos](../README.md#e2e-del-flujo-consultar-y-filtrar-mis-partidos) requiere
+Mis partidos requiere
 dos cuentas existentes distintas (principal y auxiliar). Prepara y elimina solo
 sus tres partidos temporales y la inscripción; incluye datos anteriores en los
 conteos. Vacío/error/reintento se verifican con widgets, no con fallos de red reales.
 
-[Edición](../README.md#e2e-del-flujo-editar-partido) usa una cuenta y limpia sus
+Edición usa una cuenta y limpia sus
 dos partidos temporales. Comprueba cupos con Supabase real; error/reintento y
 doble envío tienen cobertura de widgets. No comprueba permisos entre cuentas.
 
-[Eliminación](../README.md#e2e-del-flujo-eliminar-partido) usa una cuenta y un
+Eliminación usa una cuenta y un
 partido temporal. Verifica el borrado antes de la limpieza; excluye carga, errores
 provocados, permisos entre usuarios y cascada de inscripciones.
 
-[Explorar](../README.md#e2e-del-flujo-explorar-buscar-y-filtrar-partidos) usa dos
+Explorar usa dos
 cuentas y limpia dos partidos del auxiliar. Cubre nombre y deporte; otros filtros
 y unirse quedan para pruebas existentes u otros flujos. No modifica partidos.
 
-[Unión](../README.md#e2e-del-flujo-unirse-a-un-partido) usa dos cuentas y limpia
+Unión usa dos cuentas y limpia
 el partido del auxiliar con su inscripción. Comprueba el resultado antes de la
 limpieza; excluye último cupo, concurrencia, errores provocados y salida.
+
+Salida usa dos cuentas y limpia
+su partido temporal. El jugador se une al último cupo, cancela una salida sin
+cambios y luego confirma; verifica la eliminación de su inscripción, la
+reapertura del equipo y la consulta persistida desde Explorar. En el primer
+intento con Supabase real, el test leyó la tarjeta antes de que terminara la
+unión. La reproducción posterior detectó un botón de 40 px en Linux: se fijó
+la densidad visual para garantizar 48 × 48 en salida y confirmación. Las esperas
+comprueban ahora pertenencia, cupos y estado de la tarjeta. La corrección pasó
+dos ejecuciones consecutivas en Linux con Supabase real.
+
+Agregar jugador usa una
+cuenta y limpia su partido temporal. Un jugador sin cuenta solo ocupa un cupo;
+no genera nombre ni inscripción. Se excluyen equipo completo y errores provocados.
+
+Completar equipo usa una cuenta y
+limpia su partido temporal. Marca 6/6 y estado completo sin generar inscripciones.
+Comprueba persistencia y aviso de bloqueo sin intentar agregar más jugadores.
+
+Consultar inscritos
+usa dos cuentas y limpia el partido del organizador con su inscripción auxiliar.
+Verifica nombre real y consulta sin cambios; excluye vacío y listas extensas en E2E.
+
+Historial usa dos
+cuentas y limpia sus dos partidos temporales con la inscripción. Incluye datos
+anteriores y partidos futuros. Excluye vacío, Disputados y fechas amigables.
+La validación de Historial es individual, sin nueva ejecución conjunta de las 15 E2E.
 
 **Limpieza manual pendiente:** eliminar en Supabase → Authentication → Users solo
 estas cuentas de validación; sus perfiles se eliminan en cascada:
@@ -133,4 +201,5 @@ estas cuentas de validación; sus perfiles se eliminan en cascada:
 - `e2e-registro-1793585755339189@unisport.edu`
 - `e2e-registro-1793585799806090@unisport.edu`
 
-No eliminar la semilla. Queda pendiente completar las pruebas y publicar en el fork.
+No eliminar la semilla. Los 15 flujos de la matriz tienen E2E implementadas con
+aprobaciones individuales registradas; queda pendiente publicar en el fork.

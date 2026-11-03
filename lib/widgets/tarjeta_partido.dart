@@ -242,7 +242,8 @@ class TarjetaPartido extends StatelessWidget {
                         ),
                         label: const Text('Agregar jugador'),
                         style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 46),
+                          visualDensity: VisualDensity.standard,
+                          minimumSize: const Size(48, 48),
                           textStyle: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -268,7 +269,8 @@ class TarjetaPartido extends StatelessWidget {
                         icon: const Icon(LucideIcons.userCheck, size: 17),
                         label: const Text('Completar equipo'),
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(0, 46),
+                          visualDensity: VisualDensity.standard,
+                          minimumSize: const Size(48, 48),
                           textStyle: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -393,7 +395,8 @@ class TarjetaPartido extends StatelessWidget {
                   icon: const Icon(LucideIcons.logOut, size: 17),
                   label: const Text('Salir del partido'),
                   style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 44),
+                    visualDensity: VisualDensity.standard,
+                    minimumSize: const Size(double.infinity, 48),
                     foregroundColor: TemaApp.rojoAlerta,
                   ),
                 ),
@@ -423,6 +426,7 @@ class TarjetaPartido extends StatelessWidget {
         icon: const Icon(LucideIcons.users, size: 18),
         label: Text('Ver jugadores inscritos (${nombres.length})'),
         style: OutlinedButton.styleFrom(
+          visualDensity: VisualDensity.standard,
           minimumSize: const Size(0, 48),
           foregroundColor: TemaApp.textoPrincipal,
           backgroundColor: TemaApp.superficieSuave,
@@ -454,7 +458,10 @@ class TarjetaPartido extends StatelessWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.standard,
+                    minimumSize: const Size(64, 48),
+                  ),
                   child: const Text('Cerrar'),
                 ),
               ],

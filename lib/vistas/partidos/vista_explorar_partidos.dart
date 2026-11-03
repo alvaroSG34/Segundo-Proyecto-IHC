@@ -155,8 +155,13 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
           'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
       textoConfirmar: 'Sí, salir',
       estiloConfirmar: ElevatedButton.styleFrom(
+        visualDensity: VisualDensity.standard,
         backgroundColor: TemaApp.rojoAlerta,
-        minimumSize: const Size(120, 44),
+        minimumSize: const Size(120, 48),
+      ),
+      estiloBotonCancelar: TextButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(120, 48),
       ),
     );
     if (confirmar != true || !mounted) return;
