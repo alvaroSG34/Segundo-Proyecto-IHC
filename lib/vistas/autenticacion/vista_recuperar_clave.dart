@@ -4,8 +4,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../tema/caja_mensaje.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 import '../../tema/tema_app.dart';
+import '../../widgets/boton_accion.dart';
 
-/// Flujo de recuperación de contraseña simulado para pruebas de IHC
+/// Solicita a Supabase las instrucciones de recuperación de contraseña.
 class VistaRecuperarClave extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
 
@@ -97,6 +98,7 @@ class _VistaRecuperarClaveState extends State<VistaRecuperarClave> {
         const SizedBox(height: 28),
 
         TextFormField(
+          key: const Key('recuperar_correo'),
           controller: _controladorCorreo,
           keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(
@@ -112,18 +114,11 @@ class _VistaRecuperarClaveState extends State<VistaRecuperarClave> {
 
         const SizedBox(height: 24),
 
-        ElevatedButton(
-          onPressed: _cargando ? null : _solicitarRecuperacion,
-          child: _cargando
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text('Enviar instrucciones'),
+        BotonAccion(
+          key: const Key('recuperar_enviar'),
+          texto: 'Enviar instrucciones',
+          estado: _cargando ? EstadoBoton.cargando : EstadoBoton.normal,
+          onPressed: _solicitarRecuperacion,
         ),
       ],
     );
@@ -155,7 +150,7 @@ class _VistaRecuperarClaveState extends State<VistaRecuperarClave> {
               Text('¡Solicitud procesada!', style: TemaApp.titulo(tamano: 20)),
               const SizedBox(height: 8),
               Text(
-                'Enviamos las instrucciones a ${_controladorCorreo.text}',
+                'Procesamos la solicitud para ${_controladorCorreo.text.trim()}.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,
@@ -173,6 +168,11 @@ class _VistaRecuperarClaveState extends State<VistaRecuperarClave> {
         ),
         const SizedBox(height: 24),
         ElevatedButton(
+          key: const Key('recuperar_volver'),
+          style: ElevatedButton.styleFrom(
+            visualDensity: VisualDensity.standard,
+            minimumSize: const Size(48, 52),
+          ),
           onPressed: () => Navigator.pop(context),
           child: const Text('Volver al inicio de sesión'),
         ),

@@ -45,6 +45,9 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   Map<String, List<String>> _jugadoresInscritos = {};
   Map<String, List<String>> _suplentes = {};
   bool _cargando = true;
+  String? _errorCarga;
+  int _consulta = 0;
+  bool _cerrandoSesion = false;
   String _filtroActivo = 'todos';
 
   @override
@@ -123,7 +126,30 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
         _suplentes = datos.suplentes;
       }
       _cargando = false;
+    final consulta = ++_consulta;
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
     });
+    try {
+      final propios = await _repositorio.obtenerMisPartidos();
+      final unidos = await _repositorio.obtenerPartidosUnidos();
+      final inscritos = await _repositorio.obtenerJugadoresInscritos();
+      if (!mounted || consulta != _consulta) return;
+      setState(() {
+        _partidos = [...propios, ...unidos];
+        _jugadoresInscritos = inscritos;
+        _cargando = false;
+      });
+    } catch (error) {
+      if (!mounted || consulta != _consulta) return;
+      setState(() {
+        _cargando = false;
+        _errorCarga = error is StateError
+            ? error.message
+            : 'No se pudieron cargar tus partidos. Intenta nuevamente.';
+      });
+    }
   }
 
   // Abre "Explorar partidos" y, al volver, recarga para mostrar las uniones nuevas
@@ -186,19 +212,17 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     final usuario = widget.servicioAuth.usuarioActual;
     if (usuario == null) return;
 
-    final editado = await Navigator.push<ModeloPartido>(
+    final guardado = await Navigator.push<ModeloPartido>(
       context,
       MaterialPageRoute(
         builder: (_) => VistaCrearPartido(
           organizadorNombre: usuario.nombre,
           partidoAEditar: partido,
+          guardarPartido: _repositorio.editarPartido,
         ),
       ),
     );
 
-    if (editado == null || !mounted) return;
-
-    final guardado = await _intentar(() => _repositorio.editarPartido(editado));
     if (guardado == null || !mounted) return;
 
     _reemplazar(guardado);
@@ -213,11 +237,17 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       mensaje:
           '¿Estás seguro de que deseas eliminar "${partido.titulo}"? Esta acción no se puede deshacer.',
       textoConfirmar: 'Eliminar',
+      estiloBotonCancelar: TextButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(48, 48),
+      ),
       estiloCancelar: const TextStyle(
         color: TemaApp.textoSecundario,
         fontWeight: FontWeight.w600,
       ),
       estiloConfirmar: ElevatedButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(48, 48),
         backgroundColor: TemaApp.rojoAlerta,
         foregroundColor: Colors.white,
       ),
@@ -308,26 +338,36 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   }
 
   Future<void> _cerrarSesion() async {
+    if (_cerrandoSesion) return;
     final confirmar = await confirmarAccion(
       context,
       titulo: '¿Cerrar sesión?',
       mensaje: 'Volverás a la pantalla pública de UniSport.',
       textoConfirmar: 'Salir',
+      estiloBotonCancelar: TextButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(48, 48),
+      ),
       estiloCancelar: const TextStyle(
         color: TemaApp.textoSecundario,
         fontWeight: FontWeight.w600,
       ),
       estiloConfirmar: ElevatedButton.styleFrom(
         backgroundColor: TemaApp.rojoAlerta,
-        minimumSize: const Size(110, 44),
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(110, 48),
       ),
     );
 
-    if (confirmar == true && mounted) {
+    if (confirmar != true || !mounted || _cerrandoSesion) return;
+    setState(() => _cerrandoSesion = true);
+    try {
       await widget.servicioAuth.cerrarSesion();
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
+    } finally {
+      if (mounted) setState(() => _cerrandoSesion = false);
     }
   }
 
@@ -358,14 +398,33 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
             ),
             onPressed: _abrirHistorial,
           ),
-          IconButton(
-            tooltip: 'Cerrar sesión',
-            icon: const Icon(
-              LucideIcons.logOut,
-              color: TemaApp.rojoAlerta,
-              size: 20,
+          Semantics(
+            key: const Key('mis_partidos_cerrar_sesion'),
+            container: true,
+            button: true,
+            label: 'Cerrar sesión',
+            value: _cerrandoSesion ? 'Cerrando sesión' : '',
+            liveRegion: _cerrandoSesion,
+            enabled: !_cerrandoSesion,
+            excludeSemantics: true,
+            onTap: _cerrandoSesion ? null : _cerrarSesion,
+            child: IconButton(
+              tooltip: 'Cerrar sesión',
+              visualDensity: VisualDensity.standard,
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              icon: _cerrandoSesion
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(
+                      LucideIcons.logOut,
+                      color: TemaApp.rojoAlerta,
+                      size: 20,
+                    ),
+              onPressed: _cerrandoSesion ? null : _cerrarSesion,
             ),
-            onPressed: _cerrarSesion,
           ),
         ],
       ),
@@ -416,7 +475,8 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                   icon: const Icon(LucideIcons.compass, size: 18),
                   label: const Text('Explorar partidos para unirme'),
                   style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 46),
+                    visualDensity: VisualDensity.standard,
+                    minimumSize: const Size(double.infinity, 52),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -426,6 +486,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                   icon: const Icon(LucideIcons.history, size: 18),
                   label: const Text('Ver historial de participación'),
                   style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.standard,
                     minimumSize: const Size(
                       double.infinity,
                       48,
@@ -433,14 +494,44 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                _construirEncabezadoLista(partidosFiltrados.length),
+                _construirEncabezadoLista(
+                  _cargando || _errorCarga != null
+                      ? null
+                      : partidosFiltrados.length,
+                ),
                 const SizedBox(height: 12),
                 _construirFiltros(),
                 const SizedBox(height: 16),
                 if (_cargando)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 30),
-                    child: Center(child: CircularProgressIndicator()),
+                  Semantics(
+                    key: const Key('mis_partidos_cargando'),
+                    container: true,
+                    label: 'Cargando mis partidos',
+                    liveRegion: true,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  )
+                else if (_errorCarga != null)
+                  Column(
+                    key: const Key('mis_partidos_error'),
+                    children: [
+                      Semantics(
+                        liveRegion: true,
+                        child: CajaMensaje(texto: _errorCarga!),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        key: const Key('mis_partidos_reintentar'),
+                        style: ElevatedButton.styleFrom(
+                          visualDensity: VisualDensity.standard,
+                          minimumSize: const Size(48, 52),
+                        ),
+                        onPressed: _cargarPartidos,
+                        child: const Text('Reintentar'),
+                      ),
+                    ],
                   )
                 else if (partidosFiltrados.isEmpty)
                   _construirEstadoVacio()
@@ -470,6 +561,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   // Banner de usuario autenticado (requisito explícito del docente)
   Widget _construirBannerUsuario(String nombre, String correo, String carrera) {
     return Container(
+      key: const Key('mis_partidos_identidad'),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -548,7 +640,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     );
   }
 
-  Widget _construirEncabezadoLista(int cantidad) {
+  Widget _construirEncabezadoLista(int? cantidad) {
     return Row(
       children: [
         Expanded(
@@ -564,7 +656,8 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            '$cantidad',
+            cantidad == null ? '—' : '$cantidad',
+            key: const Key('mis_partidos_cantidad_visible'),
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -590,28 +683,57 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
   Widget _construirBotonFiltro(String texto, String clave) {
     final activo = _filtroActivo == clave;
+    final habilitado = !_cargando && !_cerrandoSesion;
+    final nombre = clave == 'todos' ? 'Todos' : texto;
+    final disponible = !_cargando && _errorCarga == null;
     return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _filtroActivo = clave),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: activo ? TemaApp.textoPrincipal : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: activo ? TemaApp.textoPrincipal : TemaApp.borde,
+      child: Semantics(
+        key: Key('mis_partidos_filtro_$clave'),
+        container: true,
+        label: nombre,
+        value: clave == 'todos'
+            ? disponible
+                  ? '${_partidos.length} partidos'
+                  : 'No disponible'
+            : null,
+        button: true,
+        selected: activo,
+        enabled: habilitado,
+        excludeSemantics: true,
+        onTap: habilitado ? () => setState(() => _filtroActivo = clave) : null,
+        child: GestureDetector(
+          onTap: habilitado
+              ? () => setState(() => _filtroActivo = clave)
+              : null,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: activo ? TemaApp.textoPrincipal : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: activo ? TemaApp.textoPrincipal : TemaApp.borde,
+              ),
             ),
-          ),
-          alignment: Alignment.center,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              texto,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: activo ? Colors.white : TemaApp.textoSecundario,
+            alignment: Alignment.center,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                clave == 'todos'
+                    ? disponible
+                          ? 'Todos (${_partidos.length})'
+                          : 'Todos (—)'
+                    : texto,
+                key: clave == 'todos'
+                    ? const Key('mis_partidos_cantidad_total')
+                    : null,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: activo ? Colors.white : TemaApp.textoSecundario,
+                ),
               ),
             ),
           ),
@@ -622,6 +744,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
   Widget _construirEstadoVacio() {
     return Container(
+      key: const Key('mis_partidos_vacio'),
       padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
       decoration: TemaApp.tarjeta(),
       child: Column(

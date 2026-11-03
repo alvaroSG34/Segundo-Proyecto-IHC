@@ -93,6 +93,10 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
                 ),
                 const SizedBox(height: 28),
                 ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    visualDensity: VisualDensity.standard,
+                    minimumSize: const Size(48, 52),
+                  ),
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -107,6 +111,10 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.standard,
+                    minimumSize: const Size(48, 52),
+                  ),
                   onPressed: () {
                     Navigator.push(
                       context,

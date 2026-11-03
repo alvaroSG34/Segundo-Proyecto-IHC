@@ -173,15 +173,22 @@ class _VistaHistorialState extends State<VistaHistorial> {
                   const SizedBox(height: 18),
 
                   if (_cargando)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(child: CircularProgressIndicator()),
+                    Semantics(
+                      key: const Key('historial_cargando'),
+                      container: true,
+                      label: 'Cargando historial',
+                      liveRegion: true,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
                     )
                   else if (eventosFiltrados.isEmpty)
                     _construirEstadoVacio()
                   else ...[
                     Text(
                       '${eventosFiltrados.length} ${eventosFiltrados.length == 1 ? "partido registrado" : "partidos registrados"} (más recientes primero)',
+                      key: const Key('historial_cantidad_visible'),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -246,15 +253,29 @@ class _VistaHistorialState extends State<VistaHistorial> {
           Row(
             children: [
               Expanded(
-                child: _construirIndicador('Total', '${_eventos.length}'),
+                child: _construirIndicador(
+                  'Total',
+                  '${_eventos.length}',
+                  clave: 'historial_total',
+                ),
               ),
               Expanded(
                 child: _construirIndicador('Disputados', '$finalizados'),
               ),
               Expanded(
-                child: _construirIndicador('Organizados', '$organizados'),
+                child: _construirIndicador(
+                  'Organizados',
+                  '$organizados',
+                  clave: 'historial_organizados',
+                ),
               ),
-              Expanded(child: _construirIndicador('Como jugador', '$unidos')),
+              Expanded(
+                child: _construirIndicador(
+                  'Como jugador',
+                  '$unidos',
+                  clave: 'historial_jugador',
+                ),
+              ),
             ],
           ),
         ],
@@ -262,12 +283,13 @@ class _VistaHistorialState extends State<VistaHistorial> {
     );
   }
 
-  Widget _construirIndicador(String label, String valor) {
+  Widget _construirIndicador(String label, String valor, {String? clave}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           valor,
+          key: clave == null ? null : Key(clave),
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
@@ -306,28 +328,38 @@ class _VistaHistorialState extends State<VistaHistorial> {
   Widget _construirBotonFiltro(String texto, String clave) {
     final activo = _filtroRol == clave;
     return Expanded(
-      child: GestureDetector(
+      child: Semantics(
         key: Key('filtro_$clave'),
+        container: true,
+        label: texto,
+        button: true,
+        selected: activo,
+        excludeSemantics: true,
         onTap: () => setState(() => _filtroRol = clave),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          // Ley de Fitts: altura de 46 px para toque seguro
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: activo ? TemaApp.textoPrincipal : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: activo ? TemaApp.textoPrincipal : TemaApp.borde,
-              width: 1.2,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _filtroRol = clave),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            // Área táctil mínima de 48 píxeles lógicos.
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: activo ? TemaApp.textoPrincipal : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: activo ? TemaApp.textoPrincipal : TemaApp.borde,
+                width: 1.2,
+              ),
             ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            texto,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: activo ? Colors.white : TemaApp.textoSecundario,
+            alignment: Alignment.center,
+            child: Text(
+              texto,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: activo ? Colors.white : TemaApp.textoSecundario,
+              ),
             ),
           ),
         ),
