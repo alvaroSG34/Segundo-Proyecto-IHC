@@ -29,6 +29,9 @@ class ModeloPartido {
   final String organizadorNombre;
   final bool soyOrganizador;
   final bool estoyUnido;
+
+  /// Cero significa que el usuario no está en la lista de suplentes.
+  final int posicionEspera;
   final EstadoPartido estado;
 
   ModeloPartido({
@@ -43,11 +46,21 @@ class ModeloPartido {
     required this.organizadorNombre,
     this.soyOrganizador = false,
     this.estoyUnido = false,
+    this.posicionEspera = 0,
     this.estado = EstadoPartido.cuposAbiertos,
   });
 
   int get cuposRestantes => cuposTotales - cuposOcupados;
   bool get estaLleno => cuposRestantes <= 0;
+  bool get estoyEnEspera => posicionEspera > 0;
+
+  /// Solo alguien ajeno al equipo puede pedir un lugar cuando está lleno.
+  bool get puedeEntrarEnEspera =>
+      !soyOrganizador &&
+      !estoyUnido &&
+      !estoyEnEspera &&
+      !fechaPasada &&
+      estado == EstadoPartido.equipoCompleto;
 
   /// Fecha y hora reales del partido, a partir del texto "dd/mm/aaaa · hh:mm"
   /// que guarda el formulario. Es null si el texto no tiene ese formato.
@@ -181,6 +194,9 @@ class ModeloPartido {
     if (soyOrganizador || estoyUnido) {
       return 'Ya formas parte de este equipo.';
     }
+    if (estoyEnEspera) {
+      return 'Ya estás en la lista de suplentes.';
+    }
     if (fechaPasada) {
       return 'El partido ya se jugó: su fecha ya pasó.';
     }
@@ -277,6 +293,7 @@ class ModeloPartido {
     String? organizadorNombre,
     bool? soyOrganizador,
     bool? estoyUnido,
+    int? posicionEspera,
     EstadoPartido? estado,
   }) {
     return ModeloPartido(
@@ -291,6 +308,7 @@ class ModeloPartido {
       organizadorNombre: organizadorNombre ?? this.organizadorNombre,
       soyOrganizador: soyOrganizador ?? this.soyOrganizador,
       estoyUnido: estoyUnido ?? this.estoyUnido,
+      posicionEspera: posicionEspera ?? this.posicionEspera,
       estado: estado ?? this.estado,
     );
   }
@@ -308,6 +326,7 @@ class ModeloPartido {
     'organizadorNombre': organizadorNombre,
     'soyOrganizador': soyOrganizador,
     'estoyUnido': estoyUnido,
+    'posicionEspera': posicionEspera,
     'estado': estado.name,
   };
 
@@ -325,6 +344,7 @@ class ModeloPartido {
     organizadorNombre: json['organizadorNombre'] as String,
     soyOrganizador: json['soyOrganizador'] as bool? ?? false,
     estoyUnido: json['estoyUnido'] as bool? ?? false,
+    posicionEspera: json['posicionEspera'] as int? ?? 0,
     estado:
         EstadoPartido.values.asNameMap()[json['estado'] as String?] ??
         EstadoPartido.cuposAbiertos,

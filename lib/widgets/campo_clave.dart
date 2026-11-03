@@ -166,7 +166,7 @@ class _CampoClaveState extends State<CampoClave>
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   height: 56,
-                  padding: const EdgeInsets.only(left: 12, right: 48),
+                  padding: const EdgeInsets.only(left: 12, right: 56),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
@@ -185,7 +185,9 @@ class _CampoClaveState extends State<CampoClave>
                       const SizedBox(width: 12),
                       Expanded(
                         child: ClipRect(
-                          child: _contenido(widget.controller.text, enfocado),
+                          child: ExcludeSemantics(
+                            child: _contenido(widget.controller.text, enfocado),
+                          ),
                         ),
                       ),
                     ],
@@ -196,27 +198,31 @@ class _CampoClaveState extends State<CampoClave>
                   left: 0,
                   top: 0,
                   bottom: 0,
-                  right: 48,
-                  child: TextField(
-                    controller: widget.controller,
-                    focusNode: _foco,
-                    obscureText: true,
-                    showCursor: false,
-                    enableInteractiveSelection: false,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    keyboardType: TextInputType.visiblePassword,
-                    onSubmitted: (_) => widget.onSubmitted?.call(),
-                    style: const TextStyle(color: Colors.transparent),
-                    decoration: const InputDecoration(
-                      filled: false,
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      focusedErrorBorder: InputBorder.none,
+                  right: 56,
+                  child: Semantics(
+                    container: true,
+                    label: widget.etiqueta,
+                    child: TextField(
+                      controller: widget.controller,
+                      focusNode: _foco,
+                      obscureText: _oculta,
+                      showCursor: false,
+                      enableInteractiveSelection: false,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      keyboardType: TextInputType.visiblePassword,
+                      onSubmitted: (_) => widget.onSubmitted?.call(),
+                      style: const TextStyle(color: Colors.transparent),
+                      decoration: const InputDecoration(
+                        filled: false,
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                      ),
                     ),
                   ),
                 ),
@@ -225,16 +231,31 @@ class _CampoClaveState extends State<CampoClave>
                   top: 0,
                   bottom: 0,
                   child: Center(
-                    child: IconButton(
-                      tooltip: _oculta
+                    child: Semantics(
+                      container: true,
+                      button: true,
+                      enabled: true,
+                      excludeSemantics: true,
+                      onTap: () => setState(() => _oculta = !_oculta),
+                      label: _oculta
                           ? 'Mostrar contraseña'
                           : 'Ocultar contraseña',
-                      icon: Icon(
-                        _oculta ? LucideIcons.eyeOff : LucideIcons.eye,
-                        size: 20,
+                      child: IconButton(
+                        visualDensity: VisualDensity.standard,
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        tooltip: _oculta
+                            ? 'Mostrar contraseña'
+                            : 'Ocultar contraseña',
+                        icon: Icon(
+                          _oculta ? LucideIcons.eyeOff : LucideIcons.eye,
+                          size: 20,
+                        ),
+                        color: TemaApp.textoSecundario,
+                        onPressed: () => setState(() => _oculta = !_oculta),
                       ),
-                      color: TemaApp.textoSecundario,
-                      onPressed: () => setState(() => _oculta = !_oculta),
                     ),
                   ),
                 ),

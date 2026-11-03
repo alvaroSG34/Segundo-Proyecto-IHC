@@ -58,6 +58,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     if (usuario == null) return;
 
     final numero = ++_consulta;
+    setState(() => _cargando = true);
     final List<ModeloPartido> partidos;
     final List<String> lugares;
     final Map<String, List<String>> inscritos;
@@ -110,6 +111,14 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
           'Ocuparás un cupo en "${partido.titulo}" '
           '(${partido.cuposOcupados}/${partido.cuposTotales}).',
       textoConfirmar: 'Sí, unirme',
+      estiloBotonCancelar: TextButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(48, 48),
+      ),
+      estiloConfirmar: ElevatedButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(48, 48),
+      ),
     );
     if (confirmar != true || !mounted) return;
 
@@ -146,8 +155,13 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
           'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
       textoConfirmar: 'Sí, salir',
       estiloConfirmar: ElevatedButton.styleFrom(
+        visualDensity: VisualDensity.standard,
         backgroundColor: TemaApp.rojoAlerta,
-        minimumSize: const Size(120, 44),
+        minimumSize: const Size(120, 48),
+      ),
+      estiloBotonCancelar: TextButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        minimumSize: const Size(120, 48),
       ),
     );
     if (confirmar != true || !mounted) return;
@@ -160,10 +174,43 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
           for (final p in _partidos) p.id == partido.id ? salido : p,
         ];
       });
-      _avisar('Saliste de "${salido.titulo}". Tu cupo quedó libre.');
+      _avisar(
+        salido.estaLleno
+            ? 'Saliste de "${salido.titulo}". Entró el primer suplente.'
+            : 'Saliste de "${salido.titulo}". Tu cupo quedó libre.',
+      );
+      await _cargar();
     } on StateError catch (e) {
       if (!mounted) return;
       _avisar('No puedes salir. ${e.message}', error: true);
+      await _cargar();
+    }
+  }
+
+  Future<void> _entrarEnEspera(ModeloPartido partido) async {
+    try {
+      final actualizado = await _repositorio.entrarEnEspera(partido.id);
+      if (!mounted) return;
+      _avisar(
+        'Estás en la lista de suplentes. Turno ${actualizado.posicionEspera}.',
+      );
+      await _cargar();
+    } on StateError catch (e) {
+      if (!mounted) return;
+      _avisar(e.message, error: true);
+      await _cargar();
+    }
+  }
+
+  Future<void> _salirDeEspera(ModeloPartido partido) async {
+    try {
+      await _repositorio.salirDeEspera(partido.id);
+      if (!mounted) return;
+      _avisar('Saliste de la lista de suplentes.');
+      await _cargar();
+    } on StateError catch (e) {
+      if (!mounted) return;
+      _avisar(e.message, error: true);
       await _cargar();
     }
   }
@@ -182,7 +229,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
                 const Text(
-                  'Partidos organizados por otros estudiantes. Únete a los que tengan cupos abiertos.',
+                  'Partidos de otros estudiantes. Únete si hay cupos o espera como suplente si está completo.',
                   style: TextStyle(
                     fontSize: 13,
                     color: TemaApp.textoSecundario,
@@ -197,9 +244,14 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                 ),
                 const SizedBox(height: 14),
                 if (_cargando)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 30),
-                    child: Center(child: CircularProgressIndicator()),
+                  Semantics(
+                    key: const Key('explorar_cargando'),
+                    label: 'Cargando partidos',
+                    liveRegion: true,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   )
                 else if (_partidos.isEmpty && _filtro.estaActivo)
                   MensajeSinResultados(
@@ -215,6 +267,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                       _partidos.length == 1
                           ? '1 partido encontrado'
                           : '${_partidos.length} partidos encontrados',
+                      key: const Key('explorar_cantidad'),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -227,6 +280,8 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                       partido: partido,
                       onUnirse: () => _unirse(partido),
                       onSalir: () => _salir(partido),
+                      onEntrarEnEspera: () => _entrarEnEspera(partido),
+                      onSalirDeEspera: () => _salirDeEspera(partido),
                       jugadoresUnidos: partido.estoyUnido
                           ? _jugadoresInscritos[partido.id] ?? const []
                           : null,

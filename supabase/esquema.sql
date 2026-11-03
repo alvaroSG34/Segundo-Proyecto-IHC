@@ -51,9 +51,21 @@ create table if not exists public.inscripciones (
   primary key (partido_id, jugador_id)
 );
 
+-- Suplentes en orden de llegada. El id creciente conserva el turno incluso
+-- cuando varias personas se anotan casi al mismo tiempo.
+create table if not exists public.lista_espera (
+  id             bigint generated always as identity primary key,
+  partido_id     uuid not null references public.partidos (id) on delete cascade,
+  jugador_id     uuid not null references public.perfiles (id) on delete cascade,
+  jugador_nombre text not null,
+  creado_en      timestamptz not null default now(),
+  unique (partido_id, jugador_id)
+);
+
 create index if not exists partidos_fecha_idx on public.partidos (fecha_inicio);
 create index if not exists partidos_organizador_idx on public.partidos (organizador_id);
 create index if not exists inscripciones_jugador_idx on public.inscripciones (jugador_id);
+create index if not exists lista_espera_partido_idx on public.lista_espera (partido_id, id);
 
 -- -----------------------------------------------------------------------------
 -- Al registrarse, se crea su perfil con los datos enviados desde la app
@@ -88,6 +100,7 @@ create trigger al_crear_usuario
 alter table public.perfiles      enable row level security;
 alter table public.partidos      enable row level security;
 alter table public.inscripciones enable row level security;
+alter table public.lista_espera enable row level security;
 
 drop policy if exists "perfiles: leer (con sesión)" on public.perfiles;
 create policy "perfiles: leer (con sesión)" on public.perfiles
@@ -117,6 +130,10 @@ create policy "partidos: eliminar el propio" on public.partidos
 
 drop policy if exists "inscripciones: leer (con sesión)" on public.inscripciones;
 create policy "inscripciones: leer (con sesión)" on public.inscripciones
+  for select to authenticated using (true);
+
+drop policy if exists "lista de espera: leer (con sesión)" on public.lista_espera;
+create policy "lista de espera: leer (con sesión)" on public.lista_espera
   for select to authenticated using (true);
 
 -- -----------------------------------------------------------------------------
@@ -149,6 +166,10 @@ begin
        select 1 from public.inscripciones
        where partido_id = p_partido and jugador_id = v_jugador) then
     raise exception 'Ya formas parte de este equipo.';
+  end if;
+  if exists (select 1 from public.lista_espera
+             where partido_id = p_partido and jugador_id = v_jugador) then
+    raise exception 'Ya estás en la lista de suplentes.';
   end if;
   if v_partido.fecha_inicio < now() then
     raise exception 'El partido ya se jugó: su fecha ya pasó.';
@@ -284,6 +305,7 @@ as $$
 declare
   v_jugador uuid := auth.uid();
   v_partido public.partidos;
+  v_suplente public.lista_espera;
 begin
   if v_jugador is null then
     raise exception 'Debes iniciar sesión para salir del partido.';
@@ -307,17 +329,98 @@ begin
   delete from public.inscripciones
    where partido_id = p_partido and jugador_id = v_jugador;
 
-  update public.partidos
-     set cupos_ocupados = cupos_ocupados - 1,
-         estado = 'cuposAbiertos'
-   where id = p_partido
-  returning * into v_partido;
+  -- El bloqueo del partido mantiene el orden y evita ocupar dos veces el cupo.
+  select * into v_suplente from public.lista_espera
+   where partido_id = p_partido order by id limit 1;
+  if found then
+    delete from public.lista_espera where id = v_suplente.id;
+    insert into public.inscripciones (partido_id, jugador_id, jugador_nombre)
+    values (p_partido, v_suplente.jugador_id, v_suplente.jugador_nombre);
+    -- Sale un titular y entra un suplente: el número de cupos no cambia.
+  else
+    update public.partidos
+       set cupos_ocupados = cupos_ocupados - 1,
+           estado = 'cuposAbiertos'
+     where id = p_partido
+    returning * into v_partido;
+  end if;
+  return v_partido;
+end;
+$$;
+
+-- Anotarse o retirarse de la lista solo mediante estas funciones.
+create or replace function public.entrar_lista_espera(p_partido uuid)
+returns public.partidos
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_jugador uuid := auth.uid();
+  v_partido public.partidos;
+  v_nombre text;
+begin
+  if v_jugador is null then
+    raise exception 'Debes iniciar sesión para anotarte como suplente.';
+  end if;
+  select * into v_partido from public.partidos where id = p_partido for update;
+  if not found then
+    raise exception 'Este partido ya no existe.';
+  end if;
+  if v_partido.fecha_inicio < now() then
+    raise exception 'El partido ya se jugó: su fecha ya pasó.';
+  end if;
+  if v_partido.organizador_id = v_jugador or exists (
+    select 1 from public.inscripciones
+    where partido_id = p_partido and jugador_id = v_jugador
+  ) then
+    raise exception 'Ya formas parte de este equipo.';
+  end if;
+  if exists (
+    select 1 from public.lista_espera
+    where partido_id = p_partido and jugador_id = v_jugador
+  ) then
+    raise exception 'Ya estás en la lista de suplentes.';
+  end if;
+  if v_partido.estado <> 'equipoCompleto' then
+    raise exception 'El equipo todavía tiene cupos: puedes unirte directamente.';
+  end if;
+
+  select nombre into v_nombre from public.perfiles where id = v_jugador;
+  insert into public.lista_espera (partido_id, jugador_id, jugador_nombre)
+  values (p_partido, v_jugador, coalesce(v_nombre, ''));
+  return v_partido;
+end;
+$$;
+
+create or replace function public.salir_lista_espera(p_partido uuid)
+returns public.partidos
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_jugador uuid := auth.uid();
+  v_partido public.partidos;
+begin
+  if v_jugador is null then
+    raise exception 'Debes iniciar sesión para cancelar la espera.';
+  end if;
+  select * into v_partido from public.partidos where id = p_partido for update;
+  if not found then
+    raise exception 'Este partido ya no existe.';
+  end if;
+  delete from public.lista_espera
+   where partido_id = p_partido and jugador_id = v_jugador;
+  if not found then
+    raise exception 'No estás en la lista de suplentes.';
+  end if;
   return v_partido;
 end;
 $$;
 
 grant execute on function public.unirse_a_partido(uuid)           to authenticated;
 grant execute on function public.salir_del_partido(uuid)           to authenticated;
+grant execute on function public.entrar_lista_espera(uuid)         to authenticated;
+grant execute on function public.salir_lista_espera(uuid)          to authenticated;
 grant execute on function public.agregar_jugador_sin_cuenta(uuid) to authenticated;
 grant execute on function public.completar_equipo(uuid)           to authenticated;
 grant execute on function public.editar_partido(uuid, text, text, text, timestamptz, int)

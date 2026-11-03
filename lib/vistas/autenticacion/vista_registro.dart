@@ -143,6 +143,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
                     Aparecer(
                       indice: 2,
                       child: TextFormField(
+                        key: const Key('registro_nombre'),
                         controller: _controladorNombre,
                         decoration: const InputDecoration(
                           labelText: 'Nombre y apellido',
@@ -163,6 +164,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
                     Aparecer(
                       indice: 3,
                       child: TextFormField(
+                        key: const Key('registro_correo'),
                         controller: _controladorCorreo,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
@@ -199,6 +201,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
                     Aparecer(
                       indice: 4,
                       child: TextFormField(
+                        key: const Key('registro_carrera'),
                         controller: _controladorCarrera,
                         decoration: const InputDecoration(
                           labelText: 'Carrera o facultad',
@@ -213,6 +216,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
                     Aparecer(
                       indice: 5,
                       child: CampoClave(
+                        key: const Key('registro_clave'),
                         controller: _controladorContrasena,
                         etiqueta: 'Contraseña (mínimo 6 caracteres)',
                         onSubmitted: _ejecutarRegistro,
@@ -264,6 +268,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
                     Aparecer(
                       indice: 7,
                       child: BotonAccion(
+                        key: const Key('registro_enviar'),
                         texto: 'Crear cuenta e ingresar',
                         estado: _estadoBoton,
                         onPressed: _ejecutarRegistro,
@@ -316,40 +321,47 @@ class _VistaRegistroState extends State<VistaRegistro> {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: GestureDetector(
+        child: Semantics(
+          label: deporte,
+          button: true,
+          selected: seleccionado,
+          excludeSemantics: true,
           onTap: () => setState(() => _deporteSeleccionado = deporte),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-              color: seleccionado ? TemaApp.verdeSuave : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: seleccionado ? TemaApp.verdeDeportivo : TemaApp.borde,
-                width: seleccionado ? 1.8 : 1.2,
-              ),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  estilo.icono,
-                  size: 24,
-                  color: seleccionado
-                      ? TemaApp.verdeOscuro
-                      : TemaApp.textoSecundario,
+          child: GestureDetector(
+            onTap: () => setState(() => _deporteSeleccionado = deporte),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: seleccionado ? TemaApp.verdeSuave : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: seleccionado ? TemaApp.verdeDeportivo : TemaApp.borde,
+                  width: seleccionado ? 1.8 : 1.2,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  deporte,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    estilo.icono,
+                    size: 24,
                     color: seleccionado
                         ? TemaApp.verdeOscuro
-                        : TemaApp.textoPrincipal,
+                        : TemaApp.textoSecundario,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    deporte,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: seleccionado
+                          ? TemaApp.verdeOscuro
+                          : TemaApp.textoPrincipal,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

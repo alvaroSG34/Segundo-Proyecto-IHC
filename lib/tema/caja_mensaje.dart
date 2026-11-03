@@ -13,6 +13,7 @@ Future<bool> confirmarAccion(
   required String textoConfirmar,
   ButtonStyle? estiloConfirmar,
   TextStyle? estiloCancelar,
+  ButtonStyle? estiloBotonCancelar,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -21,6 +22,7 @@ Future<bool> confirmarAccion(
         content: Text(mensaje),
         actions: [
           TextButton(
+            style: estiloBotonCancelar,
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('Cancelar', style: estiloCancelar),
           ),

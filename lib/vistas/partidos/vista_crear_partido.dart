@@ -4,9 +4,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
+import '../../tema/caja_mensaje.dart';
 import '../../tema/iconos_deporte.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/animaciones.dart';
+import '../../widgets/boton_accion.dart';
 import '../../widgets/tarjeta_partido.dart';
 
 /// Formulario real para crear un partido.
@@ -16,44 +18,31 @@ import '../../widgets/tarjeta_partido.dart';
 class VistaCrearPartido extends StatefulWidget {
   final String organizadorNombre;
   final ModeloPartido? partidoAEditar;
+  final Future<ModeloPartido> Function(ModeloPartido)? guardarPartido;
 
   const VistaCrearPartido({
     super.key,
     required this.organizadorNombre,
     this.partidoAEditar,
+    this.guardarPartido,
   });
 
-  /// Devuelve el partido guardado, o null si se cancela, falla o no hay sesión.
+  /// Devuelve el partido persistido, o null si se cancela o no hay organizador.
   static Future<ModeloPartido?> abrirYGuardar(
     BuildContext context, {
     required String? organizadorNombre,
     required RepositorioPartidos repositorio,
   }) async {
     if (organizadorNombre == null) return null;
-    final nuevo = await Navigator.push<ModeloPartido>(
+    return Navigator.push<ModeloPartido>(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaCrearPartido(organizadorNombre: organizadorNombre),
+        builder: (_) => VistaCrearPartido(
+          organizadorNombre: organizadorNombre,
+          guardarPartido: repositorio.crearPartido,
+        ),
       ),
     );
-    if (nuevo == null || !context.mounted) return null;
-    try {
-      return await repositorio.crearPartido(nuevo);
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              error is StateError
-                  ? error.message
-                  : 'No se pudo guardar el partido. Intenta nuevamente.',
-            ),
-            backgroundColor: TemaApp.rojoAlerta,
-          ),
-        );
-      }
-      return null;
-    }
   }
 
   @override
@@ -84,6 +73,8 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
   DateTime? _fecha;
   TimeOfDay? _hora;
   bool _intentoEnviar = false;
+  bool _guardando = false;
+  String? _errorGuardado;
 
   void _refrescar() {
     if (mounted) setState(() {});
@@ -91,8 +82,8 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
 
   int get _cuposMinimo => _esEdicion
       ? (widget.partidoAEditar!.cuposOcupados > _cuposMin
-          ? widget.partidoAEditar!.cuposOcupados
-          : _cuposMin)
+            ? widget.partidoAEditar!.cuposOcupados
+            : _cuposMin)
       : _cuposMin;
 
   @override
@@ -173,8 +164,12 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
   }
 
   // 2 - CONSTRUIR: valida y arma el objeto con lo que escribió la persona
-  void _guardar() {
-    setState(() => _intentoEnviar = true);
+  Future<void> _guardar() async {
+    if (_guardando) return;
+    setState(() {
+      _intentoEnviar = true;
+      _errorGuardado = null;
+    });
     final formularioValido = _formKey.currentState!.validate();
     if (!formularioValido || _fecha == null || _hora == null) {
       _claveSacudida.currentState?.sacudir();
@@ -195,30 +190,48 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                   fechaHora: '$_textoFecha · $_textoHora',
                 )
           : ModeloPartido(
-            id: 'p-${DateTime.now().millisecondsSinceEpoch}',
-            titulo: _tituloCtrl.text.trim(),
-            disciplina: _disciplina,
-            icono: _disciplina, // el ícono visual se resuelve por disciplina (ver EstiloDeporte)
-            ubicacion: _ubicacionCtrl.text.trim(),
-            fechaHora: '$_textoFecha · $_textoHora',
-            cuposTotales: _cupos,
-            cuposOcupados: 1, // el organizador ya cuenta como jugador
-            organizadorNombre: widget.organizadorNombre,
-            soyOrganizador: true,
-            estoyUnido: true,
-          );
+              id: 'p-${DateTime.now().millisecondsSinceEpoch}',
+              titulo: _tituloCtrl.text.trim(),
+              disciplina: _disciplina,
+              icono: _disciplina, // el ícono visual se resuelve por disciplina (ver EstiloDeporte)
+              ubicacion: _ubicacionCtrl.text.trim(),
+              fechaHora: '$_textoFecha · $_textoHora',
+              cuposTotales: _cupos,
+              cuposOcupados: 1, // el organizador ya cuenta como jugador
+              organizadorNombre: widget.organizadorNombre,
+              soyOrganizador: true,
+              estoyUnido: true,
+            );
     } on StateError catch (e) {
       _claveSacudida.currentState?.sacudir();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: TemaApp.rojoAlerta,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: TemaApp.rojoAlerta),
       );
       return;
     }
 
-    Navigator.pop(context, partido);
+    final guardar = widget.guardarPartido;
+    if (guardar == null) {
+      // Edición y uso sin persistencia: conservar el contrato del formulario.
+      Navigator.pop(context, partido);
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _guardando = true);
+    try {
+      final guardado = await guardar(partido);
+      if (!mounted) return;
+      setState(() => _guardando = false);
+      Navigator.pop(context, guardado);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _guardando = false;
+        _errorGuardado = error is StateError
+            ? error.message
+            : 'No se pudo guardar el partido. Intenta nuevamente.';
+      });
+    }
   }
 
   // Partido provisional con lo que se lleva escrito, solo para la vista previa
@@ -256,6 +269,33 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     ),
   );
 
+  Widget _accionAccesible({
+    Key? key,
+    required String nombre,
+    required Widget child,
+    required VoidCallback? alTocar,
+    bool? seleccionado,
+    String? valor,
+  }) {
+    final habilitado = !_guardando && alTocar != null;
+    return Semantics(
+      key: key,
+      container: true,
+      button: true,
+      label: nombre,
+      value: valor,
+      selected: seleccionado,
+      enabled: habilitado,
+      excludeSemantics: true,
+      onTap: habilitado ? alTocar : null,
+      child: InkWell(
+        onTap: habilitado ? alTocar : null,
+        borderRadius: BorderRadius.circular(14),
+        child: child,
+      ),
+    );
+  }
+
   Widget _chips({
     required List<String> opciones,
     required String seleccionada,
@@ -267,10 +307,13 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
       runSpacing: 8,
       children: opciones.map((op) {
         final activo = op == seleccionada;
-        return GestureDetector(
-          onTap: () => alCambiar(op),
+        return _accionAccesible(
+          nombre: op,
+          seleccionado: activo,
+          alTocar: () => alCambiar(op),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: activo ? TemaApp.verdeSuave : Colors.white,
@@ -317,10 +360,13 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     required bool activo,
     required VoidCallback alTocar,
   }) {
-    return GestureDetector(
-      onTap: alTocar,
+    return _accionAccesible(
+      nombre: texto,
+      seleccionado: activo,
+      alTocar: alTocar,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: activo ? TemaApp.azulSuave : TemaApp.superficieSuave,
@@ -356,16 +402,21 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
   }
 
   Widget _campoSelector({
+    required String nombre,
+    required Key key,
     required IconData icono,
     required String texto,
     required bool tieneValor,
     required bool error,
     required VoidCallback alTocar,
   }) {
-    return InkWell(
-      onTap: alTocar,
-      borderRadius: BorderRadius.circular(14),
+    return _accionAccesible(
+      key: key,
+      nombre: nombre,
+      valor: texto,
+      alTocar: alTocar,
       child: Container(
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -397,16 +448,23 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     );
   }
 
-  Widget _botonCupo(IconData icono, VoidCallback? alTocar) {
+  Widget _botonCupo(
+    String nombre,
+    Key key,
+    IconData icono,
+    VoidCallback? alTocar,
+  ) {
     return Material(
       color: alTocar == null ? TemaApp.superficieSuave : TemaApp.verdeSuave,
       borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: alTocar,
-        borderRadius: BorderRadius.circular(12),
+      child: _accionAccesible(
+        key: key,
+        nombre: nombre,
+        valor: '$_cupos jugadores',
+        alTocar: alTocar,
         child: SizedBox(
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           child: Icon(
             icono,
             size: 20,
@@ -438,36 +496,46 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _botonCupo(
+                'Disminuir cupos',
+                const Key('partido_cupos_menos'),
                 LucideIcons.minus,
                 !bloqueado && _cupos > _cuposMinimo
                     ? () => setState(() => _cupos--)
                     : null,
               ),
-              SizedBox(
-                width: 110,
-                child: Column(
-                  children: [
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      transitionBuilder: (hijo, anim) =>
-                          ScaleTransition(scale: anim, child: hijo),
-                      child: Text(
-                        '$_cupos',
-                        key: ValueKey(_cupos),
-                        style: TemaApp.titulo(tamano: 32),
+              Semantics(
+                key: const Key('partido_cupos_valor'),
+                label: 'Cupos totales',
+                value: '$_cupos',
+                excludeSemantics: true,
+                child: SizedBox(
+                  width: 110,
+                  child: Column(
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        transitionBuilder: (hijo, anim) =>
+                            ScaleTransition(scale: anim, child: hijo),
+                        child: Text(
+                          '$_cupos',
+                          key: ValueKey(_cupos),
+                          style: TemaApp.titulo(tamano: 32),
+                        ),
                       ),
-                    ),
-                    const Text(
-                      'jugadores',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: TemaApp.textoSecundario,
+                      const Text(
+                        'jugadores',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: TemaApp.textoSecundario,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               _botonCupo(
+                'Aumentar cupos',
+                const Key('partido_cupos_mas'),
                 LucideIcons.plus,
                 !bloqueado && _cupos < _cuposMax
                     ? () => setState(() => _cupos++)
@@ -516,7 +584,11 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(LucideIcons.lock, size: 15, color: TemaApp.rojoAlerta),
+                const Icon(
+                  LucideIcons.lock,
+                  size: 15,
+                  color: TemaApp.rojoAlerta,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -541,228 +613,264 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     final errorFecha = _intentoEnviar && _fecha == null;
     final errorHora = _intentoEnviar && _hora == null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_esEdicion ? 'Editar partido' : 'Crear partido'),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-            child: Sacudida(
-              key: _claveSacudida,
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Vista previa en vivo
-                    Row(
-                      children: [
-                        const Icon(
-                          LucideIcons.eye,
-                          size: 15,
-                          color: TemaApp.textoSecundario,
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'Así se verá tu partido',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+    return PopScope(
+      canPop: !_guardando,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: _guardando
+              ? const IconButton(
+                  onPressed: null,
+                  icon: Icon(Icons.arrow_back),
+                  tooltip: 'Volver',
+                )
+              : null,
+          title: Text(_esEdicion ? 'Editar partido' : 'Crear partido'),
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              child: Sacudida(
+                key: _claveSacudida,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Vista previa en vivo
+                      Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.eye,
+                            size: 15,
                             color: TemaApp.textoSecundario,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    TarjetaPartido(partido: _partidoVistaPrevia),
-                    const SizedBox(height: 12),
-
-                    _etiqueta('Título'),
-                    TextFormField(
-                      key: const Key('partido_titulo'),
-                      controller: _tituloCtrl,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        hintText: 'Ej: Futsal 5 vs 5 nocturno',
-                      ),
-                      validator: (v) {
-                        final t = v?.trim() ?? '';
-                        if (t.isEmpty) return 'Escribe un título';
-                        if (t.length < 3) {
-                          return 'Debe tener al menos 3 caracteres';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-
-                    _etiqueta('Disciplina'),
-                    _chips(
-                      opciones: _disciplinas,
-                      seleccionada: _disciplina,
-                      conIconos: true,
-                      alCambiar: (v) => setState(() => _disciplina = v),
-                    ),
-                    const SizedBox(height: 20),
-
-                    _etiqueta('Ubicación'),
-                    TextFormField(
-                      key: const Key('partido_ubicacion'),
-                      controller: _ubicacionCtrl,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        hintText: 'Ej: Cancha 2 (Campus Central)',
-                      ),
-                      validator: (v) => (v?.trim().isEmpty ?? true)
-                          ? 'Escribe el lugar del partido'
-                          : null,
-                    ),
-                    const SizedBox(height: 10),
-                    // Atajos de lugar (Issue #10); se puede escribir otro lugar
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final lugar in FiltroPartidos.lugaresSugeridos)
-                          _chipRapido(
-                            texto: lugar,
-                            icono: LucideIcons.mapPin,
-                            activo: _ubicacionCtrl.text.trim() == lugar,
-                            alTocar: () => _ubicacionCtrl.text = lugar,
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Así se verá tu partido',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: TemaApp.textoSecundario,
+                            ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TarjetaPartido(partido: _partidoVistaPrevia),
+                      const SizedBox(height: 12),
 
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _etiqueta('Fecha'),
-                              _campoSelector(
-                                icono: LucideIcons.calendarDays,
-                                texto: _textoFecha,
-                                tieneValor: _fecha != null,
-                                error: errorFecha,
-                                alTocar: _elegirFecha,
-                              ),
-                              if (errorFecha)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 6, left: 4),
-                                  child: Text(
-                                    'Elige una fecha',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: TemaApp.rojoAlerta,
+                      _etiqueta('Título'),
+                      Semantics(
+                        container: true,
+                        label: 'Título del partido',
+                        child: TextFormField(
+                          enabled: !_guardando,
+                          key: const Key('partido_titulo'),
+                          controller: _tituloCtrl,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            hintText: 'Ej: Futsal 5 vs 5 nocturno',
+                          ),
+                          validator: (v) {
+                            final t = v?.trim() ?? '';
+                            if (t.isEmpty) return 'Escribe un título';
+                            if (t.length < 3) {
+                              return 'Debe tener al menos 3 caracteres';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      _etiqueta('Disciplina'),
+                      _chips(
+                        opciones: _disciplinas,
+                        seleccionada: _disciplina,
+                        conIconos: true,
+                        alCambiar: (v) => setState(() => _disciplina = v),
+                      ),
+                      const SizedBox(height: 20),
+
+                      _etiqueta('Ubicación'),
+                      Semantics(
+                        container: true,
+                        label: 'Ubicación del partido',
+                        child: TextFormField(
+                          enabled: !_guardando,
+                          key: const Key('partido_ubicacion'),
+                          controller: _ubicacionCtrl,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            hintText: 'Ej: Cancha 2 (Campus Central)',
+                          ),
+                          validator: (v) => (v?.trim().isEmpty ?? true)
+                              ? 'Escribe el lugar del partido'
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // Atajos de lugar (Issue #10); se puede escribir otro lugar
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final lugar in FiltroPartidos.lugaresSugeridos)
+                            _chipRapido(
+                              texto: lugar,
+                              icono: LucideIcons.mapPin,
+                              activo: _ubicacionCtrl.text.trim() == lugar,
+                              alTocar: () => _ubicacionCtrl.text = lugar,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _etiqueta('Fecha'),
+                                _campoSelector(
+                                  key: const Key('partido_fecha'),
+                                  nombre: 'Fecha del partido',
+                                  icono: LucideIcons.calendarDays,
+                                  texto: _textoFecha,
+                                  tieneValor: _fecha != null,
+                                  error: errorFecha,
+                                  alTocar: _elegirFecha,
+                                ),
+                                if (errorFecha)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 6, left: 4),
+                                    child: Text(
+                                      'Elige una fecha',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: TemaApp.rojoAlerta,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _etiqueta('Hora'),
-                              _campoSelector(
-                                icono: LucideIcons.clock,
-                                texto: _textoHora,
-                                tieneValor: _hora != null,
-                                error: errorHora,
-                                alTocar: _elegirHora,
-                              ),
-                              if (errorHora)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 6, left: 4),
-                                  child: Text(
-                                    'Elige una hora',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: TemaApp.rojoAlerta,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _etiqueta('Hora'),
+                                _campoSelector(
+                                  key: const Key('partido_hora'),
+                                  nombre: 'Hora del partido',
+                                  icono: LucideIcons.clock,
+                                  texto: _textoHora,
+                                  tieneValor: _hora != null,
+                                  error: errorHora,
+                                  alTocar: _elegirHora,
+                                ),
+                                if (errorHora)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 6, left: 4),
+                                    child: Text(
+                                      'Elige una hora',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: TemaApp.rojoAlerta,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
 
-                    // Atajos de fecha y hora
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _chipRapido(
-                          texto: 'Hoy',
-                          icono: LucideIcons.calendar,
-                          activo: _mismoDia(_fecha, _hoy),
-                          alTocar: () => setState(() => _fecha = _hoy),
-                        ),
-                        _chipRapido(
-                          texto: 'Mañana',
-                          icono: LucideIcons.calendar,
-                          activo: _mismoDia(
-                            _fecha,
-                            _hoy.add(const Duration(days: 1)),
-                          ),
-                          alTocar: () => setState(
-                            () => _fecha = _hoy.add(const Duration(days: 1)),
-                          ),
-                        ),
-                        _chipRapido(
-                          texto: 'Sábado',
-                          icono: LucideIcons.calendar,
-                          activo: _mismoDia(_fecha, _proximoSabado),
-                          alTocar: () =>
-                              setState(() => _fecha = _proximoSabado),
-                        ),
-                        for (final h in _horasRapidas)
+                      // Atajos de fecha y hora
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
                           _chipRapido(
-                            texto: _formatoHora(h),
-                            icono: LucideIcons.clock,
-                            activo: _hora == h,
-                            alTocar: () => setState(() => _hora = h),
+                            texto: 'Hoy',
+                            icono: LucideIcons.calendar,
+                            activo: _mismoDia(_fecha, _hoy),
+                            alTocar: () => setState(() => _fecha = _hoy),
                           ),
+                          _chipRapido(
+                            texto: 'Mañana',
+                            icono: LucideIcons.calendar,
+                            activo: _mismoDia(
+                              _fecha,
+                              _hoy.add(const Duration(days: 1)),
+                            ),
+                            alTocar: () => setState(
+                              () => _fecha = _hoy.add(const Duration(days: 1)),
+                            ),
+                          ),
+                          _chipRapido(
+                            texto: 'Sábado',
+                            icono: LucideIcons.calendar,
+                            activo: _mismoDia(_fecha, _proximoSabado),
+                            alTocar: () =>
+                                setState(() => _fecha = _proximoSabado),
+                          ),
+                          for (final h in _horasRapidas)
+                            _chipRapido(
+                              texto: _formatoHora(h),
+                              icono: LucideIcons.clock,
+                              activo: _hora == h,
+                              alTocar: () => setState(() => _hora = h),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      _etiqueta('Cupos totales (incluyéndote)'),
+                      _selectorCupos(),
+                      const SizedBox(height: 8),
+                      // Ayuda breve donde se decide (H10)
+                      const Text(
+                        'Los cupos incluyen al organizador. Después podrás '
+                        '"Agregar jugador" para sumar a alguien sin cuenta o '
+                        '"Completar equipo" para cerrar la convocatoria.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: TemaApp.textoSecundario,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      const SizedBox(height: 12),
+
+                      if (_errorGuardado != null) ...[
+                        CajaMensaje(
+                          key: const Key('partido_error_guardado'),
+                          texto: _errorGuardado!,
+                        ),
+                        const SizedBox(height: 12),
                       ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    _etiqueta('Cupos totales (incluyéndote)'),
-                    _selectorCupos(),
-                    const SizedBox(height: 8),
-                    // Ayuda breve donde se decide (H10)
-                    const Text(
-                      'Los cupos incluyen al organizador. Después podrás '
-                      '"Agregar jugador" para sumar a alguien sin cuenta o '
-                      '"Completar equipo" para cerrar la convocatoria.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: TemaApp.textoSecundario,
-                        height: 1.4,
+                      BotonAccion(
+                        key: const Key('partido_guardar'),
+                        texto: _guardando
+                            ? 'Guardando partido'
+                            : _esEdicion
+                            ? 'Guardar cambios'
+                            : 'Guardar partido',
+                        estado: _guardando
+                            ? EstadoBoton.cargando
+                            : EstadoBoton.normal,
+                        onPressed: _guardar,
                       ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    const SizedBox(height: 12),
-
-                    ElevatedButton.icon(
-                      onPressed: _guardar,
-                      icon: const Icon(LucideIcons.check, size: 19),
-                      label: Text(
-                        _esEdicion ? 'Guardar cambios' : 'Guardar partido',
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

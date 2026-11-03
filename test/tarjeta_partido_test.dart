@@ -222,6 +222,74 @@ void main() {
     });
   });
 
+  group('Lista de suplentes', () {
+    testWidgets('un equipo completo ofrece entrar como suplente', (tester) async {
+      var entradas = 0;
+      await tester.pumpWidget(
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(
+              estado: EstadoPartido.equipoCompleto,
+              soyOrganizador: false,
+              estoyUnido: false,
+            ),
+            onEntrarEnEspera: () => entradas++,
+          ),
+        ),
+      );
+
+      final boton = find.widgetWithText(OutlinedButton, 'Entrar como suplente');
+      expect(boton, findsOneWidget);
+      expect(find.text('Unirme al equipo'), findsNothing);
+      expect(tester.getSize(boton).height, greaterThanOrEqualTo(48));
+      await tester.ensureVisible(boton);
+      await tester.tap(boton);
+      expect(entradas, 1);
+    });
+
+    testWidgets('el suplente ve su turno y puede cancelar', (tester) async {
+      var cancelaciones = 0;
+      await tester.pumpWidget(
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(
+              estado: EstadoPartido.equipoCompleto,
+              soyOrganizador: false,
+              estoyUnido: false,
+            ).copyWith(posicionEspera: 2),
+            onSalirDeEspera: () => cancelaciones++,
+          ),
+        ),
+      );
+
+      expect(find.textContaining('Turno 2'), findsOneWidget);
+      final boton = find.widgetWithText(OutlinedButton, 'Cancelar espera');
+      await tester.ensureVisible(boton);
+      await tester.tap(boton);
+      expect(cancelaciones, 1);
+    });
+
+    testWidgets('el organizador ve el orden de suplentes', (tester) async {
+      await tester.pumpWidget(
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(estado: EstadoPartido.equipoCompleto),
+            suplentes: const ['Beto', 'Carla'],
+          ),
+        ),
+      );
+
+      final boton = find.text('Ver suplentes (2)');
+      await tester.ensureVisible(boton);
+      await tester.tap(boton);
+      await tester.pumpAndSettle();
+      expect(find.text('Beto'), findsOneWidget);
+      expect(find.text('Carla'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+    });
+  });
+
   testWidgets('50 nombres no agrandan la tarjeta y la lista permite desplazarse', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
