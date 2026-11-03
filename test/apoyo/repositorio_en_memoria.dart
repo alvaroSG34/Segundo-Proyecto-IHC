@@ -16,6 +16,8 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   final Map<String, _Fila> _partidos = {};
   final List<({String partidoId, String jugadorId, String nombre})>
   _inscripciones = [];
+  final List<({String partidoId, String jugadorId, String nombre})> _suplentes =
+      [];
   int _siguienteId = 1;
 
   /// Cambia el usuario con sesión (como si otra persona abriera la app).
@@ -29,7 +31,12 @@ class RepositorioEnMemoria implements RepositorioPartidos {
     final id = partido.id.isEmpty ? 'm-${_siguienteId++}' : partido.id;
     _partidos[id] = _Fila(
       organizadorId,
-      partido.copyWith(id: id, soyOrganizador: false, estoyUnido: false),
+      partido.copyWith(
+        id: id,
+        soyOrganizador: false,
+        estoyUnido: false,
+        posicionEspera: 0,
+      ),
       _siguienteId++,
     );
     return _visto(_partidos[id]!);
@@ -39,11 +46,22 @@ class RepositorioEnMemoria implements RepositorioPartidos {
     (i) => i.partidoId == partidoId && i.jugadorId == usuarioId,
   );
 
+  int _posicionEspera(String partidoId) {
+    var posicion = 0;
+    for (final suplente in _suplentes) {
+      if (suplente.partidoId != partidoId) continue;
+      posicion++;
+      if (suplente.jugadorId == usuarioId) return posicion;
+    }
+    return 0;
+  }
+
   ModeloPartido _visto(_Fila fila) {
     final soyOrganizador = fila.organizadorId == usuarioId;
     return fila.partido.copyWith(
       soyOrganizador: soyOrganizador,
       estoyUnido: soyOrganizador || _inscrito(fila.partido.id),
+      posicionEspera: _posicionEspera(fila.partido.id),
     );
   }
 
@@ -60,16 +78,19 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   }
 
   ModeloPartido _guardar(_Fila fila, ModeloPartido nuevo) {
-    fila.partido = nuevo.copyWith(soyOrganizador: false, estoyUnido: false);
+    fila.partido = nuevo.copyWith(
+      soyOrganizador: false,
+      estoyUnido: false,
+      posicionEspera: 0,
+    );
     return _visto(fila);
   }
 
   @override
   Future<List<ModeloPartido>> obtenerMisPartidos() async {
-    final propias = _partidos.values
-        .where((f) => f.organizadorId == usuarioId)
-        .toList()
-      ..sort((a, b) => b.orden.compareTo(a.orden));
+    final propias =
+        _partidos.values.where((f) => f.organizadorId == usuarioId).toList()
+          ..sort((a, b) => b.orden.compareTo(a.orden));
     return [for (final f in propias) _visto(f)];
   }
 
@@ -107,6 +128,19 @@ class RepositorioEnMemoria implements RepositorioPartidos {
       if (_partidos[i.partidoId]?.organizadorId == usuarioId ||
           _inscrito(i.partidoId)) {
         resultado.putIfAbsent(i.partidoId, () => []).add(i.nombre);
+      }
+    }
+    return resultado;
+  }
+
+  @override
+  Future<Map<String, List<String>>> obtenerSuplentes() async {
+    final resultado = <String, List<String>>{};
+    for (final suplente in _suplentes) {
+      if (_partidos[suplente.partidoId]?.organizadorId == usuarioId) {
+        resultado
+            .putIfAbsent(suplente.partidoId, () => [])
+            .add(suplente.nombre);
       }
     }
     return resultado;
@@ -182,6 +216,7 @@ class RepositorioEnMemoria implements RepositorioPartidos {
     _delOrganizador(partidoId, 'Solo el organizador puede eliminarlo.');
     _partidos.remove(partidoId);
     _inscripciones.removeWhere((i) => i.partidoId == partidoId);
+    _suplentes.removeWhere((i) => i.partidoId == partidoId);
   }
 
   @override
@@ -221,7 +256,53 @@ class RepositorioEnMemoria implements RepositorioPartidos {
     _inscripciones.removeWhere(
       (i) => i.partidoId == partidoId && i.jugadorId == usuarioId,
     );
-    return _guardar(fila, salido);
+    final indice = _suplentes.indexWhere((i) => i.partidoId == partidoId);
+    if (indice < 0) return _guardar(fila, salido);
+
+    final primero = _suplentes.removeAt(indice);
+    _inscripciones.add((
+      partidoId: partidoId,
+      jugadorId: primero.jugadorId,
+      nombre: primero.nombre,
+    ));
+    return _guardar(
+      fila,
+      salido.copyWith(
+        cuposOcupados: fila.partido.cuposOcupados,
+        estado: EstadoPartido.equipoCompleto,
+      ),
+    );
+  }
+
+  @override
+  Future<ModeloPartido> entrarEnEspera(String partidoId) async {
+    final fila = _buscar(partidoId);
+    final partido = _visto(fila);
+    if (!partido.puedeEntrarEnEspera) {
+      throw StateError(
+        partido.estoyEnEspera
+            ? 'Ya estás en la lista de suplentes.'
+            : partido.motivoRechazoUnirse ??
+                  'El equipo todavía tiene cupos: puedes unirte directamente.',
+      );
+    }
+    _suplentes.add((
+      partidoId: partidoId,
+      jugadorId: usuarioId,
+      nombre: usuarioNombre,
+    ));
+    return _visto(fila);
+  }
+
+  @override
+  Future<ModeloPartido> salirDeEspera(String partidoId) async {
+    final fila = _buscar(partidoId);
+    final indice = _suplentes.indexWhere(
+      (i) => i.partidoId == partidoId && i.jugadorId == usuarioId,
+    );
+    if (indice < 0) throw StateError('No estás en la lista de suplentes.');
+    _suplentes.removeAt(indice);
+    return _visto(fila);
   }
 }
 

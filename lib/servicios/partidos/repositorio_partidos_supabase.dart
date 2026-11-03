@@ -94,6 +94,7 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
   ModeloPartido _desdeFila(
     Map<String, dynamic> fila, {
     Set<String> inscritos = const {},
+    Map<String, int> posiciones = const {},
   }) {
     final id = fila['id'] as String;
     final soyOrganizador = fila['organizador_id'] == _usuarioId;
@@ -111,6 +112,7 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
       organizadorNombre: fila['organizador_nombre'] as String,
       soyOrganizador: soyOrganizador,
       estoyUnido: soyOrganizador || inscritos.contains(id),
+      posicionEspera: posiciones[id] ?? 0,
       estado:
           EstadoPartido.values.asNameMap()[fila['estado'] as String] ??
           EstadoPartido.cuposAbiertos,
@@ -130,6 +132,23 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
         .select('partido_id')
         .eq('jugador_id', _usuarioId);
     return {for (final f in filas) f['partido_id'] as String};
+  }
+
+  /// Lee la cola completa en orden y calcula el turno del usuario actual.
+  Future<Map<String, int>> _posicionesEnEspera() async {
+    final filas = await _cliente
+        .from('lista_espera')
+        .select('partido_id, jugador_id')
+        .order('id', ascending: true);
+    final cantidades = <String, int>{};
+    final posiciones = <String, int>{};
+    for (final fila in filas) {
+      final partidoId = fila['partido_id'] as String;
+      final posicion = (cantidades[partidoId] ?? 0) + 1;
+      cantidades[partidoId] = posicion;
+      if (fila['jugador_id'] == _usuarioId) posiciones[partidoId] = posicion;
+    }
+    return posiciones;
   }
 
   /// Ejecuta una función del servidor que devuelve la fila del partido.
@@ -187,9 +206,9 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
           final filasUnidos = ids.isEmpty
               ? <Map<String, dynamic>>[]
               : await _cliente
-                  .from('partidos')
-                  .select()
-                  .inFilter('id', ids.toList());
+                    .from('partidos')
+                    .select()
+                    .inFilter('id', ids.toList());
 
           final todos = <EventoHistorial>[
             for (final f in mios)
@@ -238,6 +257,27 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
         return resultado;
       });
 
+  @override
+  Future<Map<String, List<String>>> obtenerSuplentes() => _ejecutar(() async {
+    final mios = await _cliente
+        .from('partidos')
+        .select('id')
+        .eq('organizador_id', _usuarioId);
+    if (mios.isEmpty) return <String, List<String>>{};
+    final filas = await _cliente
+        .from('lista_espera')
+        .select('partido_id, jugador_nombre')
+        .inFilter('partido_id', [for (final f in mios) f['id'] as String])
+        .order('id', ascending: true);
+    final resultado = <String, List<String>>{};
+    for (final fila in filas) {
+      resultado
+          .putIfAbsent(fila['partido_id'] as String, () => [])
+          .add(fila['jugador_nombre'] as String);
+    }
+    return resultado;
+  });
+
   // Interfaz -> consulta -> base de datos (requisito #6): los filtros se
   // traducen a condiciones y las resuelve PostgreSQL en el servidor.
   @override
@@ -262,10 +302,11 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
 
     final filas = await consulta.order('fecha_inicio', ascending: true);
     final inscritos = await _idsInscritos();
+    final posiciones = await _posicionesEnEspera();
     return [
       for (final f in filas)
         if (filtro.coincideTitulo(f['titulo'] as String))
-          _desdeFila(f, inscritos: inscritos),
+          _desdeFila(f, inscritos: inscritos, posiciones: posiciones),
     ];
   });
 
@@ -339,6 +380,23 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
     final salido = await _llamar('salir_del_partido', {'p_partido': partidoId});
     return salido.copyWith(estoyUnido: false);
   }
+
+  @override
+  Future<ModeloPartido> entrarEnEspera(String partidoId) => _ejecutar(() async {
+    final fila = await _cliente.rpc(
+      'entrar_lista_espera',
+      params: {'p_partido': partidoId},
+    );
+    final posiciones = await _posicionesEnEspera();
+    return _desdeFila(
+      Map<String, dynamic>.from(fila as Map),
+      posiciones: posiciones,
+    );
+  });
+
+  @override
+  Future<ModeloPartido> salirDeEspera(String partidoId) =>
+      _llamar('salir_lista_espera', {'p_partido': partidoId});
 }
 
 /// Una condición de la consulta: columna, operador (eq, ilike, gte, lt) y valor.

@@ -114,6 +114,29 @@ elimina solamente el partido de esa ejecución, incluso si falla la comprobació
 
 Referencia: [pruebas de integración de Flutter](https://docs.flutter.dev/testing/integration-tests).
 
+### Prueba E2E: titular sale → entra el primer suplente
+
+Con el emulador iniciado y el esquema de Supabase aplicado, usa tres cuentas
+distintas ya registradas. Cambia `emulator-5554` por el ID que muestre
+`flutter devices` y reemplaza los valores de ejemplo por tus credenciales:
+
+```powershell
+flutter test integration_test/flujo_suplentes_test.dart -d emulator-5554 `
+  --dart-define=E2E_ORGANIZADOR_CORREO=correo_organizador `
+  --dart-define=E2E_ORGANIZADOR_CLAVE=clave_organizador `
+  --dart-define=E2E_TITULAR_CORREO=correo_titular `
+  --dart-define=E2E_TITULAR_CLAVE=clave_titular `
+  --dart-define=E2E_SUPLENTE_CORREO=correo_suplente `
+  --dart-define=E2E_SUPLENTE_CLAVE=clave_suplente
+```
+
+La prueba crea un partido temporal de dos cupos, cambia de cuenta desde la
+interfaz, comprueba que el suplente queda en turno 1 y que pasa a inscrito
+cuando el titular sale. El equipo permanece en 2/2. Al terminar, borra solo
+el partido creado por esa ejecución. Requiere internet; no necesita iniciar
+`flutter run` antes. Usa solo cuentas de prueba: `--dart-define` incorpora las
+credenciales al APK de depuración generado para la prueba.
+
 ---
 
 ## ⚡ Cuentas Semilla para Pruebas (Seeds)

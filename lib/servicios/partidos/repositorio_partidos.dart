@@ -20,6 +20,9 @@ abstract class RepositorioPartidos {
   /// Quién se unió a los partidos que organiza o integra: id -> nombres.
   Future<Map<String, List<String>>> obtenerJugadoresInscritos();
 
+  /// Nombres en orden de espera para los partidos organizados por el usuario.
+  Future<Map<String, List<String>>> obtenerSuplentes();
+
   /// Partidos de otros estudiantes que cumplen [filtro] (requisito #6).
   /// [ahora] es la referencia para "hoy", "próximos 7 días" y fechas pasadas.
   Future<List<ModeloPartido>> buscarPartidos(
@@ -50,6 +53,12 @@ abstract class RepositorioPartidos {
 
   /// "Salir del partido": libera el cupo de quien se había unido (H3).
   Future<ModeloPartido> salirDelPartido(String partidoId);
+
+  /// Se anota al final de la lista cuando el equipo está completo.
+  Future<ModeloPartido> entrarEnEspera(String partidoId);
+
+  /// Cancela la solicitud de suplente sin tocar los cupos del equipo.
+  Future<ModeloPartido> salirDeEspera(String partidoId);
 
   /// Historial de participación del estudiante (Clase 16 · Tarea 4).
   /// Devuelve los partidos en los que participó (organizados o unidos),
