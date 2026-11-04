@@ -115,4 +115,29 @@ void main() {
     expect(abierto.estado, EstadoPartido.cuposAbiertos);
     expect(abierto.puedeEntrarEnEspera, isFalse);
   });
+
+  test(
+    'sin suplentes, salir deja el cupo libre y conserva cierre manual',
+    () async {
+      final repo = RepositorioEnMemoria(
+        usuarioId: 'org',
+        usuarioNombre: 'Organizador',
+      );
+      repo.sembrar(
+        'org',
+        partidoDePrueba().copyWith(cuposTotales: 6, cuposOcupados: 1),
+      );
+      repo.usarSesionDe('ana', 'Ana');
+      await repo.unirseAPartido('partido-1');
+      repo.usarSesionDe('org', 'Organizador');
+      await repo.completarEquipo('partido-1');
+
+      repo.usarSesionDe('ana', 'Ana');
+      final cerrado = await repo.salirDelPartido('partido-1');
+
+      expect(cerrado.cuposOcupados, 1);
+      expect(cerrado.estado, EstadoPartido.equipoCompleto);
+      expect(cerrado.puedeEntrarEnEspera, isTrue);
+    },
+  );
 }

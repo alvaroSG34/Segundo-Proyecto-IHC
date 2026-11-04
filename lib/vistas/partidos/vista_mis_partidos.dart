@@ -178,20 +178,6 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     _avisar('Partido "${guardado.titulo}" creado y guardado');
   }
 
-  // ACCIÓN "COMPLETAR EQUIPO": la regla del modelo decide en pantalla y el
-  // servidor la vuelve a aplicar al guardar
-  Future<void> _completarEquipo(ModeloPartido partido) async {
-    if (!partido.puedeCompletarEquipo) return;
-
-    final actualizado = await _intentar(
-      () => _repositorio.completarEquipo(partido.id),
-    );
-    if (actualizado == null || !mounted) return;
-
-    _reemplazar(actualizado);
-    _avisar('¡Equipo completo en "${partido.titulo}"!');
-  }
-
   // ACCIÓN "EDITAR PARTIDO": abre el formulario con datos pre-cargados y actualiza
   Future<void> _editarPartido(ModeloPartido partido) async {
     final usuario = widget.servicioAuth.usuarioActual;
@@ -212,6 +198,17 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
     _reemplazar(guardado);
     _avisar('Partido "${guardado.titulo}" actualizado');
+  }
+
+  Future<void> _completarEquipo(ModeloPartido partido) async {
+    final cerrado = await _intentar(
+      () => _repositorio.completarEquipo(partido.id),
+    );
+    if (cerrado == null || !mounted) return;
+    _reemplazar(cerrado);
+    _avisar(
+      'Convocatoria cerrada: ${cerrado.cuposOcupados}/${cerrado.cuposTotales} cupos ocupados.',
+    );
   }
 
   // ACCIÓN "ELIMINAR PARTIDO": solicita confirmación previa antes de borrar
@@ -250,34 +247,6 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       _partidos = _partidos.where((p) => p.id != partido.id).toList();
     });
     _avisar('Partido "${partido.titulo}" eliminado');
-  }
-
-  // ACCIÓN "AGREGAR JUGADOR" (organizador). Aplica la restricción "un equipo
-  // completo no permite agregar más jugadores": si está bloqueada, explica el
-  // motivo; si no, el servidor suma el jugador.
-  Future<void> _agregarJugador(ModeloPartido partido) async {
-    if (!partido.puedeAgregarJugador) {
-      _avisar(
-        'No se puede agregar jugadores. '
-        '${partido.motivoBloqueoAgregarJugador ?? "Convocatoria no disponible."}',
-        error: true,
-      );
-      return;
-    }
-
-    final actualizado = await _intentar(
-      () => _repositorio.agregarJugadorSinCuenta(partido.id),
-    );
-    if (actualizado == null || !mounted) return;
-
-    _reemplazar(actualizado);
-    final mensaje =
-        'Jugador agregado (${actualizado.cuposOcupados}/${actualizado.cuposTotales}).';
-    _avisar(
-      actualizado.estado == EstadoPartido.equipoCompleto
-          ? '$mensaje ¡Equipo completo!'
-          : mensaje,
-    );
   }
 
   // ACCIÓN "SALIR DEL PARTIDO" (H3): quien se había unido libera su cupo
@@ -524,9 +493,10 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                   ...partidosFiltrados.map(
                     (p) => TarjetaPartido(
                       partido: p,
-                      onCompletarEquipo: () => _completarEquipo(p),
                       onEditar: () => _editarPartido(p),
-                      onAgregarJugador: () => _agregarJugador(p),
+                      onCompletarEquipo: p.puedeCompletarEquipo
+                          ? () => _completarEquipo(p)
+                          : null,
                       jugadoresUnidos: _jugadoresInscritos[p.id] ?? const [],
                       suplentes: p.soyOrganizador
                           ? _suplentes[p.id] ?? const []

@@ -37,18 +37,20 @@ ModeloPartido nuevoPartido({
 void main() {
   setUp(() => bd = RepositorioEnMemoria());
 
-  test('lo que crea un estudiante lo ven los demás, pero no él mismo en Explorar',
-      () async {
-    comoLorgio();
-    final creado = await bd.crearPartido(nuevoPartido());
-    expect(await bd.buscarPartidos(const FiltroPartidos()), isEmpty);
+  test(
+    'lo que crea un estudiante lo ven los demás, pero no él mismo en Explorar',
+    () async {
+      comoLorgio();
+      final creado = await bd.crearPartido(nuevoPartido());
+      expect(await bd.buscarPartidos(const FiltroPartidos()), isEmpty);
 
-    comoDiego();
-    final vistos = await bd.buscarPartidos(const FiltroPartidos());
-    expect(vistos.single.id, creado.id);
-    expect(vistos.single.soyOrganizador, isFalse);
-    expect(vistos.single.puedeUnirse, isTrue);
-  });
+      comoDiego();
+      final vistos = await bd.buscarPartidos(const FiltroPartidos());
+      expect(vistos.single.id, creado.id);
+      expect(vistos.single.soyOrganizador, isFalse);
+      expect(vistos.single.puedeUnirse, isTrue);
+    },
+  );
 
   test('la unión se guarda y el organizador ve quién se unió', () async {
     comoLorgio();
@@ -84,26 +86,29 @@ void main() {
     expect((await bd.obtenerMisPartidos()).single.cuposOcupados, 2);
   });
 
-  test('el último cupo completa el equipo y el siguiente es rechazado', () async {
-    comoLorgio();
-    final creado = await bd.crearPartido(nuevoPartido(cupos: 2));
+  test(
+    'el último cupo completa el equipo y el siguiente es rechazado',
+    () async {
+      comoLorgio();
+      final creado = await bd.crearPartido(nuevoPartido(cupos: 2));
 
-    comoDiego();
-    final unido = await bd.unirseAPartido(creado.id);
-    expect(unido.estado, EstadoPartido.equipoCompleto);
+      comoDiego();
+      final unido = await bd.unirseAPartido(creado.id);
+      expect(unido.estado, EstadoPartido.equipoCompleto);
 
-    comoAna();
-    await expectLater(
-      bd.unirseAPartido(creado.id),
-      throwsA(
-        isA<StateError>().having(
-          (e) => e.message,
-          'motivo',
-          'Convocatoria cerrada: el equipo ya está completo.',
+      comoAna();
+      await expectLater(
+        bd.unirseAPartido(creado.id),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'motivo',
+            'Convocatoria cerrada: el equipo ya está completo.',
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 
   test('no se puede unir a un partido cuya fecha ya pasó', () async {
     comoLorgio();
@@ -124,12 +129,11 @@ void main() {
     );
   });
 
-  test('solo el organizador puede editar, completar o eliminar', () async {
+  test('solo el organizador puede editar o eliminar', () async {
     comoLorgio();
     final creado = await bd.crearPartido(nuevoPartido());
 
     comoDiego();
-    expect(() => bd.completarEquipo(creado.id), throwsStateError);
     expect(() => bd.eliminarPartido(creado.id), throwsStateError);
     expect(
       () => bd.editarPartido(creado.copyWith(titulo: 'Otro')),
@@ -137,18 +141,20 @@ void main() {
     );
   });
 
-  test('si el organizador elimina el partido desaparece para el jugador',
-      () async {
-    comoLorgio();
-    final creado = await bd.crearPartido(nuevoPartido());
-    comoDiego();
-    await bd.unirseAPartido(creado.id);
+  test(
+    'si el organizador elimina el partido desaparece para el jugador',
+    () async {
+      comoLorgio();
+      final creado = await bd.crearPartido(nuevoPartido());
+      comoDiego();
+      await bd.unirseAPartido(creado.id);
 
-    comoLorgio();
-    await bd.eliminarPartido(creado.id);
+      comoLorgio();
+      await bd.eliminarPartido(creado.id);
 
-    comoDiego();
-    expect(await bd.obtenerPartidosUnidos(), isEmpty);
-    expect(await bd.buscarPartidos(const FiltroPartidos()), isEmpty);
-  });
+      comoDiego();
+      expect(await bd.obtenerPartidosUnidos(), isEmpty);
+      expect(await bd.buscarPartidos(const FiltroPartidos()), isEmpty);
+    },
+  );
 }

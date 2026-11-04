@@ -13,6 +13,10 @@ las E2E de `integration_test/`. Incluye una prueba nueva de carga de suplentes
 y recuperación mediante Reintentar. Las E2E con Supabase no se reejecutaron
 en esa revisión.
 
+Actualización del 04/11/2026: las acciones «Agregar jugador sin cuenta» y
+«Completar equipo» se retiraron del producto. Sus filas siguientes documentan
+ejecuciones históricas; ya no corresponden a flujos E2E activos.
+
 ## Matriz de los 16 flujos
 
 Una E2E por flujo, con `expect` por criterio. Se verifican flujo principal,
@@ -33,13 +37,13 @@ visual (H4). El inventario queda pendiente de contraste con el app map formal.
 | 9 | Explorar, buscar y filtrar partidos | [explorar_partidos_test.dart](../integration_test/explorar_partidos_test.dart) | Búsqueda por nombre, deporte combinado, sin resultados y quitar filtros; IDs/conteos, semántica, áreas ≥48 × 48 y acceso en 1 toque | Aprobada 2 veces consecutivas |
 | 10 | Unirse a un partido | [unirse_partido_test.dart](../integration_test/unirse_partido_test.dart) | Cancelar sin inscripción; confirmar 1/6 → 2/6, inscripción única y persistencia como jugador; semántica, áreas ≥48 × 48 y acceso a Explorar en 1 toque | Aprobada 2 veces consecutivas |
 | 11 | Salir de un partido | [salir_partido_test.dart](../integration_test/salir_partido_test.dart) | Desde Explorar: unirse al último cupo, cancelar sin cambios y confirmar salida; inscripción eliminada, equipo reabierto, persistencia, semántica y áreas ≥48 × 48 | Aprobada 2 veces consecutivas |
-| 12 | Agregar jugador sin cuenta | [agregar_jugador_test.dart](../integration_test/agregar_jugador_test.dart) | Incremento 1/6 → 2/6 sin inscripción, persistencia al reabrir y mismo organizador; semántica, áreas ≥48 × 48 y 2 toques desde menú | Aprobada 2 veces consecutivas |
-| 13 | Completar equipo | [completar_equipo_test.dart](../integration_test/completar_equipo_test.dart) | 1/6 → 6/6 y estado completo sin inscripciones; persistencia, botón ausente y aviso de bloqueo; semántica, áreas ≥48 × 48 y 2 toques | Aprobada 2 veces consecutivas |
+| 12 | Agregar jugador sin cuenta | Retirado | Acción y RPC eliminados del producto el 04/11/2026; los resultados anteriores son históricos | No activo |
+| 13 | Completar equipo | Retirado | Acción y RPC eliminados del producto el 04/11/2026; los resultados anteriores son históricos | No activo |
 | 14 | Consultar jugadores inscritos | [jugadores_inscritos_test.dart](../integration_test/jugadores_inscritos_test.dart) | Organizador consulta un inscrito real, cierra y reabre; nombre persistido y datos intactos; semántica, áreas ≥48 × 48 y 2 toques | Aprobada 2 veces consecutivas |
 | 15 | Consultar y filtrar historial | [historial_test.dart](../integration_test/historial_test.dart) | Todos y filtros por rol con IDs/conteos completos y orden descendente; restauración, reapertura y datos intactos; semántica, áreas ≥48 × 48 y acceso en 1 toque | Aprobada 2 veces consecutivas |
 | 16 | Entrar como suplente y pasar a titular | [flujo_suplentes_test.dart](../integration_test/flujo_suplentes_test.dart) | Tres cuentas reales: partido de 2 cupos, titular ocupa el último, suplente espera en turno 1 sin ocupar cupo y es promovido al salir el titular; persistencia en una sesión nueva y equipo en 2/2. Cancelación y avance del segundo suplente se cubren en `test/` | Aprobada en Android el 03/11/2026, según el registro de la feature |
 
-**Avance:** 16 archivos E2E implementados: 15 flujos originales y 1 de suplentes, con aprobaciones individuales registradas. No se dispone de una ejecución conjunta posterior al merge. La creación amplía su E2E existente,
+**Registro histórico:** 16 flujos E2E implementados originalmente: 15 flujos y 1 de suplentes, con aprobaciones individuales registradas. Los flujos 12 y 13 están retirados; no se dispone de una ejecución conjunta posterior al merge. La creación amplía su E2E existente,
 sin aumentar el número de flujos cubiertos. La regla de tres toques
 se aplica al acceso al formulario o al cierre desde menú, no a la preparación; accesibilidad automática no
 sustituye revisión con lector de pantalla.

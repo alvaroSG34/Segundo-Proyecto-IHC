@@ -3,9 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
 
-/// Pruebas de la interfaz: la acción "Agregar jugador" y su bloqueo
-/// cuando el equipo está completo, y la acción "Unirme al equipo" con el
-/// motivo de cada rechazo (Issue #4).
+/// Pruebas de la interfaz de unión al partido y las listas de inscritos.
 ///
 /// Ejecutar con:  flutter test test/tarjeta_partido_test.dart
 ModeloPartido crearPartido({
@@ -13,6 +11,7 @@ ModeloPartido crearPartido({
   bool soyOrganizador = true,
   bool estoyUnido = true,
   String fechaHora = '10/10/2099 · 19:00',
+  int? cuposOcupados,
 }) {
   return ModeloPartido(
     id: 'p-1',
@@ -22,7 +21,8 @@ ModeloPartido crearPartido({
     ubicacion: 'Cancha 2',
     fechaHora: fechaHora,
     cuposTotales: 10,
-    cuposOcupados: estado == EstadoPartido.equipoCompleto ? 10 : 3,
+    cuposOcupados:
+        cuposOcupados ?? (estado == EstadoPartido.equipoCompleto ? 10 : 3),
     organizadorNombre: 'Lorgio',
     soyOrganizador: soyOrganizador,
     estoyUnido: estoyUnido,
@@ -30,11 +30,55 @@ ModeloPartido crearPartido({
   );
 }
 
-Widget envolver(Widget hijo) =>
-    MaterialApp(home: Scaffold(body: SingleChildScrollView(child: hijo)));
+Widget envolver(Widget hijo) => MaterialApp(
+  home: Scaffold(body: SingleChildScrollView(child: hijo)),
+);
 
 void main() {
-  testWidgets('con cupos abiertos se puede agregar un jugador y no hay aviso de bloqueo', (
+  testWidgets(
+    'la tarjeta del organizador no ofrece acciones para ocupar cupos',
+    (tester) async {
+      await tester.pumpWidget(
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(),
+            onEditar: () {},
+            onEliminar: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Agregar jugador'), findsNothing);
+      expect(find.text('Completar equipo'), findsNothing);
+      expect(
+        find.textContaining('No puedes agregar más jugadores'),
+        findsNothing,
+      );
+      expect(find.text('Editar'), findsOneWidget);
+      expect(find.text('Eliminar'), findsOneWidget);
+    },
+  );
+
+  testWidgets('un partido completo no muestra acciones para ocupar cupos', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      envolver(
+        TarjetaPartido(
+          partido: crearPartido(estado: EstadoPartido.equipoCompleto),
+        ),
+      ),
+    );
+
+    expect(find.text('Agregar jugador'), findsNothing);
+    expect(find.text('Completar equipo'), findsNothing);
+    expect(
+      find.textContaining('No puedes agregar más jugadores'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('el organizador ve la acción que cierra sin ocupar cupos', (
     tester,
   ) async {
     var llamadas = 0;
@@ -42,36 +86,40 @@ void main() {
       envolver(
         TarjetaPartido(
           partido: crearPartido(),
-          onAgregarJugador: () => llamadas++,
-          onCompletarEquipo: () {},
+          onCompletarEquipo: () => llamadas++,
         ),
       ),
     );
 
-    await tester.tap(find.text('Agregar jugador'));
-
+    expect(find.text('Completar equipo'), findsOneWidget);
+    expect(
+      find.text('Cierra las inscripciones sin añadir jugadores.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Completar equipo'));
     expect(llamadas, 1);
-    expect(find.textContaining('No puedes agregar más jugadores'), findsNothing);
   });
 
-  testWidgets('con el equipo completo la interfaz explica por qué no se pueden agregar jugadores', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      envolver(
-        TarjetaPartido(
-          partido: crearPartido(estado: EstadoPartido.equipoCompleto),
-          onAgregarJugador: () {},
-          onCompletarEquipo: () {},
+  testWidgets(
+    'un cierre con cupos libres se etiqueta como convocatoria cerrada',
+    (tester) async {
+      await tester.pumpWidget(
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(
+              estado: EstadoPartido.equipoCompleto,
+              cuposOcupados: 3,
+            ),
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(find.textContaining('No puedes agregar más jugadores'), findsOneWidget);
-    expect(find.textContaining('el equipo ya está completo'), findsOneWidget);
-    // El botón "Completar equipo" ya no se ofrece
-    expect(find.text('Completar equipo'), findsNothing);
-  });
+      expect(find.text('Convocatoria cerrada'), findsOneWidget);
+      expect(find.text('3/10'), findsOneWidget);
+      expect(find.text('Faltan 7'), findsOneWidget);
+      expect(find.text('Equipo completo'), findsNothing);
+    },
+  );
 
   group('Unirme al equipo (Issue #4)', () {
     testWidgets('con cupos abiertos aparece el botón y avisa al tocarlo', (
@@ -134,7 +182,7 @@ void main() {
       expect(find.text('Unirme al equipo'), findsNothing);
       expect(find.text('Ya formas parte de este equipo.'), findsOneWidget);
     });
-  
+
     testWidgets('si la fecha ya pasó no hay botón y se explica el motivo', (
       tester,
     ) async {
@@ -157,15 +205,17 @@ void main() {
         findsOneWidget,
       );
     });
-});
+  });
 
   group('Organizador ve quién se unió (Issue #8)', () {
     testWidgets('un jugador inscrito también ve los nombres', (tester) async {
       await tester.pumpWidget(
-        envolver(TarjetaPartido(
-          partido: crearPartido(soyOrganizador: false, estoyUnido: true),
-          jugadoresUnidos: const ['Diego', 'Ana'],
-        )),
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(soyOrganizador: false, estoyUnido: true),
+            jugadoresUnidos: const ['Diego', 'Ana'],
+          ),
+        ),
       );
 
       expect(find.text('Diego'), findsNothing);
@@ -179,10 +229,12 @@ void main() {
 
     testWidgets('quien no se unió no ve los nombres', (tester) async {
       await tester.pumpWidget(
-        envolver(TarjetaPartido(
-          partido: crearPartido(soyOrganizador: false, estoyUnido: false),
-          jugadoresUnidos: const ['Diego', 'Ana'],
-        )),
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(soyOrganizador: false, estoyUnido: false),
+            jugadoresUnidos: const ['Diego', 'Ana'],
+          ),
+        ),
       );
 
       expect(find.textContaining('Ver jugadores inscritos'), findsNothing);
@@ -210,7 +262,9 @@ void main() {
 
     testWidgets('avisa cuando todavía no se unió nadie', (tester) async {
       await tester.pumpWidget(
-        envolver(TarjetaPartido(partido: crearPartido(), jugadoresUnidos: const [])),
+        envolver(
+          TarjetaPartido(partido: crearPartido(), jugadoresUnidos: const []),
+        ),
       );
 
       await tester.tap(find.text('Ver jugadores inscritos (0)'));
@@ -223,7 +277,9 @@ void main() {
   });
 
   group('Lista de suplentes', () {
-    testWidgets('un equipo completo ofrece entrar como suplente', (tester) async {
+    testWidgets('un equipo completo ofrece entrar como suplente', (
+      tester,
+    ) async {
       var entradas = 0;
       await tester.pumpWidget(
         envolver(
@@ -290,34 +346,53 @@ void main() {
     });
   });
 
-  testWidgets('50 nombres no agrandan la tarjeta y la lista permite desplazarse', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(390, 844);
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(envolver(TarjetaPartido(
-      partido: crearPartido(),
-      jugadoresUnidos: const ['Jugador 1'],
-    )));
-    final altura = tester.getSize(find.byType(TarjetaPartido)).height;
+  testWidgets(
+    '50 nombres no agrandan la tarjeta y la lista permite desplazarse',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(),
+            jugadoresUnidos: const ['Jugador 1'],
+          ),
+        ),
+      );
+      final altura = tester.getSize(find.byType(TarjetaPartido)).height;
 
-    await tester.pumpWidget(envolver(TarjetaPartido(
-      partido: crearPartido(),
-      jugadoresUnidos: List.generate(50, (i) => 'Jugador ${i + 1}'),
-    )));
-    expect(tester.getSize(find.byType(TarjetaPartido)).height, altura);
-    await tester.tap(find.text('Ver jugadores inscritos (50)'));
-    await tester.pumpAndSettle();
-    expect(find.text('Jugadores inscritos (50)'), findsOneWidget);
-    expect(find.text('Jugador 1'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Jugador 50'), 250,
-      scrollable: find.descendant(of: find.byType(AlertDialog), matching: find.byType(Scrollable)));
-    expect(find.text('Jugador 50').hitTestable(), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      await tester.pumpWidget(
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido(),
+            jugadoresUnidos: List.generate(50, (i) => 'Jugador ${i + 1}'),
+          ),
+        ),
+      );
+      expect(tester.getSize(find.byType(TarjetaPartido)).height, altura);
+      await tester.tap(find.text('Ver jugadores inscritos (50)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Jugadores inscritos (50)'), findsOneWidget);
+      expect(find.text('Jugador 1'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Jugador 50'),
+        250,
+        scrollable: find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(find.text('Jugador 50').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   group('Clase 16 · Fitts: editar y eliminar fáciles de alcanzar', () {
-    testWidgets('son botones con texto de al menos 48 px de alto', (tester) async {
+    testWidgets('son botones con texto de al menos 48 px de alto', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         envolver(
           TarjetaPartido(

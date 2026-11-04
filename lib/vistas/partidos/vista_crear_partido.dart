@@ -837,9 +837,8 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                       const SizedBox(height: 8),
                       // Ayuda breve donde se decide (H10)
                       const Text(
-                        'Los cupos incluyen al organizador. Después podrás '
-                        '"Agregar jugador" para sumar a alguien sin cuenta o '
-                        '"Completar equipo" para cerrar la convocatoria.',
+                        'Los cupos incluyen al organizador. Cada cupo adicional '
+                        'se ocupa cuando otra persona se inscribe al partido.',
                         style: TextStyle(
                           fontSize: 12,
                           color: TemaApp.textoSecundario,

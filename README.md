@@ -12,7 +12,7 @@
 ## 📌 Propósito del Producto
 **UniSport** es una aplicación diseñada para resolver la fricción de coordinar encuentros deportivos en el campus universitario:
 - **Crear partidos** definiendo disciplina (Futsal, Básquetbol, Vóley), cancha y horario.
-- **Completar equipos** permitiendo que estudiantes se unan a convocatorias abiertas con cupos disponibles.
+- **Coordinar equipos** mediante inscripciones reales a convocatorias con cupos disponibles.
 
 ---
 
@@ -172,12 +172,11 @@ Las cuentas viven en Supabase. Después de configurar el proyecto, regístrenlas
 
 ---
 
-## ✅ Tarea 2 - Cambio de estado y pruebas unitarias
+## ✅ Estado de los partidos
 
-- **Nueva acción:** en *Mis partidos*, el organizador pulsa **Completar equipo** y el partido pasa de **Cupos abiertos** a **Equipo completo** (los cupos quedan completos).
-- **Persistencia:** el cambio se guarda y se conserva al recargar la aplicación.
-- **Pruebas unitarias:** 8 pruebas sobre la regla de cambio de estado, ejecutadas y aprobadas con `flutter test`.
-- **Documentación:** [`docs/task-02-state-tests.md`](docs/task-02-state-tests.md)
+- El estado pasa de **Cupos abiertos** a **Equipo completo** cuando las inscripciones reales ocupan todos los cupos.
+- Solo las inscripciones ocupan cupos; el organizador no puede añadir jugadores sin cuenta ni cerrar manualmente la convocatoria.
+- **Pruebas unitarias:** [`test/estado_partido_test.dart`](test/estado_partido_test.dart) cubre el cierre por la última inscripción y su persistencia.
 
 ---
 

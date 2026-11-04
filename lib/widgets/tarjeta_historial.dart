@@ -54,7 +54,9 @@ class TarjetaHistorial extends StatelessWidget {
                       evento.rol.descripcion,
                       style: TextStyle(
                         fontSize: 13,
-                        color: esOrganizador ? TemaApp.verdeOscuro : TemaApp.azulDeportivo,
+                        color: esOrganizador
+                            ? TemaApp.verdeOscuro
+                            : TemaApp.azulDeportivo,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -76,7 +78,9 @@ class TarjetaHistorial extends StatelessWidget {
               Icon(
                 LucideIcons.calendar,
                 size: 15,
-                color: esFinalizado ? TemaApp.textoSecundario : TemaApp.textoPrincipal,
+                color: esFinalizado
+                    ? TemaApp.textoSecundario
+                    : TemaApp.textoPrincipal,
               ),
               const SizedBox(width: 6),
               Text(
@@ -84,7 +88,9 @@ class TarjetaHistorial extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: esFinalizado ? TemaApp.textoSecundario : TemaApp.textoPrincipal,
+                  color: esFinalizado
+                      ? TemaApp.textoSecundario
+                      : TemaApp.textoPrincipal,
                 ),
               ),
               const Spacer(),
@@ -122,6 +128,7 @@ class TarjetaHistorial extends StatelessWidget {
         texto = TemaApp.textoSecundario;
         break;
       case ResultadoPartido.equipoCompleto:
+      case ResultadoPartido.convocatoriaCerrada:
         fondo = TemaApp.naranjaSuave;
         texto = TemaApp.naranjaAviso;
         break;

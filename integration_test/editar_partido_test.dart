@@ -34,16 +34,8 @@ void main() {
       final marca = inicio.microsecondsSinceEpoch;
       final tituloOriginal = 'E2E editar abierto $marca';
       final tituloNuevo = 'E2E editado abierto $marca';
-      final tituloCompleto = 'E2E editar completo $marca';
-      final tituloCompletoNuevo = 'E2E editado completo $marca';
       final tituloDescartado = 'E2E descartado $marca';
-      final titulos = [
-        tituloOriginal,
-        tituloNuevo,
-        tituloCompleto,
-        tituloCompletoNuevo,
-        tituloDescartado,
-      ];
+      final titulos = [tituloOriginal, tituloNuevo, tituloDescartado];
       final ids = <String>[];
       final clienteDatos = SupabaseClient(
         ConfiguracionSupabase.url,
@@ -62,7 +54,7 @@ void main() {
           await clienteDatos.dispose();
         }
       });
-      debugPrint('Editar E2E · 1/9: preparación e ingreso');
+      debugPrint('Editar E2E · 1/8: preparación e ingreso');
       try {
         await clienteDatos.auth
             .signInWithPassword(email: _correo.trim(), password: _clave)
@@ -125,28 +117,15 @@ void main() {
         cuposOcupados: 1,
         organizadorNombre: perfil!['nombre'] as String,
       );
-      var abierto = await repo
+      final abierto = await repo
           .crearPartido(nuevo(tituloOriginal, 6, 9))
           .timeout(_limite);
       ids.add(abierto.id);
-      abierto = await repo.agregarJugadorSinCuenta(abierto.id).timeout(_limite);
-      abierto = await repo.agregarJugadorSinCuenta(abierto.id).timeout(_limite);
-      var completo = await repo
-          .crearPartido(nuevo(tituloCompleto, 4, 11))
-          .timeout(_limite);
-      ids.add(completo.id);
-      completo = await repo.completarEquipo(completo.id).timeout(_limite);
       final original = await _fila(clienteDatos, abierto.id);
-      final originalCompleto = await _fila(clienteDatos, completo.id);
       expect(
         abierto.cuposOcupados,
-        3,
-        reason: 'Preparación: abierto con tres ocupados.',
-      );
-      expect(
-        completo.estado,
-        EstadoPartido.equipoCompleto,
-        reason: 'Preparación: segundo partido completo.',
+        1,
+        reason: 'Preparación: solo el organizador ocupa un cupo.',
       );
       final semantica = tester.ensureSemantics();
       try {
@@ -180,7 +159,7 @@ void main() {
           reason: 'Debe ingresar el propietario preparado.',
         );
 
-        debugPrint('Editar E2E · 2/9: acceso en dos toques');
+        debugPrint('Editar E2E · 2/8: acceso en dos toques');
         var toques = 0;
         final acceso = find.widgetWithText(ElevatedButton, 'Mis\nPartidos');
         await _visible(tester, acceso);
@@ -206,7 +185,7 @@ void main() {
           reason: 'Acceder a edición respeta el máximo de tres toques.',
         );
 
-        debugPrint('Editar E2E · 3/9: precarga y accesibilidad');
+        debugPrint('Editar E2E · 3/8: precarga y accesibilidad');
         await _precarga(tester, abierto);
         for (final campo in [
           ('partido_titulo', 'Título del partido'),
@@ -250,7 +229,7 @@ void main() {
         );
         _areaTactil(tester, _guardar(), 'Guardar cambios');
 
-        debugPrint('Editar E2E · 4/9: campos inválidos sin escritura');
+        debugPrint('Editar E2E · 4/8: campos inválidos sin escritura');
         await _escribir(tester, 'partido_titulo', '');
         await _escribir(tester, 'partido_ubicacion', '');
         await _tocar(tester, find.bySemanticsLabel('Guardar cambios'));
@@ -281,7 +260,7 @@ void main() {
           reason: 'Título corto no debe cambiar la fila.',
         );
 
-        debugPrint('Editar E2E · 5/9: cancelar descarta cambios');
+        debugPrint('Editar E2E · 5/8: cancelar descarta cambios');
         await _escribir(tester, 'partido_titulo', tituloDescartado);
         await _escribir(tester, 'partido_ubicacion', 'Lugar descartado E2E');
         await tester.pageBack();
@@ -299,8 +278,8 @@ void main() {
         await _abrirEdicion(tester, abierto.id);
         await _precarga(tester, abierto);
 
-        debugPrint('Editar E2E · 6/9: mínimo de cupos ocupados');
-        for (final esperado in [5, 4, 3]) {
+        debugPrint('Editar E2E · 6/8: mínimo de cupos ocupados');
+        for (final esperado in [3, 2, 1]) {
           await _tocar(tester, _accion('Disminuir cupos'));
           _cupos(tester, esperado);
         }
@@ -310,17 +289,17 @@ void main() {
               .properties
               .enabled,
           isFalse,
-          reason: 'No debe reducirse por debajo de tres jugadores ocupados.',
+          reason: 'No debe reducirse por debajo del cupo del organizador.',
         );
         await tester.tap(_marco('Disminuir cupos'), warnIfMissed: false);
         await tester.pump(const Duration(milliseconds: 100));
-        _cupos(tester, 3);
-        for (final esperado in [4, 5]) {
+        _cupos(tester, 1);
+        for (final esperado in [2, 3]) {
           await _tocar(tester, _accion('Aumentar cupos'));
           _cupos(tester, esperado);
         }
 
-        debugPrint('Editar E2E · 7/9: cambios, vista previa y carga');
+        debugPrint('Editar E2E · 7/8: cambios, vista previa y carga');
         await _escribir(tester, 'partido_titulo', tituloNuevo);
         await _escribir(tester, 'partido_ubicacion', 'Coliseo editado E2E');
         await _tocar(tester, _accion('Básquetbol'));
@@ -366,15 +345,15 @@ void main() {
           fechaNueva,
           reason: 'Vista previa de fecha y hora nuevas.',
         );
-        expect(previa.cuposTotales, 5, reason: 'Vista previa de cinco cupos.');
+        expect(previa.cuposTotales, 3, reason: 'Vista previa de tres cupos.');
         expect(
           previa.cuposOcupados,
-          3,
-          reason: 'La edición conserva los ocupados.',
+          1,
+          reason: 'La edición conserva el cupo del organizador.',
         );
         await _guardarConCarga(tester);
 
-        debugPrint('Editar E2E · 8/9: resultado y persistencia');
+        debugPrint('Editar E2E · 8/8: resultado y persistencia');
         await _esperar(tester, find.text('Partido "$tituloNuevo" actualizado'));
         await _comprobarTarjeta(
           tester,
@@ -383,8 +362,8 @@ void main() {
           'Coliseo editado E2E',
           'Básquetbol',
           fechaNueva,
-          5,
           3,
+          1,
           EstadoPartido.cuposAbiertos,
         );
         final fila = await _fila(clienteDatos, abierto.id);
@@ -393,8 +372,8 @@ void main() {
           'titulo': tituloNuevo,
           'ubicacion': 'Coliseo editado E2E',
           'disciplina': 'Básquetbol',
-          'cupos_totales': 5,
-          'cupos_ocupados': 3,
+          'cupos_totales': 3,
+          'cupos_ocupados': 1,
           'estado': 'cuposAbiertos',
         }.entries) {
           expect(
@@ -444,57 +423,11 @@ void main() {
           'Coliseo editado E2E',
           'Básquetbol',
           fechaNueva,
-          5,
           3,
+          1,
           EstadoPartido.cuposAbiertos,
         );
 
-        debugPrint('Editar E2E · 9/9: edición de equipo completo');
-        await _esperar(tester, _tarjeta(completo.id));
-        await _abrirEdicion(tester, completo.id);
-        await _precarga(tester, completo);
-        for (final nombre in ['Aumentar cupos', 'Disminuir cupos']) {
-          await _visible(tester, _marco(nombre));
-          expect(
-            tester
-                .getSemantics(_accion(nombre))
-                .getSemanticsData()
-                .flagsCollection
-                .isEnabled
-                .toBoolOrNull(),
-            isFalse,
-            reason: '$nombre debe estar deshabilitado en equipo completo.',
-          );
-          await tester.tap(_marco(nombre), warnIfMissed: false);
-          await tester.pump(const Duration(milliseconds: 100));
-          _cupos(tester, 4);
-        }
-        await _mensajeVisible(
-          tester,
-          'El equipo ya está completo: no se pueden cambiar los cupos.',
-        );
-        await _escribir(tester, 'partido_titulo', tituloCompletoNuevo);
-        await _guardarConCarga(tester);
-        await _esperar(
-          tester,
-          find.text('Partido "$tituloCompletoNuevo" actualizado'),
-        );
-        await _comprobarTarjeta(
-          tester,
-          completo.id,
-          tituloCompletoNuevo,
-          completo.ubicacion,
-          completo.disciplina,
-          completo.fechaInicio!,
-          4,
-          4,
-          EstadoPartido.equipoCompleto,
-        );
-        final completoGuardado = await _fila(clienteDatos, completo.id);
-        expect(completoGuardado, {
-          ...originalCompleto,
-          'titulo': tituloCompletoNuevo,
-        }, reason: 'En equipo completo solo debe cambiar el título.');
         expect(
           clienteApp.auth.currentUser?.id == uid,
           isTrue,

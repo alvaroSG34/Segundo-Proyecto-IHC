@@ -212,29 +212,17 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   }
 
   @override
+  Future<ModeloPartido> completarEquipo(String partidoId) async {
+    final fila = _buscar(partidoId);
+    return _guardar(fila, _visto(fila).completarEquipo());
+  }
+
+  @override
   Future<void> eliminarPartido(String partidoId) async {
     _delOrganizador(partidoId, 'Solo el organizador puede eliminarlo.');
     _partidos.remove(partidoId);
     _inscripciones.removeWhere((i) => i.partidoId == partidoId);
     _suplentes.removeWhere((i) => i.partidoId == partidoId);
-  }
-
-  @override
-  Future<ModeloPartido> completarEquipo(String partidoId) async {
-    final fila = _delOrganizador(
-      partidoId,
-      'Solo el organizador puede completar el equipo',
-    );
-    return _guardar(fila, _visto(fila).completarEquipo());
-  }
-
-  @override
-  Future<ModeloPartido> agregarJugadorSinCuenta(String partidoId) async {
-    final fila = _delOrganizador(
-      partidoId,
-      'Solo el organizador puede agregar jugadores.',
-    );
-    return _guardar(fila, _visto(fila).agregarJugador(marcarComoUnido: false));
   }
 
   @override

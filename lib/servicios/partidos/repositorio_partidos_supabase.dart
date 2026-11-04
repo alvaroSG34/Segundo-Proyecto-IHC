@@ -359,17 +359,13 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
       });
 
   @override
-  Future<void> eliminarPartido(String partidoId) => _ejecutar(() async {
-    await _cliente.from('partidos').delete().eq('id', partidoId);
-  });
-
-  @override
   Future<ModeloPartido> completarEquipo(String partidoId) =>
       _llamar('completar_equipo', {'p_partido': partidoId});
 
   @override
-  Future<ModeloPartido> agregarJugadorSinCuenta(String partidoId) =>
-      _llamar('agregar_jugador_sin_cuenta', {'p_partido': partidoId});
+  Future<void> eliminarPartido(String partidoId) => _ejecutar(() async {
+    await _cliente.from('partidos').delete().eq('id', partidoId);
+  });
 
   @override
   Future<ModeloPartido> unirseAPartido(String partidoId) =>

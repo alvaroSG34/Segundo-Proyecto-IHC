@@ -97,45 +97,6 @@ class ModeloPartido {
   }
 
   // ---------------------------------------------------------------------------
-  // REGLA DE CAMBIO DE ESTADO
-  //   Cupos abiertos --(Completar equipo)--> Equipo completo
-  //
-  //   - Solo el organizador del partido puede completar el equipo.
-  //   - Solo se puede completar si el partido está en "Cupos abiertos".
-  //   - Al completarlo, los cupos ocupados pasan a ser iguales al total.
-  //   - "Equipo completo" es un estado final: no hay vuelta atrás.
-  // ---------------------------------------------------------------------------
-
-  /// ¿Se puede ejecutar ahora la acción "Completar equipo"?
-  bool get puedeCompletarEquipo =>
-      soyOrganizador && estado == EstadoPartido.cuposAbiertos;
-
-  /// Acción "Completar equipo". Devuelve una copia del partido ya completo
-  /// (el original no se modifica). Lanza [StateError] si la regla no lo permite.
-  ModeloPartido completarEquipo() {
-    if (!soyOrganizador) {
-      throw StateError('Solo el organizador puede completar el equipo');
-    }
-    if (estado != EstadoPartido.cuposAbiertos) {
-      throw StateError('El equipo de "$titulo" ya está completo');
-    }
-    return ModeloPartido(
-      id: id,
-      titulo: titulo,
-      disciplina: disciplina,
-      icono: icono,
-      ubicacion: ubicacion,
-      fechaHora: fechaHora,
-      cuposTotales: cuposTotales,
-      cuposOcupados: cuposTotales,
-      organizadorNombre: organizadorNombre,
-      soyOrganizador: soyOrganizador,
-      estoyUnido: estoyUnido,
-      estado: EstadoPartido.equipoCompleto,
-    );
-  }
-
-  // ---------------------------------------------------------------------------
   // REGLA DE RESTRICCIÓN (UNISPORT)
   //   "Un equipo completo no permite agregar más jugadores"
   //   Cuando una acción esté bloqueada, la interfaz debe explicar claramente el motivo.
@@ -145,36 +106,48 @@ class ModeloPartido {
   bool get puedeAgregarJugador =>
       estado == EstadoPartido.cuposAbiertos && !estaLleno;
 
+  /// El organizador puede cerrar una convocatoria con cupos todavía libres.
+  bool get puedeCompletarEquipo =>
+      soyOrganizador &&
+      estado == EstadoPartido.cuposAbiertos &&
+      !estaLleno &&
+      !fechaPasada;
+
+  /// Etiqueta visible que diferencia un cierre manual de un equipo lleno.
+  String get etiquetaEstado =>
+      estado == EstadoPartido.equipoCompleto && !estaLleno
+      ? 'Convocatoria cerrada'
+      : estado.etiqueta;
+
+  /// Cierra la convocatoria sin crear inscripciones ni ocupar cupos.
+  ModeloPartido completarEquipo() {
+    if (!soyOrganizador) {
+      throw StateError('Solo el organizador puede cerrar la convocatoria.');
+    }
+    if (fechaPasada) {
+      throw StateError('El partido ya se jugó: su fecha ya pasó.');
+    }
+    if (estado == EstadoPartido.equipoCompleto) {
+      throw StateError('La convocatoria ya está cerrada.');
+    }
+    if (estaLleno) {
+      throw StateError('El equipo ya está completo.');
+    }
+    return copyWith(estado: EstadoPartido.equipoCompleto);
+  }
+
   /// Motivo claro por el cual está bloqueada la acción de agregar jugadores.
   /// Si la acción está permitida, devuelve null.
   String? get motivoBloqueoAgregarJugador {
     if (estado == EstadoPartido.equipoCompleto) {
-      return 'Convocatoria cerrada: el equipo ya está completo.';
+      return estaLleno
+          ? 'Convocatoria cerrada: el equipo ya está completo.'
+          : 'Convocatoria cerrada por el organizador.';
     }
     if (estaLleno) {
       return 'Cupos agotados: se alcanzó el límite máximo de jugadores.';
     }
     return null;
-  }
-
-  /// Acción de agregar un jugador (unirse al equipo).
-  /// Devuelve una copia inmutable del partido con cupos actualizados.
-  /// Lanza [StateError] si la restricción de estado no lo permite.
-  ModeloPartido agregarJugador({bool marcarComoUnido = true}) {
-    if (!puedeAgregarJugador) {
-      throw StateError(
-        motivoBloqueoAgregarJugador ??
-            'No se pueden agregar más jugadores a este equipo',
-      );
-    }
-    final nuevosOcupados = cuposOcupados + 1;
-    final seCompleto = nuevosOcupados >= cuposTotales;
-
-    return copyWith(
-      cuposOcupados: nuevosOcupados,
-      estoyUnido: estoyUnido || marcarComoUnido,
-      estado: seCompleto ? EstadoPartido.equipoCompleto : estado,
-    );
   }
 
   // ---------------------------------------------------------------------------
@@ -209,14 +182,22 @@ class ModeloPartido {
   ModeloPartido unirse() {
     final motivo = motivoRechazoUnirse;
     if (motivo != null) throw StateError(motivo);
-    return agregarJugador(marcarComoUnido: true);
+    final nuevosOcupados = cuposOcupados + 1;
+    return copyWith(
+      cuposOcupados: nuevosOcupados,
+      estoyUnido: true,
+      estado: nuevosOcupados >= cuposTotales
+          ? EstadoPartido.equipoCompleto
+          : estado,
+    );
   }
 
   // ---------------------------------------------------------------------------
   // REGLA DE SALIDA DEL PARTIDO (H3 Control y libertad)
   //   Quien se unió puede retirarse mientras el partido no haya pasado. El
-  //   organizador no sale de su propio partido (lo elimina). Al salir se libera
-  //   un cupo y la convocatoria vuelve a "Cupos abiertos".
+  //   organizador no sale de su propio partido (lo elimina). Al salir de un
+  //   equipo que se llenó por inscripciones se libera el cupo y vuelve a abrirse;
+  //   un cierre manual se conserva aunque quede un cupo libre.
   // ---------------------------------------------------------------------------
 
   /// Motivo por el que no puede salir, o null si la salida está permitida.
@@ -239,7 +220,9 @@ class ModeloPartido {
     return copyWith(
       cuposOcupados: cuposOcupados - 1,
       estoyUnido: false,
-      estado: EstadoPartido.cuposAbiertos,
+      estado: estado == EstadoPartido.equipoCompleto && !estaLleno
+          ? EstadoPartido.equipoCompleto
+          : EstadoPartido.cuposAbiertos,
     );
   }
 

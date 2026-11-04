@@ -14,7 +14,8 @@ enum RolParticipacion {
 enum ResultadoPartido {
   finalizado('Finalizado', 'Partido disputado'),
   enConvocatoria('Convocatoria abierta', 'Buscando jugadores'),
-  equipoCompleto('Equipo completo', 'Convocatoria cerrada');
+  convocatoriaCerrada('Convocatoria cerrada', 'Cerrada por el organizador'),
+  equipoCompleto('Equipo completo', 'Todos los cupos están ocupados');
 
   final String etiqueta;
   final String detalle;
@@ -65,12 +66,15 @@ class EventoHistorial {
   String fechaAmigable({DateTime? ahora}) {
     final ref = ahora ?? DateTime.now();
     final inicio = fechaInicio;
-    final esMismoDia = inicio.year == ref.year &&
+    final esMismoDia =
+        inicio.year == ref.year &&
         inicio.month == ref.month &&
         inicio.day == ref.day;
-    final diferenciaDias = DateTime(inicio.year, inicio.month, inicio.day)
-        .difference(DateTime(ref.year, ref.month, ref.day))
-        .inDays;
+    final diferenciaDias = DateTime(
+      inicio.year,
+      inicio.month,
+      inicio.day,
+    ).difference(DateTime(ref.year, ref.month, ref.day)).inDays;
 
     final horaMinuto =
         '${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}';
@@ -97,8 +101,10 @@ class EventoHistorial {
     final ResultadoPartido res;
     if (paso) {
       res = ResultadoPartido.finalizado;
-    } else if (partido.estado == EstadoPartido.equipoCompleto || partido.estaLleno) {
+    } else if (partido.estaLleno) {
       res = ResultadoPartido.equipoCompleto;
+    } else if (partido.estado == EstadoPartido.equipoCompleto) {
+      res = ResultadoPartido.convocatoriaCerrada;
     } else {
       res = ResultadoPartido.enConvocatoria;
     }
@@ -139,13 +145,16 @@ class EventoHistorial {
     final ResultadoPartido res;
     if (paso) {
       res = ResultadoPartido.finalizado;
-    } else if (estadoStr == 'equipoCompleto' || cuposOcupados >= cuposTotales) {
+    } else if (cuposOcupados >= cuposTotales) {
       res = ResultadoPartido.equipoCompleto;
+    } else if (estadoStr == 'equipoCompleto') {
+      res = ResultadoPartido.convocatoriaCerrada;
     } else {
       res = ResultadoPartido.enConvocatoria;
     }
 
-    final esOrganizador = (fila['organizador_id'] as String?) == usuarioActualId ||
+    final esOrganizador =
+        (fila['organizador_id'] as String?) == usuarioActualId ||
         (fila['rol'] as String?) == 'organizador';
 
     final rol = esOrganizador

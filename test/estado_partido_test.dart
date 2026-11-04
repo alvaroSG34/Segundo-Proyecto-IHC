@@ -1,13 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
+
 import 'apoyo/repositorio_en_memoria.dart';
 
-/// Pruebas unitarias de la regla de cambio de estado:
-///   Cupos abiertos --(Completar equipo)--> Equipo completo
-///
-/// Ejecutar con:  flutter test test/estado_partido_test.dart
 ModeloPartido crearPartido({
   bool soyOrganizador = true,
+  bool estoyUnido = true,
   EstadoPartido estado = EstadoPartido.cuposAbiertos,
   int cuposTotales = 10,
   int cuposOcupados = 3,
@@ -23,81 +21,133 @@ ModeloPartido crearPartido({
     cuposOcupados: cuposOcupados,
     organizadorNombre: 'Lorgio',
     soyOrganizador: soyOrganizador,
-    estoyUnido: soyOrganizador,
+    estoyUnido: estoyUnido,
     estado: estado,
   );
 }
 
 void main() {
-  group('Regla de cambio de estado: completar equipo', () {
+  group('Estado del partido según las inscripciones', () {
     test('un partido nuevo nace con los cupos abiertos', () {
       final partido = crearPartido();
 
       expect(partido.estado, EstadoPartido.cuposAbiertos);
-      expect(partido.puedeCompletarEquipo, isTrue);
     });
 
-    test('el organizador pasa el partido de Cupos abiertos a Equipo completo', () {
-      final partido = crearPartido();
+    test('la inscripción que ocupa el último cupo completa el equipo', () {
+      final partido = crearPartido(
+        soyOrganizador: false,
+        estoyUnido: false,
+        cuposTotales: 4,
+        cuposOcupados: 3,
+      );
 
-      final completo = partido.completarEquipo();
+      final unido = partido.unirse();
 
-      expect(completo.estado, EstadoPartido.equipoCompleto);
-      expect(completo.estado.etiqueta, 'Equipo completo');
+      expect(unido.estado, EstadoPartido.equipoCompleto);
+      expect(unido.cuposOcupados, 4);
+      expect(unido.cuposRestantes, 0);
+      expect(unido.estaLleno, isTrue);
+      expect(unido.estoyUnido, isTrue);
+      expect(partido.cuposOcupados, 3, reason: 'El original es inmutable.');
     });
 
-    test('al completar el equipo todos los cupos quedan ocupados', () {
+    test('no se permite una inscripción después de completar el equipo', () {
       final completo = crearPartido(
+        soyOrganizador: false,
+        estoyUnido: false,
+        estado: EstadoPartido.equipoCompleto,
+        cuposTotales: 3,
+        cuposOcupados: 3,
+      );
+
+      expect(() => completo.unirse(), throwsStateError);
+    });
+
+    test('el organizador cierra la convocatoria sin llenar cupos', () {
+      final partido = crearPartido(cuposTotales: 10, cuposOcupados: 3);
+
+      final cerrado = partido.completarEquipo();
+
+      expect(cerrado.estado, EstadoPartido.equipoCompleto);
+      expect(cerrado.cuposOcupados, 3);
+      expect(cerrado.cuposTotales, 10);
+      expect(cerrado.puedeUnirse, isFalse);
+      expect(cerrado.etiquetaEstado, 'Convocatoria cerrada');
+      expect(partido.estado, EstadoPartido.cuposAbiertos);
+      expect(partido.cuposOcupados, 3);
+    });
+
+    test('solo el organizador puede cerrar una convocatoria abierta', () {
+      final partido = crearPartido(soyOrganizador: false);
+
+      expect(partido.puedeCompletarEquipo, isFalse);
+      expect(() => partido.completarEquipo(), throwsStateError);
+    });
+
+    test('un retiro no reabre una convocatoria cerrada manualmente', () {
+      final cerrado = crearPartido(
+        soyOrganizador: false,
+        estoyUnido: true,
+        estado: EstadoPartido.equipoCompleto,
         cuposTotales: 10,
         cuposOcupados: 3,
-      ).completarEquipo();
+      );
 
-      expect(completo.cuposOcupados, 10);
-      expect(completo.cuposRestantes, 0);
-      expect(completo.estaLleno, isTrue);
-    });
+      final salido = cerrado.salir();
 
-    test('no se puede completar un equipo que ya está completo', () {
-      final completo = crearPartido().completarEquipo();
-
-      expect(completo.puedeCompletarEquipo, isFalse);
-      expect(() => completo.completarEquipo(), throwsStateError);
-    });
-
-    test('quien no es organizador no puede completar el equipo', () {
-      final ajeno = crearPartido(soyOrganizador: false);
-
-      expect(ajeno.puedeCompletarEquipo, isFalse);
-      expect(() => ajeno.completarEquipo(), throwsStateError);
-    });
-
-    test('completar el equipo no modifica el partido original', () {
-      final original = crearPartido(cuposOcupados: 3);
-
-      original.completarEquipo();
-
-      expect(original.estado, EstadoPartido.cuposAbiertos);
-      expect(original.cuposOcupados, 3);
+      expect(salido.cuposOcupados, 2);
+      expect(salido.estado, EstadoPartido.equipoCompleto);
+      expect(salido.etiquetaEstado, 'Convocatoria cerrada');
     });
   });
 
-  group('Conservar el cambio después de recargar', () {
-    test('el estado Equipo completo queda guardado en el repositorio', () async {
+  group('Conservar las inscripciones después de recargar', () {
+    test('el último cupo y el estado completo quedan guardados', () async {
       final repositorio = RepositorioEnMemoria(
         usuarioId: 'u-lorgio',
         usuarioNombre: 'Lorgio',
       );
-      final creado = await repositorio.crearPartido(crearPartido());
+      final creado = await repositorio.crearPartido(
+        crearPartido(cuposTotales: 2, cuposOcupados: 1),
+      );
 
-      await repositorio.completarEquipo(creado.id);
+      repositorio.usarSesionDe('u-diego', 'Diego');
+      await repositorio.unirseAPartido(creado.id);
 
-      // Volver a leer = recargar la pantalla
+      repositorio.usarSesionDe('u-lorgio', 'Lorgio');
       final recuperado = (await repositorio.obtenerMisPartidos()).single;
       expect(recuperado.estado, EstadoPartido.equipoCompleto);
       expect(recuperado.cuposOcupados, recuperado.cuposTotales);
+      expect((await repositorio.obtenerJugadoresInscritos())[creado.id], [
+        'Diego',
+      ]);
     });
 
-    test('la fecha real se convierte al texto de la pantalla y de vuelta', () {
+    test(
+      'cerrar convocatoria no añade jugadores ni modifica los cupos',
+      () async {
+        final repositorio = RepositorioEnMemoria(
+          usuarioId: 'u-lorgio',
+          usuarioNombre: 'Lorgio',
+        );
+        final creado = await repositorio.crearPartido(
+          crearPartido(cuposTotales: 10, cuposOcupados: 1),
+        );
+
+        final cerrado = await repositorio.completarEquipo(creado.id);
+
+        expect(cerrado.estado, EstadoPartido.equipoCompleto);
+        expect(cerrado.cuposOcupados, 1);
+        expect(await repositorio.obtenerJugadoresInscritos(), isEmpty);
+        await expectLater(
+          repositorio.unirseAPartido(creado.id),
+          throwsStateError,
+        );
+      },
+    );
+
+    test('la fecha real se convierte al texto de pantalla y de vuelta', () {
       final fecha = DateTime(2099, 6, 15, 9, 30);
 
       final texto = ModeloPartido.formatearFechaHora(fecha);

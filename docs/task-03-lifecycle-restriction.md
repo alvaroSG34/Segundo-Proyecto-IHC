@@ -23,17 +23,14 @@
   * Cuando la acción está bloqueada, la interfaz muestra un aviso visible:
     > **No puedes unirte:** Convocatoria cerrada: el equipo ya está completo.
   * Si el equipo aún tiene cupos abiertos, se muestra el botón interactivo **"Unirme al equipo"** que suma un jugador y actualiza la barra de progreso.
-* **Acción visible para el organizador: "Agregar jugador".** Con cupos abiertos suma un jugador (por ejemplo 3/10 → 4/10) y se guarda en la base de datos. Al ocupar el último cupo, el partido pasa solo a *Equipo completo*.
-* **Cómo se ve el bloqueo:** cuando el equipo está completo, el botón "Agregar jugador" aparece apagado con un ícono de prohibido, y debajo se muestra siempre este aviso:
-  > **No puedes agregar más jugadores.** Convocatoria cerrada: el equipo ya está completo.
-
-  Si se toca el botón apagado, además aparece un mensaje con el mismo motivo.
-* **Arquitectura:** La restricción está protegida en [`lib/modelos/modelo_partido.dart`](../lib/modelos/modelo_partido.dart) mediante el método inmutable `agregarJugador()`, que lanza un `StateError` descriptivo si se intenta violar la regla fuera de la interfaz.
+* **Ocupación de cupos:** solo una inscripción real mediante **"Unirme al equipo"** ocupa un cupo. Al registrarse el último jugador, el partido pasa a *Equipo completo*; la tarjeta del organizador muestra las inscripciones asociadas.
+* **Restricción:** si el partido está completo, una nueva inscripción se rechaza con un motivo claro. No hay acciones para agregar jugadores sin cuenta ni cerrar manualmente la convocatoria.
+* **Arquitectura:** la validación de unión está protegida en [`lib/modelos/modelo_partido.dart`](../lib/modelos/modelo_partido.dart) y en el RPC `unirse_a_partido`.
 
 ### D. Base de datos compartida (Supabase)
 * **Tecnología:** Supabase (PostgreSQL en la nube). Todos los dispositivos usan la misma base: lo que se crea, edita o elimina en un teléfono se ve en los demás.
 * **Tablas:** `perfiles`, `partidos` e `inscripciones`; las cuentas y contraseñas (cifradas) las maneja Supabase Auth.
-* **Reglas en el servidor:** completar equipo, agregar jugador, editar y unirse se ejecutan como funciones SQL que validan las mismas reglas del modelo y bloquean la fila del partido, así dos teléfonos no pueden romperlas al mismo tiempo.
+* **Reglas en el servidor:** editar y unirse se ejecutan como funciones SQL que validan las mismas reglas del modelo y bloquean la fila del partido, así dos teléfonos no pueden ocupar el mismo cupo al mismo tiempo.
 * **Seguridad (RLS):** solo el organizador puede crear como suyo, editar o eliminar su partido.
 * **Código:** [`lib/servicios/repositorio_supabase.dart`](../lib/servicios/repositorio_supabase.dart) y [`supabase/esquema.sql`](../supabase/esquema.sql).
 * **Guía de configuración y verificación:** [`docs/base-de-datos-supabase.md`](base-de-datos-supabase.md).
@@ -62,7 +59,7 @@ Prueba contra la base de datos real de Supabase (dos dispositivos):
 flutter test test/supabase_integracion_test.dart --dart-define=PRUEBAS_SUPABASE=true
 ```
 
-Pruebas de interfaz de la restricción (botón y mensaje de bloqueo):
+Pruebas de interfaz de unión y rechazo:
 
 ```bash
 flutter test test/tarjeta_partido_test.dart
@@ -76,10 +73,10 @@ flutter test
 
 ### Casos de prueba incluidos (5)
 
-1. Un partido con cupos abiertos permite agregar jugadores e incrementa `cuposOcupados`.
+1. Un partido con cupos abiertos permite inscribirse e incrementa `cuposOcupados`.
 2. Restricción: un partido en estado `Equipo completo` tiene `puedeAgregarJugador == false`.
 3. La propiedad `motivoBloqueoAgregarJugador` explica con precisión el motivo del bloqueo.
-4. Invocar `agregarJugador()` sobre un partido completo lanza `StateError` impidiendo la mutación inválida.
+4. Intentar inscribirse en un partido completo lanza `StateError` impidiendo la mutación inválida.
 5. Al llenar el último cupo disponible, la transición a `Equipo completo` se efectúa automáticamente y bloquea nuevas adhesiones.
 
 ---
@@ -88,13 +85,13 @@ flutter test
 
 | Archivo | Rol |
 | :--- | :--- |
-| `lib/modelos/modelo_partido.dart` | Inmutabilidad (`copyWith`), regla de restricción `puedeAgregarJugador`, motivo y método `agregarJugador()` |
+| `lib/modelos/modelo_partido.dart` | Inmutabilidad (`copyWith`) y reglas de inscripción y cupos |
 | `lib/vistas/vista_crear_partido.dart` | Soporte para modo edición (`partidoAEditar`) y validación de cupos mínimos |
 | `lib/vistas/vista_mis_partidos.dart` | Flujos de edición, diálogo modal de confirmación de eliminación y acción de unirse |
-| `lib/widgets/tarjeta_partido.dart` | Botones de edición/eliminación para organizador y feedback visual del bloqueo |
+| `lib/widgets/tarjeta_partido.dart` | Botones de edición/eliminación para organizador y flujo de inscripción |
 | `lib/servicios/repositorio_supabase.dart` | Operaciones sobre la base de datos compartida (Supabase) |
 | `supabase/esquema.sql` | Tablas, seguridad (RLS) y reglas de negocio en el servidor |
 | `test/edicion_partido_test.dart` | Regla de cupos al editar y fecha conservada |
-| `test/tarjeta_partido_test.dart` | 2 pruebas de interfaz: botón "Agregar jugador" con cupos abiertos y aviso del motivo cuando el equipo está completo |
+| `test/tarjeta_partido_test.dart` | Pruebas de inscripción y ausencia de acciones para ocupar cupos sin inscripción |
 | `test/restriccion_partido_test.dart` | 5 pruebas unitarias automatizadas para la restricción de UniSport |
 | `docs/task-03-lifecycle-restriction.md` | Este documento de respaldo |

@@ -49,17 +49,15 @@ Las reglas del modelo (`lib/modelos/modelo_partido.dart`) deciden qué muestra l
 | Acción | Función del servidor | Regla |
 | :--- | :--- | :--- |
 | Unirme al equipo | `unirse_a_partido` | No ser parte del equipo, fecha futura, cupos abiertos; al último cupo pasa a "Equipo completo" |
-| Agregar jugador | `agregar_jugador_sin_cuenta` | Solo el organizador; equipo completo no admite más |
-| Completar equipo | `completar_equipo` | Solo el organizador; solo con cupos abiertos |
 | Editar partido | `editar_partido` | Equipo completo no cambia cupos; no menos cupos que inscritos |
 
-Cada función bloquea la fila del partido (`select ... for update`) mientras trabaja: si dos teléfonos intentan ocupar el último cupo al mismo tiempo, uno lo consigue y el otro recibe "Convocatoria cerrada: el equipo ya está completo.".
+Solo una inscripción ocupa un cupo. La función de unión bloquea la fila del partido (`select ... for update`) mientras trabaja: si dos teléfonos intentan tomar el último cupo al mismo tiempo, uno lo consigue y el otro recibe "Convocatoria cerrada: el equipo ya está completo.".
 
 ### Seguridad (RLS)
 
 - Cualquier usuario con sesión puede **leer** partidos, perfiles e inscripciones.
 - Solo el organizador puede **crear como suyo** y **eliminar** su partido.
-- Nadie puede modificar partidos ni inscripciones directamente: solo a través de las funciones anteriores.
+- Nadie puede modificar partidos ni inscripciones directamente: los cambios se hacen a través de las funciones disponibles.
 
 ### Búsqueda y filtros (requisito #6)
 

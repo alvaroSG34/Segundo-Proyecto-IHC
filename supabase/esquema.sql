@@ -175,7 +175,10 @@ begin
     raise exception 'El partido ya se jugó: su fecha ya pasó.';
   end if;
   if v_partido.estado = 'equipoCompleto' then
-    raise exception 'Convocatoria cerrada: el equipo ya está completo.';
+    if v_partido.cupos_ocupados >= v_partido.cupos_totales then
+      raise exception 'Convocatoria cerrada: el equipo ya está completo.';
+    end if;
+    raise exception 'Convocatoria cerrada por el organizador.';
   end if;
   if v_partido.cupos_ocupados >= v_partido.cupos_totales then
     raise exception 'Cupos agotados: se alcanzó el límite máximo de jugadores.';
@@ -196,37 +199,10 @@ begin
 end;
 $$;
 
--- Organizador: sumar un jugador sin cuenta (restricción de la Tarea 3)
-create or replace function public.agregar_jugador_sin_cuenta(p_partido uuid)
-returns public.partidos
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-  v_partido public.partidos;
-begin
-  select * into v_partido from public.partidos where id = p_partido for update;
-  if not found or v_partido.organizador_id <> auth.uid() then
-    raise exception 'Solo el organizador puede agregar jugadores.';
-  end if;
-  if v_partido.estado = 'equipoCompleto' then
-    raise exception 'Convocatoria cerrada: el equipo ya está completo.';
-  end if;
-  if v_partido.cupos_ocupados >= v_partido.cupos_totales then
-    raise exception 'Cupos agotados: se alcanzó el límite máximo de jugadores.';
-  end if;
+-- Elimina la acción antigua que ocupaba cupos sin crear inscripciones.
+drop function if exists public.agregar_jugador_sin_cuenta(uuid);
 
-  update public.partidos
-     set cupos_ocupados = cupos_ocupados + 1,
-         estado = case when cupos_ocupados + 1 >= cupos_totales
-                       then 'equipoCompleto' else estado end
-   where id = p_partido
-  returning * into v_partido;
-  return v_partido;
-end;
-$$;
-
--- Organizador: "Completar equipo" (Tarea 2)
+-- El organizador puede cerrar manualmente la convocatoria sin ocupar cupos.
 create or replace function public.completar_equipo(p_partido uuid)
 returns public.partidos
 language plpgsql
@@ -234,22 +210,38 @@ security definer set search_path = public
 as $$
 declare
   v_partido public.partidos;
+  v_jugador uuid := auth.uid();
 begin
-  select * into v_partido from public.partidos where id = p_partido for update;
-  if not found or v_partido.organizador_id <> auth.uid() then
-    raise exception 'Solo el organizador puede completar el equipo';
+  if v_jugador is null then
+    raise exception 'Debes iniciar sesión para cerrar la convocatoria.';
   end if;
-  if v_partido.estado <> 'cuposAbiertos' then
-    raise exception 'El equipo de "%" ya está completo', v_partido.titulo;
+
+  select * into v_partido from public.partidos where id = p_partido for update;
+  if not found then
+    raise exception 'Este partido ya no existe.';
+  end if;
+  if v_partido.organizador_id <> v_jugador then
+    raise exception 'Solo el organizador puede cerrar la convocatoria.';
+  end if;
+  if v_partido.fecha_inicio < now() then
+    raise exception 'El partido ya se jugó: su fecha ya pasó.';
+  end if;
+  if v_partido.estado = 'equipoCompleto' then
+    raise exception 'La convocatoria ya está cerrada.';
+  end if;
+  if v_partido.cupos_ocupados >= v_partido.cupos_totales then
+    raise exception 'El equipo ya está completo.';
   end if;
 
   update public.partidos
-     set cupos_ocupados = cupos_totales, estado = 'equipoCompleto'
+     set estado = 'equipoCompleto'
    where id = p_partido
   returning * into v_partido;
   return v_partido;
 end;
 $$;
+
+revoke all on function public.completar_equipo(uuid) from public, anon;
 
 -- Organizador: editar datos del partido (regla de edición de cupos)
 create or replace function public.editar_partido(
@@ -340,7 +332,12 @@ begin
   else
     update public.partidos
        set cupos_ocupados = cupos_ocupados - 1,
-           estado = 'cuposAbiertos'
+           estado = case
+             when v_partido.estado = 'equipoCompleto'
+                  and v_partido.cupos_ocupados < v_partido.cupos_totales
+               then 'equipoCompleto'
+             else 'cuposAbiertos'
+           end
      where id = p_partido
     returning * into v_partido;
   end if;
@@ -421,10 +418,9 @@ grant execute on function public.unirse_a_partido(uuid)           to authenticat
 grant execute on function public.salir_del_partido(uuid)           to authenticated;
 grant execute on function public.entrar_lista_espera(uuid)         to authenticated;
 grant execute on function public.salir_lista_espera(uuid)          to authenticated;
-grant execute on function public.agregar_jugador_sin_cuenta(uuid) to authenticated;
-grant execute on function public.completar_equipo(uuid)           to authenticated;
 grant execute on function public.editar_partido(uuid, text, text, text, timestamptz, int)
   to authenticated;
+grant execute on function public.completar_equipo(uuid)              to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Historial de participación (Clase 16 · Tarea 4)

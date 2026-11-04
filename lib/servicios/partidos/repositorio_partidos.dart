@@ -40,13 +40,10 @@ abstract class RepositorioPartidos {
   /// Guarda título, deporte, lugar, fecha y cupos (regla de edición de cupos).
   Future<ModeloPartido> editarPartido(ModeloPartido editado);
 
-  Future<void> eliminarPartido(String partidoId);
-
-  /// "Completar equipo" (organizador).
+  /// Cierra la convocatoria del partido sin ocupar ni crear cupos.
   Future<ModeloPartido> completarEquipo(String partidoId);
 
-  /// "Agregar jugador" sin cuenta (organizador).
-  Future<ModeloPartido> agregarJugadorSinCuenta(String partidoId);
+  Future<void> eliminarPartido(String partidoId);
 
   /// "Unirme al equipo" (requisito #5).
   Future<ModeloPartido> unirseAPartido(String partidoId);
