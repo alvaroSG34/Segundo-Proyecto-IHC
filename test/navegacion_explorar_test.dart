@@ -10,8 +10,7 @@ import 'package:unisport/servicios/partidos/controlador_explorar.dart';
 
 import 'apoyo/servicio_autenticacion_falso.dart';
 
-/// Clase 15 · Hallazgo #1 (H6 Reconocimiento): "Explorar" debe estar visible
-/// en la navegación principal para encontrar partidos de otros estudiantes.
+/// Pruebas de navegación pública y acceso a Explorar.
 ///
 /// Ejecutar con:  flutter test test/navegacion_explorar_test.dart
 ServicioAutenticacionFalso conPartidoDeLorgio() {
@@ -40,78 +39,91 @@ void main() {
   });
 
   for (final explorar in [false, true]) {
-    testWidgets('inscritos ven a sus compañeros en ${explorar ? 'Explorar' : 'Mis partidos'}', (tester) async {
-      final auth = conPartidoDeLorgio();
-      await auth.iniciarSesion('diego@unisport.edu', '123456');
-      await auth.repositorio.unirseAPartido('p-1');
-      auth.repositorio.usarSesionDe('u-ana', 'Ana');
-      await auth.repositorio.unirseAPartido('p-1');
-      await auth.iniciarSesion('diego@unisport.edu', '123456');
+    testWidgets(
+      'inscritos ven a sus compañeros en ${explorar ? 'Explorar' : 'Mis partidos'}',
+      (tester) async {
+        final auth = conPartidoDeLorgio();
+        await auth.iniciarSesion('diego@unisport.edu', '123456');
+        await auth.repositorio.unirseAPartido('p-1');
+        auth.repositorio.usarSesionDe('u-ana', 'Ana');
+        await auth.repositorio.unirseAPartido('p-1');
+        await auth.iniciarSesion('diego@unisport.edu', '123456');
 
-      await tester.pumpWidget(MaterialApp(
-        home: explorar
-            ? VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)
-            : VistaMisPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth),
-      ));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          MaterialApp(
+            home: explorar
+                ? VistaExplorarPartidos(
+                    repositorioPartidos: auth.repositorio,
+                    controladorExplorar: controladorExplorar,
+                    servicioAuth: auth,
+                  )
+                : VistaMisPartidos(
+                    repositorioPartidos: auth.repositorio,
+                    controladorExplorar: controladorExplorar,
+                    servicioAuth: auth,
+                  ),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Ver jugadores inscritos (2)'));
-      await tester.tap(find.text('Ver jugadores inscritos (2)'));
-      await tester.pumpAndSettle();
-      expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Diego')), findsOneWidget);
-      expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Ana')), findsOneWidget);
-    });
+        await tester.ensureVisible(find.text('Ver jugadores inscritos (2)'));
+        await tester.tap(find.text('Ver jugadores inscritos (2)'));
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.text('Diego'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.text('Ana'),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
   }
 
-  testWidgets('la portada muestra la pestaña Explorar en la barra inferior', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: VistaInicioPublico(servicioAuth: ServicioAutenticacionFalso()),
-      ),
-    );
+  testWidgets(
+    'la portada pública no muestra barra y conserva acceso y registro',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VistaInicioPublico(servicioAuth: ServicioAutenticacionFalso()),
+        ),
+      );
 
-    final barra = find.byType(NavigationBar);
-    expect(
-      find.descendant(of: barra, matching: find.text('Explorar')),
-      findsOneWidget,
-    );
-  });
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.text('Iniciar sesión'), findsOneWidget);
+      expect(find.text('Crear nueva cuenta'), findsOneWidget);
+    },
+  );
 
-  testWidgets('con sesión, el menú abre Explorar con los partidos de otros estudiantes', (
-    tester,
-  ) async {
-    final auth = conPartidoDeLorgio();
-    await auth.iniciarSesion('diego@unisport.edu', '123456');
-    await tester.pumpWidget(
-      MaterialApp(home: VistaPrincipal(servicioAuth: auth, repositorioPartidos: auth.repositorio)),
-    );
+  testWidgets(
+    'con sesión, el menú abre Explorar con los partidos de otros estudiantes',
+    (tester) async {
+      final auth = conPartidoDeLorgio();
+      await auth.iniciarSesion('diego@unisport.edu', '123456');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VistaPrincipal(
+            servicioAuth: auth,
+            repositorioPartidos: auth.repositorio,
+          ),
+        ),
+      );
 
-    await tester.tap(find.text('Explorar'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Explorar'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Explorar partidos'), findsOneWidget);
-    expect(find.text('Futsal 5 vs 5 nocturno'), findsOneWidget);
-    expect(find.text('Unirme al equipo'), findsOneWidget);
-  });
-
-  testWidgets('sin sesión, Explorar lleva al login y explica el motivo', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: VistaInicioPublico(servicioAuth: ServicioAutenticacionFalso()),
-      ),
-    );
-
-    await tester.tap(find.text('Explorar'));
-    // El login tiene un cursor que parpadea sin fin: se avanza un tiempo fijo
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('Inicia sesión para explorar partidos.'), findsOneWidget);
-  });
+      expect(find.text('Explorar partidos'), findsOneWidget);
+      expect(find.text('Futsal 5 vs 5 nocturno'), findsOneWidget);
+      expect(find.text('Unirme al equipo'), findsOneWidget);
+    },
+  );
 
   testWidgets('desde Mis partidos, la pestaña Explorar también está visible', (
     tester,
@@ -119,12 +131,20 @@ void main() {
     final auth = conPartidoDeLorgio();
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaMisPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(
+        home: VistaMisPartidos(
+          repositorioPartidos: auth.repositorio,
+          controladorExplorar: controladorExplorar,
+          servicioAuth: auth,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
     final barra = find.byType(NavigationBar);
-    await tester.tap(find.descendant(of: barra, matching: find.text('Explorar')));
+    await tester.tap(
+      find.descendant(of: barra, matching: find.text('Explorar')),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Explorar partidos'), findsOneWidget);

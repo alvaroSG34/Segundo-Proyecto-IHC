@@ -21,26 +21,6 @@ class VistaInicioPublico extends StatefulWidget {
 }
 
 class _VistaInicioPublicoState extends State<VistaInicioPublico> {
-  final int _indiceNavegacion = 0;
-
-  // Pestañas: 0 Inicio · 1 Explorar · 2 Mis partidos.
-  // "Explorar" está en la navegación principal (Clase 15, hallazgo #1 · H6):
-  // encontrar partidos de otros no debe depender de recordar dónde está.
-  void _alSeleccionarPestana(int indice) {
-    if (indice == 0) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => VistaLogin(
-          servicioAuth: widget.servicioAuth,
-          mensajeRedireccion: indice == 1
-              ? 'Inicia sesión para explorar partidos.'
-              : 'Inicia sesión para ver tus partidos.',
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.servicioAuth.estaAutenticado) {
@@ -131,21 +111,6 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
             ),
           ),
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _indiceNavegacion,
-        onDestinationSelected: _alSeleccionarPestana,
-        destinations: const [
-          NavigationDestination(icon: Icon(LucideIcons.house), label: 'Inicio'),
-          NavigationDestination(
-            icon: Icon(LucideIcons.compass),
-            label: 'Explorar',
-          ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.calendarDays),
-            label: 'Mis partidos',
-          ),
-        ],
       ),
     );
   }
