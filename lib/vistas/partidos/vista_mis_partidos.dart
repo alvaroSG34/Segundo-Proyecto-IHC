@@ -109,23 +109,6 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   Future<void> _cargarPartidos() async {
     if (widget.servicioAuth.usuarioActual == null) return;
 
-    final datos = await _intentar(
-      () async => (
-        propios: await _repositorio.obtenerMisPartidos(),
-        unidos: await _repositorio.obtenerPartidosUnidos(),
-        inscritos: await _repositorio.obtenerJugadoresInscritos(),
-        suplentes: await _repositorio.obtenerSuplentes(),
-      ),
-    );
-    if (!mounted) return;
-
-    setState(() {
-      if (datos != null) {
-        _partidos = [...datos.propios, ...datos.unidos];
-        _jugadoresInscritos = datos.inscritos;
-        _suplentes = datos.suplentes;
-      }
-      _cargando = false;
     final consulta = ++_consulta;
     setState(() {
       _cargando = true;
@@ -135,10 +118,12 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       final propios = await _repositorio.obtenerMisPartidos();
       final unidos = await _repositorio.obtenerPartidosUnidos();
       final inscritos = await _repositorio.obtenerJugadoresInscritos();
+      final suplentes = await _repositorio.obtenerSuplentes();
       if (!mounted || consulta != _consulta) return;
       setState(() {
         _partidos = [...propios, ...unidos];
         _jugadoresInscritos = inscritos;
+        _suplentes = suplentes;
         _cargando = false;
       });
     } catch (error) {

@@ -12,6 +12,44 @@ import 'apoyo/repositorio_en_memoria.dart';
 import 'apoyo/servicio_autenticacion_falso.dart';
 
 void main() {
+  testWidgets('carga suplentes y permite reintentar si falla esa consulta', (
+    tester,
+  ) async {
+    final repo = _RepositorioControlado();
+    final auth = ServicioAutenticacionFalso(repo);
+    await auth.iniciarSesion('diego@unisport.edu', '123456');
+    repo.sembrar(
+      'u-diego',
+      _partido(
+        'con-suplentes',
+        'Partido con suplentes',
+      ).copyWith(cuposTotales: 2),
+    );
+    repo.usarSesionDe('titular', 'Titular');
+    await repo.unirseAPartido('con-suplentes');
+    repo.usarSesionDe('suplente', 'Suplente');
+    await repo.entrarEnEspera('con-suplentes');
+    repo.usarSesionDe('u-diego', 'Diego');
+
+    repo.fallarSuplentes = true;
+    await _abrir(tester, auth, repo);
+    expect(find.text('Error al cargar suplentes.'), findsOneWidget);
+    expect(find.byKey(const Key('mis_partidos_error')), findsOneWidget);
+    expect(find.byKey(const Key('mis_partidos_vacio')), findsNothing);
+
+    repo.fallarSuplentes = false;
+    final reintentar = find.byKey(const Key('mis_partidos_reintentar'));
+    await _visible(tester, reintentar);
+    await tester.tap(reintentar);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('mis_partidos_error')), findsNothing);
+    final tarjeta = tester.widget<TarjetaPartido>(find.byType(TarjetaPartido));
+    expect(tarjeta.partido.id, 'con-suplentes');
+    expect(tarjeta.suplentes, ['Suplente']);
+    expect(tarjeta.jugadoresUnidos, ['Titular']);
+  });
+
   testWidgets(
     'vacío en las tres categorías conserva orientación, selección y accesibilidad',
     (tester) async {
@@ -222,6 +260,14 @@ void main() {
 
 class _RepositorioControlado extends RepositorioEnMemoria {
   bool fallar = false;
+  bool fallarSuplentes = false;
+
+  @override
+  Future<Map<String, List<String>>> obtenerSuplentes() async {
+    if (fallarSuplentes) throw StateError('Error al cargar suplentes.');
+    return super.obtenerSuplentes();
+  }
+
   Completer<List<ModeloPartido>>? pendiente;
   Future<List<ModeloPartido>> propios() => super.obtenerMisPartidos();
   @override
