@@ -22,6 +22,11 @@ El organizador puede abrir **Reprogramar partido**, cambiar la fecha, hora o lug
 
 - **Antes:** Editar permitía mover la fecha o el lugar sin avisar a quienes ya estaban inscritos.
 - **Después:** Con titulares inscritos, Editar bloquea esos campos y remite a Reprogramar. Las funciones SQL guardan las respuestas y el ascenso del suplente en una sola operación para respetar los cupos y evitar inscripciones duplicadas.
+- **Captura del después:** la vista local muestra la fecha y el lugar nuevos, los datos anteriores, el motivo, las respuestas pendientes del organizador y las opciones del titular para confirmar su plaza o retirarse.
+
+  ![Vista local del partido reprogramado para organizador y titular](tarea-7-despues.png)
+
+  Esta captura se generó con datos simulados en una prueba de interfaz. La verificación del flujo con Supabase queda pendiente hasta aplicar el esquema SQL en la base compartida.
 - **Evidencia:** [`test/reprogramacion_partido_test.dart`](../test/reprogramacion_partido_test.dart) comprueba la conservación de plazas, el bloqueo de una segunda reprogramación, la respuesta única, el ascenso del primer suplente y el caso sin suplentes. [`test/tarjeta_partido_test.dart`](../test/tarjeta_partido_test.dart) comprueba las acciones visibles.
 - **Commit:** [`0210ae4`](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/commit/0210ae4) — `feat: reprogramar partidos y reconfirmar titulares`.
 
