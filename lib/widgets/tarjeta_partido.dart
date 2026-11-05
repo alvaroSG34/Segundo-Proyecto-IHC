@@ -183,7 +183,7 @@ class TarjetaPartido extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: TemaApp.azulSuave,
+                color: TemaApp.amarilloSuave,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -370,17 +370,36 @@ class TarjetaPartido extends StatelessWidget {
             ] else if (partido.estoyUnido) ...[
               if (partido.reconfirmacionPendiente) ...[
                 const SizedBox(height: 10),
-                FilledButton.icon(
-                  key: const Key('partido_reconfirmar'),
-                  onPressed: onReconfirmar,
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Confirmar mi asistencia'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  key: const Key('partido_retirarse_reprogramacion'),
-                  onPressed: onRetirarseReprogramacion,
-                  child: const Text('No puedo asistir: retirarme'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        key: const Key('partido_reconfirmar'),
+                        onPressed: onReconfirmar,
+                        label: const Text(
+                          'Confirmar mi asistencia',
+                          textAlign: TextAlign.center,
+                        ),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 52),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        key: const Key('partido_retirarse_reprogramacion'),
+                        onPressed: onRetirarseReprogramacion,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: TemaApp.rojoAlerta,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(0, 52),
+                        ),
+                        child: const Text('Retirarme'),
+                      ),
+                    ),
+                  ],
                 ),
               ] else if (onSalir != null && partido.puedeSalir) ...[
                 const SizedBox(height: 10),

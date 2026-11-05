@@ -59,7 +59,7 @@ void main() {
     expect(find.textContaining('Conservas tu plaza'), findsOneWidget);
     expect(find.text('Salir del partido'), findsNothing);
     await tester.tap(find.text('Confirmar mi asistencia'));
-    await tester.tap(find.text('No puedo asistir: retirarme'));
+    await tester.tap(find.text('Retirarme'));
     expect(acepto, 1);
     expect(retiro, 1);
   });

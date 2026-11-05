@@ -24,7 +24,7 @@ class TemaApp {
   static const Color naranjaSuave = Color(0xFFFFEDD5);
   static const Color rojoAlerta = Color(0xFFDC2626);
   static const Color rojoSuave = Color(0xFFFEE2E2);
-
+  static const Color amarilloSuave = Color(0xFFFEF9C3);
   static const double radio = 16;
 
   static const List<BoxShadow> sombraSuave = [
