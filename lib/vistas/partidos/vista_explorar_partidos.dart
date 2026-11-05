@@ -187,6 +187,35 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     }
   }
 
+  Future<void> _responderReprogramacion(
+    ModeloPartido partido,
+    bool acepta,
+  ) async {
+    if (!acepta) {
+      final confirmar = await confirmarAccion(
+        context,
+        titulo: '¿Retirarte del partido?',
+        mensaje: 'Liberarás tu plaza. Si hay suplentes, entrará el primero.',
+        textoConfirmar: 'Sí, retirarme',
+      );
+      if (confirmar != true || !mounted) return;
+    }
+    try {
+      await _repositorio.responderReprogramacion(partido.id, acepta);
+      if (!mounted) return;
+      await _cargar();
+      if (mounted) {
+        _avisar(
+          acepta ? 'Tu plaza quedó confirmada.' : 'Te retiraste del partido.',
+        );
+      }
+    } on StateError catch (error) {
+      if (!mounted) return;
+      _avisar(error.message, error: true);
+      await _cargar();
+    }
+  }
+
   Future<void> _entrarEnEspera(ModeloPartido partido) async {
     try {
       final actualizado = await _repositorio.entrarEnEspera(partido.id);
@@ -280,6 +309,12 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                       partido: partido,
                       onUnirse: () => _unirse(partido),
                       onSalir: () => _salir(partido),
+                      onReconfirmar: partido.reconfirmacionPendiente
+                          ? () => _responderReprogramacion(partido, true)
+                          : null,
+                      onRetirarseReprogramacion: partido.reconfirmacionPendiente
+                          ? () => _responderReprogramacion(partido, false)
+                          : null,
                       onEntrarEnEspera: () => _entrarEnEspera(partido),
                       onSalirDeEspera: () => _salirDeEspera(partido),
                       jugadoresUnidos: partido.estoyUnido

@@ -40,6 +40,17 @@ abstract class RepositorioPartidos {
   /// Guarda título, deporte, lugar, fecha y cupos (regla de edición de cupos).
   Future<ModeloPartido> editarPartido(ModeloPartido editado);
 
+  /// Cambia fecha/hora o lugar y pide reconfirmación a los inscritos.
+  Future<ModeloPartido> reprogramarPartido(
+    String partidoId,
+    DateTime nuevaFecha,
+    String nuevaUbicacion,
+    String motivo,
+  );
+
+  /// Un titular acepta la nueva fecha o libera su plaza.
+  Future<ModeloPartido> responderReprogramacion(String partidoId, bool acepta);
+
   /// Cierra la convocatoria del partido sin ocupar ni crear cupos.
   Future<ModeloPartido> completarEquipo(String partidoId);
 

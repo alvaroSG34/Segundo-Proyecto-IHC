@@ -12,6 +12,9 @@ class TarjetaPartido extends StatelessWidget {
   final VoidCallback? onEditar;
   final VoidCallback? onEliminar;
   final VoidCallback? onCompletarEquipo;
+  final VoidCallback? onReprogramar;
+  final VoidCallback? onReconfirmar;
+  final VoidCallback? onRetirarseReprogramacion;
   final VoidCallback? onUnirse;
   final VoidCallback? onEntrarEnEspera;
   final VoidCallback? onSalirDeEspera;
@@ -30,6 +33,9 @@ class TarjetaPartido extends StatelessWidget {
     this.onEditar,
     this.onEliminar,
     this.onCompletarEquipo,
+    this.onReprogramar,
+    this.onReconfirmar,
+    this.onRetirarseReprogramacion,
     this.onUnirse,
     this.onEntrarEnEspera,
     this.onSalirDeEspera,
@@ -171,6 +177,40 @@ class TarjetaPartido extends StatelessWidget {
                 ),
             ],
           ),
+          if (partido.motivoReprogramacion != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: TemaApp.azulSuave,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Partido reprogramado',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  Text('Motivo: ${partido.motivoReprogramacion}'),
+                  if (partido.fechaAnterior != null)
+                    Text('Fecha anterior: ${partido.fechaAnterior}'),
+                  if (partido.ubicacionAnterior != null)
+                    Text('Lugar anterior: ${partido.ubicacionAnterior}'),
+                  if (partido.soyOrganizador &&
+                      partido.respuestasPendientes > 0)
+                    Text('Faltan ${partido.respuestasPendientes} respuestas.'),
+                  if (partido.reconfirmacionPendiente)
+                    const Text(
+                      'Tu respuesta está pendiente. Conservas tu plaza.',
+                    ),
+                  if (partido.reconfirmacionAceptada)
+                    const Text('Tu plaza está reconfirmada.'),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Row(
             children: [
@@ -229,6 +269,18 @@ class TarjetaPartido extends StatelessWidget {
           ],
           // ACCIONES DEL ORGANIZADOR
           if (partido.soyOrganizador) ...[
+            if (onReprogramar != null && partido.puedeReprogramar) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const Key('partido_reprogramar'),
+                onPressed: onReprogramar,
+                icon: const Icon(Icons.event_repeat),
+                label: const Text('Reprogramar partido'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
+            ],
             // EDITAR Y ELIMINAR (Clase 16 · Fitts): antes eran íconos de 16 px,
             // pegados y arriba a la derecha. Ahora son botones con texto de 48 px
             // de alto, junto a las demás acciones del partido; eliminar queda
@@ -316,7 +368,21 @@ class TarjetaPartido extends StatelessWidget {
                 ),
               ),
             ] else if (partido.estoyUnido) ...[
-              if (onSalir != null && partido.puedeSalir) ...[
+              if (partido.reconfirmacionPendiente) ...[
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  key: const Key('partido_reconfirmar'),
+                  onPressed: onReconfirmar,
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Confirmar mi plaza'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  key: const Key('partido_retirarse_reprogramacion'),
+                  onPressed: onRetirarseReprogramacion,
+                  child: const Text('No puedo asistir: retirarme'),
+                ),
+              ] else if (onSalir != null && partido.puedeSalir) ...[
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: onSalir,

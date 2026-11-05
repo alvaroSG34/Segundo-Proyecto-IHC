@@ -51,6 +51,8 @@ class VistaCrearPartido extends StatefulWidget {
 
 class _VistaCrearPartidoState extends State<VistaCrearPartido> {
   bool get _esEdicion => widget.partidoAEditar != null;
+  bool get _programacionBloqueada =>
+      _esEdicion && widget.partidoAEditar!.cuposOcupados > 1;
 
   static const List<String> _disciplinas = ModeloPartido.disciplinas;
   static const int _cuposMin = 2;
@@ -358,7 +360,7 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     required String texto,
     required IconData icono,
     required bool activo,
-    required VoidCallback alTocar,
+    required VoidCallback? alTocar,
   }) {
     return _accionAccesible(
       nombre: texto,
@@ -408,7 +410,7 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     required String texto,
     required bool tieneValor,
     required bool error,
-    required VoidCallback alTocar,
+    required VoidCallback? alTocar,
   }) {
     return _accionAccesible(
       key: key,
@@ -699,7 +701,7 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                         container: true,
                         label: 'Ubicación del partido',
                         child: TextFormField(
-                          enabled: !_guardando,
+                          enabled: !_guardando && !_programacionBloqueada,
                           key: const Key('partido_ubicacion'),
                           controller: _ubicacionCtrl,
                           textCapitalization: TextCapitalization.sentences,
@@ -711,6 +713,14 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                               : null,
                         ),
                       ),
+                      if (_programacionBloqueada) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Ya hay jugadores inscritos. Usa Reprogramar partido '
+                          'para cambiar fecha, hora o lugar y pedirles confirmación.',
+                          style: TextStyle(color: TemaApp.textoSecundario),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       // Atajos de lugar (Issue #10); se puede escribir otro lugar
                       Wrap(
@@ -722,7 +732,9 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                               texto: lugar,
                               icono: LucideIcons.mapPin,
                               activo: _ubicacionCtrl.text.trim() == lugar,
-                              alTocar: () => _ubicacionCtrl.text = lugar,
+                              alTocar: _programacionBloqueada
+                                  ? null
+                                  : () => _ubicacionCtrl.text = lugar,
                             ),
                         ],
                       ),
@@ -743,7 +755,9 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                                   texto: _textoFecha,
                                   tieneValor: _fecha != null,
                                   error: errorFecha,
-                                  alTocar: _elegirFecha,
+                                  alTocar: _programacionBloqueada
+                                      ? null
+                                      : _elegirFecha,
                                 ),
                                 if (errorFecha)
                                   const Padding(
@@ -772,7 +786,9 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                                   texto: _textoHora,
                                   tieneValor: _hora != null,
                                   error: errorHora,
-                                  alTocar: _elegirHora,
+                                  alTocar: _programacionBloqueada
+                                      ? null
+                                      : _elegirHora,
                                 ),
                                 if (errorHora)
                                   const Padding(
@@ -801,7 +817,9 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                             texto: 'Hoy',
                             icono: LucideIcons.calendar,
                             activo: _mismoDia(_fecha, _hoy),
-                            alTocar: () => setState(() => _fecha = _hoy),
+                            alTocar: _programacionBloqueada
+                                ? null
+                                : () => setState(() => _fecha = _hoy),
                           ),
                           _chipRapido(
                             texto: 'Mañana',
@@ -810,23 +828,30 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
                               _fecha,
                               _hoy.add(const Duration(days: 1)),
                             ),
-                            alTocar: () => setState(
-                              () => _fecha = _hoy.add(const Duration(days: 1)),
-                            ),
+                            alTocar: _programacionBloqueada
+                                ? null
+                                : () => setState(
+                                    () => _fecha = _hoy.add(
+                                      const Duration(days: 1),
+                                    ),
+                                  ),
                           ),
                           _chipRapido(
                             texto: 'Sábado',
                             icono: LucideIcons.calendar,
                             activo: _mismoDia(_fecha, _proximoSabado),
-                            alTocar: () =>
-                                setState(() => _fecha = _proximoSabado),
+                            alTocar: _programacionBloqueada
+                                ? null
+                                : () => setState(() => _fecha = _proximoSabado),
                           ),
                           for (final h in _horasRapidas)
                             _chipRapido(
                               texto: _formatoHora(h),
                               icono: LucideIcons.clock,
                               activo: _hora == h,
-                              alTocar: () => setState(() => _hora = h),
+                              alTocar: _programacionBloqueada
+                                  ? null
+                                  : () => setState(() => _hora = h),
                             ),
                         ],
                       ),

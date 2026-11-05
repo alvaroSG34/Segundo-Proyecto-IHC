@@ -33,6 +33,12 @@ class ModeloPartido {
   /// Cero significa que el usuario no está en la lista de suplentes.
   final int posicionEspera;
   final EstadoPartido estado;
+  final String? motivoReprogramacion;
+  final String? fechaAnterior;
+  final String? ubicacionAnterior;
+  final int respuestasPendientes;
+  final bool reconfirmacionPendiente;
+  final bool reconfirmacionAceptada;
 
   ModeloPartido({
     required this.id,
@@ -48,11 +54,20 @@ class ModeloPartido {
     this.estoyUnido = false,
     this.posicionEspera = 0,
     this.estado = EstadoPartido.cuposAbiertos,
+    this.motivoReprogramacion,
+    this.fechaAnterior,
+    this.ubicacionAnterior,
+    this.respuestasPendientes = 0,
+    this.reconfirmacionPendiente = false,
+    this.reconfirmacionAceptada = false,
   });
 
   int get cuposRestantes => cuposTotales - cuposOcupados;
   bool get estaLleno => cuposRestantes <= 0;
   bool get estoyEnEspera => posicionEspera > 0;
+
+  bool get puedeReprogramar =>
+      soyOrganizador && !fechaPasada && respuestasPendientes == 0;
 
   /// Solo alguien ajeno al equipo puede pedir un lugar cuando está lleno.
   bool get puedeEntrarEnEspera =>
@@ -278,6 +293,12 @@ class ModeloPartido {
     bool? estoyUnido,
     int? posicionEspera,
     EstadoPartido? estado,
+    String? motivoReprogramacion,
+    String? fechaAnterior,
+    String? ubicacionAnterior,
+    int? respuestasPendientes,
+    bool? reconfirmacionPendiente,
+    bool? reconfirmacionAceptada,
   }) {
     return ModeloPartido(
       id: id ?? this.id,
@@ -293,6 +314,14 @@ class ModeloPartido {
       estoyUnido: estoyUnido ?? this.estoyUnido,
       posicionEspera: posicionEspera ?? this.posicionEspera,
       estado: estado ?? this.estado,
+      motivoReprogramacion: motivoReprogramacion ?? this.motivoReprogramacion,
+      fechaAnterior: fechaAnterior ?? this.fechaAnterior,
+      ubicacionAnterior: ubicacionAnterior ?? this.ubicacionAnterior,
+      respuestasPendientes: respuestasPendientes ?? this.respuestasPendientes,
+      reconfirmacionPendiente:
+          reconfirmacionPendiente ?? this.reconfirmacionPendiente,
+      reconfirmacionAceptada:
+          reconfirmacionAceptada ?? this.reconfirmacionAceptada,
     );
   }
 
@@ -311,6 +340,12 @@ class ModeloPartido {
     'estoyUnido': estoyUnido,
     'posicionEspera': posicionEspera,
     'estado': estado.name,
+    'motivoReprogramacion': motivoReprogramacion,
+    'fechaAnterior': fechaAnterior,
+    'ubicacionAnterior': ubicacionAnterior,
+    'respuestasPendientes': respuestasPendientes,
+    'reconfirmacionPendiente': reconfirmacionPendiente,
+    'reconfirmacionAceptada': reconfirmacionAceptada,
   };
 
   /// Reconstruye un partido a partir de un Map leído del almacenamiento.
@@ -331,5 +366,11 @@ class ModeloPartido {
     estado:
         EstadoPartido.values.asNameMap()[json['estado'] as String?] ??
         EstadoPartido.cuposAbiertos,
+    motivoReprogramacion: json['motivoReprogramacion'] as String?,
+    fechaAnterior: json['fechaAnterior'] as String?,
+    ubicacionAnterior: json['ubicacionAnterior'] as String?,
+    respuestasPendientes: json['respuestasPendientes'] as int? ?? 0,
+    reconfirmacionPendiente: json['reconfirmacionPendiente'] as bool? ?? false,
+    reconfirmacionAceptada: json['reconfirmacionAceptada'] as bool? ?? false,
   );
 }

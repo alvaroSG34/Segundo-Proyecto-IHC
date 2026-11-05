@@ -62,6 +62,16 @@ create table if not exists public.lista_espera (
   unique (partido_id, jugador_id)
 );
 
+-- La plaza se conserva hasta que cada titular responda a una reprogramación.
+alter table public.partidos
+  add column if not exists reprogramacion_motivo text,
+  add column if not exists reprogramacion_fecha_anterior timestamptz,
+  add column if not exists reprogramacion_ubicacion_anterior text,
+  add column if not exists reconfirmaciones_pendientes int not null default 0;
+alter table public.inscripciones
+  add column if not exists reconfirmacion_pendiente boolean not null default false,
+  add column if not exists reconfirmacion_aceptada boolean not null default false;
+
 create index if not exists partidos_fecha_idx on public.partidos (fecha_inicio);
 create index if not exists partidos_organizador_idx on public.partidos (organizador_id);
 create index if not exists inscripciones_jugador_idx on public.inscripciones (jugador_id);
@@ -264,6 +274,14 @@ begin
     raise exception 'Solo el organizador puede editar el partido.';
   end if;
 
+  if (p_fecha_inicio is distinct from v_partido.fecha_inicio
+      or p_ubicacion is distinct from v_partido.ubicacion)
+     and (v_partido.reconfirmaciones_pendientes > 0 or exists (
+       select 1 from public.inscripciones where partido_id = p_partido
+     )) then
+    raise exception 'Usa Reprogramar para cambiar fecha o lugar y avisar al equipo.';
+  end if;
+
   if p_cupos_totales <> v_partido.cupos_totales then
     if v_partido.estado = 'equipoCompleto' then
       raise exception 'El equipo ya está completo: no se pueden cambiar los cupos.';
@@ -288,6 +306,121 @@ begin
 end;
 $$;
 
+-- El organizador cambia fecha/hora o lugar. Una sola operación guarda el cambio
+-- y marca pendientes a los titulares; sus cupos siguen ocupados.
+create or replace function public.reprogramar_partido(
+  p_partido uuid, p_fecha_inicio timestamptz, p_ubicacion text, p_motivo text
+)
+returns public.partidos
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_partido public.partidos;
+  v_pendientes int;
+begin
+  select * into v_partido from public.partidos where id = p_partido for update;
+  if not found or v_partido.organizador_id <> auth.uid() then
+    raise exception 'Solo el organizador puede reprogramar el partido.';
+  end if;
+  if v_partido.fecha_inicio <= now() then
+    raise exception 'No se puede reprogramar un partido que ya pasó.';
+  end if;
+  if v_partido.reconfirmaciones_pendientes > 0 then
+    raise exception 'Espera las respuestas pendientes antes de volver a reprogramar.';
+  end if;
+  if p_fecha_inicio is null or p_fecha_inicio <= now() then
+    raise exception 'La nueva fecha debe ser futura.';
+  end if;
+  if nullif(trim(p_ubicacion), '') is null or nullif(trim(p_motivo), '') is null then
+    raise exception 'Indica el lugar y el motivo de la reprogramación.';
+  end if;
+  if p_fecha_inicio = v_partido.fecha_inicio and trim(p_ubicacion) = v_partido.ubicacion then
+    raise exception 'Cambia la fecha, la hora o el lugar del partido.';
+  end if;
+
+  update public.inscripciones
+     set reconfirmacion_pendiente = true, reconfirmacion_aceptada = false
+   where partido_id = p_partido;
+  get diagnostics v_pendientes = row_count;
+
+  update public.partidos
+     set fecha_inicio = p_fecha_inicio,
+         ubicacion = trim(p_ubicacion),
+         reprogramacion_motivo = trim(p_motivo),
+         reprogramacion_fecha_anterior = v_partido.fecha_inicio,
+         reprogramacion_ubicacion_anterior = v_partido.ubicacion,
+         reconfirmaciones_pendientes = v_pendientes
+   where id = p_partido
+  returning * into v_partido;
+  return v_partido;
+end;
+$$;
+
+-- Cada respuesta es única. Al retirarse un titular, el primer suplente ocupa
+-- su plaza y queda pendiente de confirmar la nueva fecha.
+create or replace function public.responder_reprogramacion(p_partido uuid, p_acepta boolean)
+returns public.partidos
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_partido public.partidos;
+  v_suplente public.lista_espera;
+begin
+  if auth.uid() is null then
+    raise exception 'Debes iniciar sesión para responder.';
+  end if;
+  select * into v_partido from public.partidos where id = p_partido for update;
+  if not found then
+    raise exception 'Este partido ya no existe.';
+  end if;
+  if v_partido.fecha_inicio <= now() then
+    raise exception 'El partido ya se jugó: su fecha ya pasó.';
+  end if;
+  if not exists (
+    select 1 from public.inscripciones
+     where partido_id = p_partido and jugador_id = auth.uid()
+       and reconfirmacion_pendiente
+  ) then
+    raise exception 'No tienes una reconfirmación pendiente.';
+  end if;
+
+  if p_acepta then
+    update public.inscripciones
+       set reconfirmacion_pendiente = false, reconfirmacion_aceptada = true
+     where partido_id = p_partido and jugador_id = auth.uid();
+    update public.partidos
+       set reconfirmaciones_pendientes = reconfirmaciones_pendientes - 1
+     where id = p_partido returning * into v_partido;
+  else
+    delete from public.inscripciones
+     where partido_id = p_partido and jugador_id = auth.uid();
+    select * into v_suplente from public.lista_espera
+     where partido_id = p_partido order by id limit 1;
+    if found then
+      delete from public.lista_espera where id = v_suplente.id;
+      insert into public.inscripciones
+        (partido_id, jugador_id, jugador_nombre, reconfirmacion_pendiente)
+      values (p_partido, v_suplente.jugador_id, v_suplente.jugador_nombre, true);
+      -- Una respuesta pendiente sale y otra entra: el contador y el cupo no cambian.
+    else
+      update public.partidos
+         set cupos_ocupados = cupos_ocupados - 1,
+             reconfirmaciones_pendientes = reconfirmaciones_pendientes - 1,
+             estado = case
+               when v_partido.estado = 'equipoCompleto'
+                    and v_partido.cupos_ocupados < v_partido.cupos_totales
+                 then 'equipoCompleto'
+               else 'cuposAbiertos'
+             end
+       where id = p_partido returning * into v_partido;
+    end if;
+  end if;
+  return v_partido;
+end;
+$$;
+
 -- Salir del partido (H3 Control y libertad): quien se unió puede retirarse
 create or replace function public.salir_del_partido(p_partido uuid)
 returns public.partidos
@@ -298,6 +431,7 @@ declare
   v_jugador uuid := auth.uid();
   v_partido public.partidos;
   v_suplente public.lista_espera;
+  v_estaba_pendiente boolean;
 begin
   if v_jugador is null then
     raise exception 'Debes iniciar sesión para salir del partido.';
@@ -318,6 +452,10 @@ begin
     raise exception 'El partido ya se jugó: su fecha ya pasó.';
   end if;
 
+  select reconfirmacion_pendiente into v_estaba_pendiente
+    from public.inscripciones
+   where partido_id = p_partido and jugador_id = v_jugador;
+
   delete from public.inscripciones
    where partido_id = p_partido and jugador_id = v_jugador;
 
@@ -326,12 +464,21 @@ begin
    where partido_id = p_partido order by id limit 1;
   if found then
     delete from public.lista_espera where id = v_suplente.id;
-    insert into public.inscripciones (partido_id, jugador_id, jugador_nombre)
-    values (p_partido, v_suplente.jugador_id, v_suplente.jugador_nombre);
+    insert into public.inscripciones
+      (partido_id, jugador_id, jugador_nombre, reconfirmacion_pendiente)
+    values (p_partido, v_suplente.jugador_id, v_suplente.jugador_nombre,
+            v_partido.reconfirmaciones_pendientes > 0);
+    update public.partidos
+       set reconfirmaciones_pendientes = reconfirmaciones_pendientes
+           - case when v_estaba_pendiente then 1 else 0 end
+           + case when v_partido.reconfirmaciones_pendientes > 0 then 1 else 0 end
+     where id = p_partido returning * into v_partido;
     -- Sale un titular y entra un suplente: el número de cupos no cambia.
   else
     update public.partidos
        set cupos_ocupados = cupos_ocupados - 1,
+           reconfirmaciones_pendientes = reconfirmaciones_pendientes
+             - case when v_estaba_pendiente then 1 else 0 end,
            estado = case
              when v_partido.estado = 'equipoCompleto'
                   and v_partido.cupos_ocupados < v_partido.cupos_totales
@@ -421,6 +568,10 @@ grant execute on function public.salir_lista_espera(uuid)          to authentica
 grant execute on function public.editar_partido(uuid, text, text, text, timestamptz, int)
   to authenticated;
 grant execute on function public.completar_equipo(uuid)              to authenticated;
+revoke all on function public.reprogramar_partido(uuid, timestamptz, text, text) from public, anon;
+revoke all on function public.responder_reprogramacion(uuid, boolean) from public, anon;
+grant execute on function public.reprogramar_partido(uuid, timestamptz, text, text) to authenticated;
+grant execute on function public.responder_reprogramacion(uuid, boolean) to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Historial de participación (Clase 16 · Tarea 4)

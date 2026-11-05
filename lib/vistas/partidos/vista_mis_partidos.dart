@@ -13,6 +13,7 @@ import '../../widgets/tarjeta_partido.dart';
 import 'vista_crear_partido.dart';
 import 'vista_explorar_partidos.dart';
 import 'vista_historial.dart';
+import 'vista_reprogramar_partido.dart';
 import '../autenticacion/vista_login.dart';
 
 /// Ruta Privada: Mis Partidos (Protegida)
@@ -209,6 +210,46 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     _avisar(
       'Convocatoria cerrada: ${cerrado.cuposOcupados}/${cerrado.cuposTotales} cupos ocupados.',
     );
+  }
+
+  Future<void> _reprogramarPartido(ModeloPartido partido) async {
+    final guardado = await Navigator.push<ModeloPartido>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VistaReprogramarPartido(
+          partido: partido,
+          repositorio: _repositorio,
+        ),
+      ),
+    );
+    if (guardado == null || !mounted) return;
+    await _cargarPartidos();
+    if (mounted) _avisar('Partido reprogramado. El equipo puede reconfirmar.');
+  }
+
+  Future<void> _responderReprogramacion(
+    ModeloPartido partido,
+    bool acepta,
+  ) async {
+    if (!acepta) {
+      final confirmar = await confirmarAccion(
+        context,
+        titulo: '¿Retirarte del partido?',
+        mensaje: 'Liberarás tu plaza. Si hay suplentes, entrará el primero.',
+        textoConfirmar: 'Sí, retirarme',
+      );
+      if (confirmar != true || !mounted) return;
+    }
+    final resultado = await _intentar(
+      () => _repositorio.responderReprogramacion(partido.id, acepta),
+    );
+    if (resultado == null || !mounted) return;
+    await _cargarPartidos();
+    if (mounted) {
+      _avisar(
+        acepta ? 'Tu plaza quedó confirmada.' : 'Te retiraste del partido.',
+      );
+    }
   }
 
   // ACCIÓN "ELIMINAR PARTIDO": solicita confirmación previa antes de borrar
@@ -496,6 +537,15 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                       onEditar: () => _editarPartido(p),
                       onCompletarEquipo: p.puedeCompletarEquipo
                           ? () => _completarEquipo(p)
+                          : null,
+                      onReprogramar: p.puedeReprogramar
+                          ? () => _reprogramarPartido(p)
+                          : null,
+                      onReconfirmar: p.reconfirmacionPendiente
+                          ? () => _responderReprogramacion(p, true)
+                          : null,
+                      onRetirarseReprogramacion: p.reconfirmacionPendiente
+                          ? () => _responderReprogramacion(p, false)
                           : null,
                       jugadoresUnidos: _jugadoresInscritos[p.id] ?? const [],
                       suplentes: p.soyOrganizador

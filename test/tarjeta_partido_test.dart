@@ -35,6 +35,54 @@ Widget envolver(Widget hijo) => MaterialApp(
 );
 
 void main() {
+  testWidgets('un titular pendiente conserva su plaza y puede responder', (
+    tester,
+  ) async {
+    var acepto = 0;
+    var retiro = 0;
+    final partido = crearPartido(soyOrganizador: false, estoyUnido: true)
+        .copyWith(
+          motivoReprogramacion: 'La cancha cambió',
+          fechaAnterior: '10/10/2099 · 19:00',
+          reconfirmacionPendiente: true,
+        );
+    await tester.pumpWidget(
+      envolver(
+        TarjetaPartido(
+          partido: partido,
+          onReconfirmar: () => acepto++,
+          onRetirarseReprogramacion: () => retiro++,
+          onSalir: () {},
+        ),
+      ),
+    );
+    expect(find.textContaining('Conservas tu plaza'), findsOneWidget);
+    expect(find.text('Salir del partido'), findsNothing);
+    await tester.tap(find.text('Confirmar mi plaza'));
+    await tester.tap(find.text('No puedo asistir: retirarme'));
+    expect(acepto, 1);
+    expect(retiro, 1);
+  });
+
+  testWidgets(
+    'el organizador espera las respuestas antes de reprogramar otra vez',
+    (tester) async {
+      await tester.pumpWidget(
+        envolver(
+          TarjetaPartido(
+            partido: crearPartido().copyWith(
+              motivoReprogramacion: 'Cambio de cancha',
+              respuestasPendientes: 2,
+            ),
+            onReprogramar: () {},
+          ),
+        ),
+      );
+      expect(find.text('Faltan 2 respuestas.'), findsOneWidget);
+      expect(find.text('Reprogramar partido'), findsNothing);
+    },
+  );
+
   testWidgets(
     'la tarjeta del organizador no ofrece acciones para ocupar cupos',
     (tester) async {

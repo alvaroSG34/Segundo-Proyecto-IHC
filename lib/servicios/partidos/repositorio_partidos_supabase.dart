@@ -94,6 +94,8 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
   ModeloPartido _desdeFila(
     Map<String, dynamic> fila, {
     Set<String> inscritos = const {},
+    Set<String> pendientes = const {},
+    Set<String> aceptadas = const {},
     Map<String, int> posiciones = const {},
   }) {
     final id = fila['id'] as String;
@@ -116,6 +118,17 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
       estado:
           EstadoPartido.values.asNameMap()[fila['estado'] as String] ??
           EstadoPartido.cuposAbiertos,
+      motivoReprogramacion: fila['reprogramacion_motivo'] as String?,
+      fechaAnterior: fila['reprogramacion_fecha_anterior'] == null
+          ? null
+          : ModeloPartido.formatearFechaHora(
+              DateTime.parse(fila['reprogramacion_fecha_anterior'] as String)
+                  .toLocal(),
+            ),
+      ubicacionAnterior: fila['reprogramacion_ubicacion_anterior'] as String?,
+      respuestasPendientes: fila['reconfirmaciones_pendientes'] as int? ?? 0,
+      reconfirmacionPendiente: pendientes.contains(id),
+      reconfirmacionAceptada: aceptadas.contains(id),
     );
   }
 
@@ -131,6 +144,24 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
         .from('inscripciones')
         .select('partido_id')
         .eq('jugador_id', _usuarioId);
+    return {for (final f in filas) f['partido_id'] as String};
+  }
+
+  Future<Set<String>> _idsReconfirmacionesPendientes() async {
+    final filas = await _cliente
+        .from('inscripciones')
+        .select('partido_id')
+        .eq('jugador_id', _usuarioId)
+        .eq('reconfirmacion_pendiente', true);
+    return {for (final f in filas) f['partido_id'] as String};
+  }
+
+  Future<Set<String>> _idsReconfirmacionesAceptadas() async {
+    final filas = await _cliente
+        .from('inscripciones')
+        .select('partido_id')
+        .eq('jugador_id', _usuarioId)
+        .eq('reconfirmacion_aceptada', true);
     return {for (final f in filas) f['partido_id'] as String};
   }
 
@@ -176,12 +207,22 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
   Future<List<ModeloPartido>> obtenerPartidosUnidos() => _ejecutar(() async {
     final ids = await _idsInscritos();
     if (ids.isEmpty) return <ModeloPartido>[];
+    final pendientes = await _idsReconfirmacionesPendientes();
+    final aceptadas = await _idsReconfirmacionesAceptadas();
     final filas = await _cliente
         .from('partidos')
         .select()
         .inFilter('id', ids.toList())
         .order('fecha_inicio', ascending: true);
-    return [for (final f in filas) _desdeFila(f, inscritos: ids)];
+    return [
+      for (final f in filas)
+        _desdeFila(
+          f,
+          inscritos: ids,
+          pendientes: pendientes,
+          aceptadas: aceptadas,
+        ),
+    ];
   });
 
   @override
@@ -302,11 +343,19 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
 
     final filas = await consulta.order('fecha_inicio', ascending: true);
     final inscritos = await _idsInscritos();
+    final pendientes = await _idsReconfirmacionesPendientes();
+    final aceptadas = await _idsReconfirmacionesAceptadas();
     final posiciones = await _posicionesEnEspera();
     return [
       for (final f in filas)
         if (filtro.coincideTitulo(f['titulo'] as String))
-          _desdeFila(f, inscritos: inscritos, posiciones: posiciones),
+          _desdeFila(
+            f,
+            inscritos: inscritos,
+            pendientes: pendientes,
+            aceptadas: aceptadas,
+            posiciones: posiciones,
+          ),
     ];
   });
 
@@ -357,6 +406,35 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
         'p_fecha_inicio': _instante(editado),
         'p_cupos_totales': editado.cuposTotales,
       });
+
+  @override
+  Future<ModeloPartido> reprogramarPartido(
+    String partidoId,
+    DateTime nuevaFecha,
+    String nuevaUbicacion,
+    String motivo,
+  ) => _llamar('reprogramar_partido', {
+    'p_partido': partidoId,
+    'p_fecha_inicio': nuevaFecha.toUtc().toIso8601String(),
+    'p_ubicacion': nuevaUbicacion,
+    'p_motivo': motivo,
+  });
+
+  @override
+  Future<ModeloPartido> responderReprogramacion(
+    String partidoId,
+    bool acepta,
+  ) async {
+    final partido = await _llamar('responder_reprogramacion', {
+      'p_partido': partidoId,
+      'p_acepta': acepta,
+    });
+    return partido.copyWith(
+      estoyUnido: acepta,
+      reconfirmacionPendiente: false,
+      reconfirmacionAceptada: acepta,
+    );
+  }
 
   @override
   Future<ModeloPartido> completarEquipo(String partidoId) =>

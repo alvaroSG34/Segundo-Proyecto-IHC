@@ -63,7 +63,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(VistaCrearPartido), findsNothing);
       expect(resultado!.id, 'partido-editado');
-      expect(resultado!.cuposOcupados, 3);
+      expect(resultado!.cuposOcupados, 1);
       expect(resultado!.titulo, 'Partido de prueba');
       expect(llamadas, 1);
     },
@@ -105,7 +105,7 @@ void main() {
     await _enviar(tester);
     expect(find.byType(VistaCrearPartido), findsNothing);
     expect(resultado!.id, 'partido-editado');
-    expect(resultado!.cuposOcupados, 3);
+    expect(resultado!.cuposOcupados, 1);
     expect(intentos.length, 2);
     expect(intentos[1].titulo, intentos[0].titulo);
     expect(intentos[1].ubicacion, intentos[0].ubicacion);
@@ -113,13 +113,34 @@ void main() {
     expect(intentos[1].disciplina, intentos[0].disciplina);
     expect(intentos[1].cuposTotales, intentos[0].cuposTotales);
   });
+
+  testWidgets('con jugadores inscritos indica usar Reprogramar', (
+    tester,
+  ) async {
+    await _abrir(tester, (partido) async => partido, (_) {}, ocupados: 3);
+    expect(find.textContaining('Usa Reprogramar partido'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('partido_ubicacion')))
+          .enabled,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const Key('partido_fecha')))
+          .properties
+          .enabled,
+      isFalse,
+    );
+  });
 }
 
 Future<void> _abrir(
   WidgetTester tester,
   Future<ModeloPartido> Function(ModeloPartido) guardar,
-  void Function(ModeloPartido?) alVolver,
-) async {
+  void Function(ModeloPartido?) alVolver, {
+  int ocupados = 1,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Builder(
@@ -140,7 +161,7 @@ Future<void> _abrir(
                         ubicacion: 'Lugar original',
                         fechaHora: '15/06/2099 · 09:30',
                         cuposTotales: 6,
-                        cuposOcupados: 3,
+                        cuposOcupados: ocupados,
                         organizadorNombre: 'Estudiante',
                         soyOrganizador: true,
                       ),
