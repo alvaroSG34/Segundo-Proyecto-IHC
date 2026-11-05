@@ -15,3 +15,14 @@ El evaluador tuvo dificultades para orientarse desde la portada pública y obser
    - **Commit:** [`e873c6f`](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/commit/e873c6f3ce2117342b22d783eb45b7b38bd5f416) — `fix: contar solo inscripciones y cerrar convocatorias`.
 
 **Verificación:** `flutter analyze` y `flutter test` finalizaron correctamente. La prueba de integración con Supabase requiere activación y credenciales externas.
+
+## Funcionalidad del caso: reprogramar y reconfirmar
+
+El organizador puede abrir **Reprogramar partido**, cambiar la fecha, hora o lugar e indicar el motivo. Cada titular queda pendiente de respuesta, pero conserva su cupo. Puede **confirmar su plaza** o **retirarse**. Si se retira y hay suplentes, el primero ocupa esa plaza y debe reconfirmar. La app impide otra reprogramación mientras haya respuestas pendientes. La tarjeta muestra el motivo, los datos anteriores y el estado de la reconfirmación.
+
+- **Antes:** Editar permitía mover la fecha o el lugar sin avisar a quienes ya estaban inscritos.
+- **Después:** Con titulares inscritos, Editar bloquea esos campos y remite a Reprogramar. Las funciones SQL guardan las respuestas y el ascenso del suplente en una sola operación para respetar los cupos y evitar inscripciones duplicadas.
+- **Evidencia:** [`test/reprogramacion_partido_test.dart`](../test/reprogramacion_partido_test.dart) comprueba la conservación de plazas, el bloqueo de una segunda reprogramación, la respuesta única, el ascenso del primer suplente y el caso sin suplentes. [`test/tarjeta_partido_test.dart`](../test/tarjeta_partido_test.dart) comprueba las acciones visibles.
+- **Commit:** [`0210ae4`](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/commit/0210ae4) — `feat: reprogramar partidos y reconfirmar titulares`.
+
+**Activación en Supabase:** volver a ejecutar [`supabase/esquema.sql`](../supabase/esquema.sql) en el SQL Editor. Es necesario para crear las columnas y funciones nuevas en la base compartida. Las pruebas locales pasaron (124 aprobadas, 1 omitida); el flujo con la base real queda pendiente de verificar tras aplicar el SQL.

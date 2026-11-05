@@ -50,6 +50,8 @@ Las reglas del modelo (`lib/modelos/modelo_partido.dart`) deciden qué muestra l
 | :--- | :--- | :--- |
 | Unirme al equipo | `unirse_a_partido` | No ser parte del equipo, fecha futura, cupos abiertos; al último cupo pasa a "Equipo completo" |
 | Editar partido | `editar_partido` | Equipo completo no cambia cupos; no menos cupos que inscritos |
+| Reprogramar partido | `reprogramar_partido` | Solo el organizador; fecha futura y motivo; marca a los titulares como pendientes sin liberar plazas |
+| Confirmar o retirarse | `responder_reprogramacion` | Cada titular responde una sola vez; al retirarse, asciende el primer suplente sin duplicar inscripciones |
 
 Solo una inscripción ocupa un cupo. La función de unión bloquea la fila del partido (`select ... for update`) mientras trabaja: si dos teléfonos intentan tomar el último cupo al mismo tiempo, uno lo consigue y el otro recibe "Convocatoria cerrada: el equipo ya está completo.".
 
@@ -79,5 +81,11 @@ flutter test test/supabase_integracion_test.dart --dart-define=PRUEBAS_SUPABASE=
 ```
 
 La segunda ejecuta una prueba contra la base **real**: crea dos estudiantes en dos clientes distintos (como dos teléfonos), uno publica un partido y el otro lo busca, se une y comprueba los rechazos del servidor y la seguridad RLS. Crea cuentas `prueba-...@unisport.edu` en cada ejecución, que se pueden borrar desde *Authentication* → *Users*.
+
+### Activar y comprobar la reprogramación
+
+Si el proyecto Supabase ya existía, vuelve a ejecutar el archivo completo [`supabase/esquema.sql`](../supabase/esquema.sql) desde el SQL Editor antes de usar la app actualizada. El script agrega columnas sin borrar partidos ni inscripciones existentes.
+
+Para probarlo con tres cuentas, crea un partido futuro de dos cupos como organizador, une a un titular y anota a la tercera cuenta como suplente. Como organizador, usa **Reprogramar partido** y escribe un motivo. El titular verá la fecha nueva y **Confirmar mi plaza** o **No puedo asistir: retirarme**. Si se retira, el suplente pasa a titular y debe reconfirmar. El organizador verá cuántas respuestas faltan.
 
 Las demás pruebas usan un repositorio en memoria (`test/apoyo/`) con el mismo contrato, para correr sin internet.
