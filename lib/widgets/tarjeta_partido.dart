@@ -374,7 +374,7 @@ class TarjetaPartido extends StatelessWidget {
                   key: const Key('partido_reconfirmar'),
                   onPressed: onReconfirmar,
                   icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Confirmar mi plaza'),
+                  label: const Text('Confirmar mi asistencia'),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton(

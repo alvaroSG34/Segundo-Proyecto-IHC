@@ -18,11 +18,15 @@ El evaluador tuvo dificultades para orientarse desde la portada pública y obser
 
 ## Funcionalidad del caso: reprogramar y reconfirmar
 
-El organizador puede abrir **Reprogramar partido**, cambiar la fecha, hora o lugar e indicar el motivo. Cada titular queda pendiente de respuesta, pero conserva su cupo. Puede **confirmar su plaza** o **retirarse**. Si se retira y hay suplentes, el primero ocupa esa plaza y debe reconfirmar. La app impide otra reprogramación mientras haya respuestas pendientes. La tarjeta muestra el motivo, los datos anteriores y el estado de la reconfirmación.
+El organizador puede abrir **Reprogramar partido**, cambiar la fecha, hora o lugar e indicar el motivo. Cada titular queda pendiente de respuesta, pero conserva su cupo. Puede **confirmar su asistencia** o **retirarse**. Si se retira y hay suplentes, el primero ocupa esa plaza y debe reconfirmar. La app impide otra reprogramación mientras haya respuestas pendientes. La tarjeta muestra el motivo, los datos anteriores y el estado de la reconfirmación.
 
 - **Antes:** Editar permitía mover la fecha o el lugar sin avisar a quienes ya estaban inscritos.
 - **Después:** Con titulares inscritos, Editar bloquea esos campos y remite a Reprogramar. Las funciones SQL guardan las respuestas y el ascenso del suplente en una sola operación para respetar los cupos y evitar inscripciones duplicadas.
-- **Captura del después:** la vista local muestra la fecha y el lugar nuevos, los datos anteriores, el motivo, las respuestas pendientes del organizador y las opciones del titular para confirmar su plaza o retirarse.
+- **Antes de ejecutar la reprogramación:** el organizador ve el partido y la acción **Reprogramar partido**.
+
+  ![Partido del organizador con el botón Reprogramar partido](reprogramar.png)
+
+- **Captura del después:** la vista local muestra la fecha y el lugar nuevos, los datos anteriores, el motivo, las respuestas pendientes del organizador y las opciones del titular para confirmar su asistencia o retirarse.
 
   ![Vista local del partido reprogramado para organizador y titular](tarea-7-despues.png)
 

@@ -86,6 +86,6 @@ La segunda ejecuta una prueba contra la base **real**: crea dos estudiantes en d
 
 Si el proyecto Supabase ya existía, vuelve a ejecutar el archivo completo [`supabase/esquema.sql`](../supabase/esquema.sql) desde el SQL Editor antes de usar la app actualizada. El script agrega columnas sin borrar partidos ni inscripciones existentes.
 
-Para probarlo con tres cuentas, crea un partido futuro de dos cupos como organizador, une a un titular y anota a la tercera cuenta como suplente. Como organizador, usa **Reprogramar partido** y escribe un motivo. El titular verá la fecha nueva y **Confirmar mi plaza** o **No puedo asistir: retirarme**. Si se retira, el suplente pasa a titular y debe reconfirmar. El organizador verá cuántas respuestas faltan.
+Para probarlo con tres cuentas, crea un partido futuro de dos cupos como organizador, une a un titular y anota a la tercera cuenta como suplente. Como organizador, usa **Reprogramar partido** y escribe un motivo. El titular verá la fecha nueva y **Confirmar mi asistencia** o **No puedo asistir: retirarme**. Si se retira, el suplente pasa a titular y debe reconfirmar. El organizador verá cuántas respuestas faltan.
 
 Las demás pruebas usan un repositorio en memoria (`test/apoyo/`) con el mismo contrato, para correr sin internet.
