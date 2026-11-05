@@ -84,7 +84,7 @@ void main() {
     await _tocar(tester, find.text('Guardar partido'));
     await _esperar(
       tester,
-      find.text('Partido creado y guardado correctamente.'),
+      find.text('Partido creado y guardado correctamente.').first,
       motivo: 'El organizador debe poder guardar el partido.',
     );
 
@@ -144,7 +144,7 @@ void main() {
     await _tocar(tester, find.text('Sí, salir'));
     await _esperar(
       tester,
-      find.text('Saliste de "$titulo". Entró el primer suplente.'),
+      find.text('Saliste de "$titulo". Entró el primer suplente.').first,
       motivo: 'La salida debe anunciar la promoción.',
     );
 
