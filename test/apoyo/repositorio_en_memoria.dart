@@ -168,7 +168,11 @@ class RepositorioEnMemoria implements RepositorioPartidos {
             filtro.coincide(f.partido, referencia))
           _visto(f),
     ];
-    resultado.sort((a, b) => a.fechaInicio!.compareTo(b.fechaInicio!));
+    resultado.sort(
+      (a, b) => filtro.periodo == PeriodoPartidos.vencidos
+          ? b.fechaInicio!.compareTo(a.fechaInicio!)
+          : a.fechaInicio!.compareTo(b.fechaInicio!),
+    );
     return resultado;
   }
 

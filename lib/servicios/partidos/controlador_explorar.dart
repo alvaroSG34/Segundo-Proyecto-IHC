@@ -2,7 +2,9 @@ import '../../modelos/filtro_partidos.dart';
 
 /// Conserva la búsqueda y los filtros de Explorar mientras dura la sesión.
 class ControladorExplorar {
-  FiltroPartidos _filtro = const FiltroPartidos();
+  FiltroPartidos _filtro = const FiltroPartidos(
+    periodo: PeriodoPartidos.proximos,
+  );
 
   FiltroPartidos get filtro => _filtro;
 

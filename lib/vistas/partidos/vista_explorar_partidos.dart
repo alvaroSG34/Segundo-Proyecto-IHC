@@ -19,12 +19,14 @@ class VistaExplorarPartidos extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
   final RepositorioPartidos? repositorioPartidos;
   final ControladorExplorar controladorExplorar;
+  final DateTime? referenciaTemporal;
 
   const VistaExplorarPartidos({
     super.key,
     required this.servicioAuth,
     this.repositorioPartidos,
     required this.controladorExplorar,
+    this.referenciaTemporal,
   });
 
   @override
@@ -63,7 +65,10 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     final List<String> lugares;
     final Map<String, List<String>> inscritos;
     try {
-      partidos = await _repositorio.buscarPartidos(_filtro);
+      partidos = await _repositorio.buscarPartidos(
+        _filtro,
+        ahora: widget.referenciaTemporal,
+      );
       lugares = await _repositorio.obtenerLugares();
       inscritos = await _repositorio.obtenerJugadoresInscritos();
     } on StateError catch (e) {
@@ -250,7 +255,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       appBar: AppBar(title: const Text('Explorar partidos')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
+          constraints: const BoxConstraints(maxWidth: 640),
           child: RefreshIndicator(
             onRefresh: _cargar,
             color: TemaApp.verdeDeportivo,
@@ -258,7 +263,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
                 const Text(
-                  'Partidos de otros estudiantes. Únete si hay cupos o espera como suplente si está completo.',
+                  'Encuentra tu próximo partido o consulta los que ya pasaron',
                   style: TextStyle(
                     fontSize: 13,
                     color: TemaApp.textoSecundario,
@@ -272,24 +277,32 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                   alCambiar: _cambiarFiltro,
                 ),
                 const SizedBox(height: 14),
-                if (_cargando)
-                  Semantics(
-                    key: const Key('explorar_cargando'),
-                    label: 'Cargando partidos',
-                    liveRegion: true,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 30),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                  )
-                else if (_partidos.isEmpty && _filtro.estaActivo)
-                  MensajeSinResultados(
-                    alQuitarFiltros: () =>
-                        _cambiarFiltro(const FiltroPartidos()),
-                  )
-                else if (_partidos.isEmpty)
-                  _construirEstadoVacio()
-                else ...[
+                Row(
+                  children: [
+                    Expanded(child: _botonPeriodo(PeriodoPartidos.proximos)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _botonPeriodo(PeriodoPartidos.vencidos)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  _filtro.periodo == PeriodoPartidos.vencidos
+                      ? 'Partidos vencidos'
+                      : 'Partidos próximos',
+                  style: TemaApp.titulo(tamano: 20),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _filtro.periodo == PeriodoPartidos.vencidos
+                      ? 'Ordenados del más reciente al más antiguo'
+                      : 'Ordenados por fecha más cercana',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: TemaApp.textoSecundario,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                if (!_cargando)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
@@ -304,6 +317,23 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                       ),
                     ),
                   ),
+                if (_cargando)
+                  Semantics(
+                    key: const Key('explorar_cargando'),
+                    label: 'Cargando partidos',
+                    liveRegion: true,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  )
+                else if (_partidos.isEmpty && _filtro.estaActivo)
+                  MensajeSinResultados(
+                    alQuitarFiltros: () => _cambiarFiltro(_filtro.limpiar()),
+                  )
+                else if (_partidos.isEmpty)
+                  _construirEstadoVacio()
+                else ...[
                   ..._partidos.map(
                     (partido) => TarjetaPartido(
                       partido: partido,
@@ -332,6 +362,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
   }
 
   Widget _construirEstadoVacio() {
+    final vencidos = _filtro.periodo == PeriodoPartidos.vencidos;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
       decoration: TemaApp.tarjeta(),
@@ -352,17 +383,67 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Todavía no hay partidos de otros estudiantes',
+            vencidos ? 'No hay partidos vencidos' : 'No hay partidos próximos',
             textAlign: TextAlign.center,
             style: TemaApp.titulo(tamano: 15),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Cuando alguien cree un partido, aparecerá aquí.',
+          Text(
+            vencidos
+                ? 'Aquí aparecerán los partidos de otros estudiantes cuya fecha ya pasó.'
+                : 'Cuando alguien cree un próximo partido, aparecerá aquí.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: TemaApp.textoSecundario),
+            style: const TextStyle(
+              fontSize: 13,
+              color: TemaApp.textoSecundario,
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _botonPeriodo(PeriodoPartidos periodo) {
+    final seleccionado = _filtro.periodo == periodo;
+    final vencidos = periodo == PeriodoPartidos.vencidos;
+    return Semantics(
+      selected: seleccionado,
+      child: OutlinedButton(
+        key: Key(vencidos ? 'explorar_vencidos' : 'explorar_proximos'),
+        onPressed: () {
+          if (!seleccionado) {
+            _cambiarFiltro(_filtro.copiarCon(periodo: periodo));
+          }
+        },
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 56),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          backgroundColor: seleccionado
+              ? TemaApp.verdeDeportivo
+              : TemaApp.superficie,
+          foregroundColor: seleccionado
+              ? Colors.white
+              : TemaApp.textoSecundario,
+          side: BorderSide(
+            color: seleccionado ? TemaApp.verdeDeportivo : TemaApp.borde,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              vencidos ? LucideIcons.clock : LucideIcons.calendarDays,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                vencidos ? 'Partidos vencidos' : 'Partidos próximos',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

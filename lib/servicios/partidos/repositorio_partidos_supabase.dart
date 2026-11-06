@@ -30,6 +30,12 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
     String instante(DateTime fecha) => fecha.toUtc().toIso8601String();
     final intervalo = filtro.intervaloFechas(ahora);
     return [
+      if (filtro.periodo != PeriodoPartidos.todos)
+        (
+          columna: 'fecha_inicio',
+          operador: filtro.periodo == PeriodoPartidos.vencidos ? 'lt' : 'gte',
+          valor: instante(ahora),
+        ),
       // El nombre no se envía a la base: se compara sin tildes en la app
       // (ver FiltroPartidos.coincideTitulo), porque ILIKE distingue "Vóley" de "voley".
       if (filtro.deporte != null)
@@ -341,7 +347,10 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
       };
     }
 
-    final filas = await consulta.order('fecha_inicio', ascending: true);
+    final filas = await consulta.order(
+      'fecha_inicio',
+      ascending: filtro.periodo != PeriodoPartidos.vencidos,
+    );
     final inscritos = await _idsInscritos();
     final pendientes = await _idsReconfirmacionesPendientes();
     final aceptadas = await _idsReconfirmacionesAceptadas();

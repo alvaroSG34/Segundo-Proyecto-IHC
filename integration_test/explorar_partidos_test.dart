@@ -208,6 +208,15 @@ void main() {
           isTrue,
           reason: 'La búsqueda debe tener nombre y rol de campo.',
         );
+        final filtros = find.byKey(const Key('explorar_mostrar_filtros'));
+        await _visible(tester, filtros);
+        _accesible(
+          tester,
+          find.bySemanticsLabel('Filtros'),
+          filtros,
+          'Filtros',
+        );
+        await _tocar(tester, filtros);
         final deporte = find.byKey(const Key('explorar_deporte'));
         await _visible(tester, deporte);
         _accesible(

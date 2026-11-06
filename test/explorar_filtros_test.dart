@@ -36,6 +36,9 @@ void main() {
   testWidgets('filtrar desde la pantalla consulta los partidos de otros', (
     tester,
   ) async {
+    // La cabecera de categorías ocupa más espacio: mostrar ambas tarjetas.
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final auth = ServicioAutenticacionFalso();
     // Partidos que organizó Lorgio
     auth.repositorio

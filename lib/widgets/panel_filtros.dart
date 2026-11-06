@@ -25,6 +25,7 @@ class PanelFiltros extends StatefulWidget {
 }
 
 class _PanelFiltrosState extends State<PanelFiltros> {
+  bool _mostrarFiltros = false;
   late final TextEditingController _busqueda = TextEditingController(
     text: widget.filtro.texto,
   );
@@ -162,67 +163,123 @@ class _PanelFiltrosState extends State<PanelFiltros> {
   @override
   Widget build(BuildContext context) {
     final activos = _activos;
+    final vencidos = _filtro.periodo == PeriodoPartidos.vencidos;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          key: const Key('explorar_busqueda'),
-          controller: _busqueda,
-          textInputAction: TextInputAction.search,
-          onChanged: (texto) => _cambiar(_filtro.copiarCon(texto: texto)),
-          decoration: InputDecoration(
-            labelText: 'Buscar partido por nombre',
-            prefixIcon: const Icon(LucideIcons.search, size: 20),
-            suffixIcon: _busqueda.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Borrar búsqueda',
-                    icon: const Icon(LucideIcons.x, size: 18),
-                    onPressed: () => _cambiar(_filtro.copiarCon(texto: '')),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _BotonFiltro(
-                key: const Key('explorar_deporte'),
-                icono: LucideIcons.trophy,
-                texto: _filtro.deporte ?? 'Deporte',
-                activo: _filtro.deporte != null,
-                alTocar: _elegirDeporte,
-              ),
-              const SizedBox(width: 8),
-              _BotonFiltro(
-                icono: LucideIcons.calendarDays,
-                texto: _filtro.fecha == FiltroFecha.cualquiera
-                    ? 'Fecha'
-                    : _textoFecha,
-                activo: _filtro.fecha != FiltroFecha.cualquiera,
-                alTocar: _elegirFecha,
-              ),
-              const SizedBox(width: 8),
-              _BotonFiltro(
-                icono: LucideIcons.mapPin,
-                texto: _filtro.lugar ?? 'Lugar',
-                activo: _filtro.lugar != null,
-                alTocar: _elegirLugar,
-              ),
-              const SizedBox(width: 8),
-              _BotonFiltro(
-                icono: LucideIcons.users,
-                texto: 'Con cupos',
-                activo: _filtro.soloConCupos,
-                conFlecha: false,
-                alTocar: () => _cambiar(
-                  _filtro.copiarCon(soloConCupos: !_filtro.soloConCupos),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final busqueda = _construirBusqueda();
+            final boton = Semantics(
+              expanded: _mostrarFiltros,
+              child: OutlinedButton(
+                key: const Key('explorar_mostrar_filtros'),
+                onPressed: () =>
+                    setState(() => _mostrarFiltros = !_mostrarFiltros),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(48, 52),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.slidersHorizontal, size: 18),
+                    const SizedBox(width: 6),
+                    const Text('Filtros'),
+                    const SizedBox(width: 4),
+                    Icon(
+                      _mostrarFiltros
+                          ? LucideIcons.chevronUp
+                          : LucideIcons.chevronDown,
+                      size: 16,
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+            if (constraints.maxWidth < 400) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  busqueda,
+                  const SizedBox(height: 8),
+                  Align(alignment: Alignment.centerRight, child: boton),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: busqueda),
+                const SizedBox(width: 10),
+                boton,
+              ],
+            );
+          },
         ),
+        if (_mostrarFiltros) ...[
+          const SizedBox(height: 10),
+          Container(
+            key: const Key('explorar_filtros_desplegados'),
+            padding: const EdgeInsets.all(12),
+            decoration: TemaApp.tarjeta(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _BotonFiltro(
+                      key: const Key('explorar_deporte'),
+                      icono: LucideIcons.trophy,
+                      texto: _filtro.deporte ?? 'Deporte',
+                      activo: _filtro.deporte != null,
+                      alTocar: _elegirDeporte,
+                    ),
+                    _BotonFiltro(
+                      icono: LucideIcons.calendarDays,
+                      texto: _filtro.fecha == FiltroFecha.cualquiera
+                          ? 'Fecha'
+                          : _textoFecha,
+                      activo: _filtro.fecha != FiltroFecha.cualquiera,
+                      alTocar: _elegirFecha,
+                    ),
+                    _BotonFiltro(
+                      icono: LucideIcons.mapPin,
+                      texto: _filtro.lugar ?? 'Lugar',
+                      activo: _filtro.lugar != null,
+                      alTocar: _elegirLugar,
+                    ),
+                    _BotonFiltro(
+                      key: const Key('explorar_con_cupos'),
+                      icono: LucideIcons.users,
+                      texto: 'Con cupos',
+                      activo: _filtro.soloConCupos,
+                      conFlecha: false,
+                      alTocar: vencidos
+                          ? null
+                          : () => _cambiar(
+                              _filtro.copiarCon(
+                                soloConCupos: !_filtro.soloConCupos,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+                if (vencidos) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Disponible solo en partidos próximos',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: TemaApp.textoSecundario,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
         if (activos.isNotEmpty) ...[
           const SizedBox(height: 12),
           Row(
@@ -238,7 +295,7 @@ class _PanelFiltrosState extends State<PanelFiltros> {
                 ),
               ),
               TextButton(
-                onPressed: () => _cambiar(const FiltroPartidos()),
+                onPressed: () => _cambiar(_filtro.limpiar()),
                 child: const Text('Limpiar todo'),
               ),
             ],
@@ -271,6 +328,24 @@ class _PanelFiltrosState extends State<PanelFiltros> {
       ],
     );
   }
+
+  Widget _construirBusqueda() => TextField(
+    key: const Key('explorar_busqueda'),
+    controller: _busqueda,
+    textInputAction: TextInputAction.search,
+    onChanged: (texto) => _cambiar(_filtro.copiarCon(texto: texto)),
+    decoration: InputDecoration(
+      labelText: 'Buscar partido por nombre',
+      prefixIcon: const Icon(LucideIcons.search, size: 20),
+      suffixIcon: _busqueda.text.isEmpty
+          ? null
+          : IconButton(
+              tooltip: 'Borrar búsqueda',
+              icon: const Icon(LucideIcons.x, size: 18),
+              onPressed: () => _cambiar(_filtro.copiarCon(texto: '')),
+            ),
+    ),
+  );
 }
 
 class _BotonFiltro extends StatelessWidget {
@@ -278,7 +353,7 @@ class _BotonFiltro extends StatelessWidget {
   final String texto;
   final bool activo;
   final bool conFlecha;
-  final VoidCallback alTocar;
+  final VoidCallback? alTocar;
 
   const _BotonFiltro({
     super.key,
@@ -296,12 +371,17 @@ class _BotonFiltro extends StatelessWidget {
       label: texto,
       button: true,
       selected: activo,
+      enabled: alTocar != null,
       excludeSemantics: true,
       onTap: alTocar,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         child: Material(
-          color: activo ? TemaApp.verdeSuave : TemaApp.superficie,
+          color: alTocar == null
+              ? TemaApp.superficieSuave
+              : activo
+              ? TemaApp.verdeSuave
+              : TemaApp.superficie,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
@@ -319,12 +399,14 @@ class _BotonFiltro extends StatelessWidget {
                 children: [
                   Icon(icono, size: 15, color: color),
                   const SizedBox(width: 6),
-                  Text(
-                    texto,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: color,
+                  Flexible(
+                    child: Text(
+                      texto,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
                     ),
                   ),
                   if (conFlecha) ...[

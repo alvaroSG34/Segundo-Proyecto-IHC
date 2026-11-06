@@ -1,5 +1,8 @@
 import 'modelo_partido.dart';
 
+/// Categoría temporal de Explorar, independiente de los filtros activos.
+enum PeriodoPartidos { todos, proximos, vencidos }
+
 /// Opciones del filtro por fecha (Issue #9, requisito #6).
 enum FiltroFecha {
   cualquiera('Cualquier fecha'),
@@ -25,6 +28,7 @@ class FiltroPartidos {
   final String texto;
   final String? deporte;
   final FiltroFecha fecha;
+  final PeriodoPartidos periodo;
 
   /// Días inicial y final (incluidos) cuando [fecha] es [FiltroFecha.rango].
   final DateTime? desde;
@@ -38,6 +42,7 @@ class FiltroPartidos {
     this.texto = '',
     this.deporte,
     this.fecha = FiltroFecha.cualquiera,
+    this.periodo = PeriodoPartidos.todos,
     this.desde,
     this.hasta,
     this.lugar,
@@ -59,6 +64,7 @@ class FiltroPartidos {
     String? texto,
     String? deporte,
     FiltroFecha? fecha,
+    PeriodoPartidos? periodo,
     DateTime? desde,
     DateTime? hasta,
     String? lugar,
@@ -68,16 +74,23 @@ class FiltroPartidos {
   }) {
     final nuevaFecha = fecha ?? this.fecha;
     final esRango = nuevaFecha == FiltroFecha.rango;
+    final nuevoPeriodo = periodo ?? this.periodo;
     return FiltroPartidos(
       texto: texto ?? this.texto,
       deporte: quitarDeporte ? null : deporte ?? this.deporte,
       fecha: nuevaFecha,
+      periodo: nuevoPeriodo,
       desde: esRango ? desde ?? this.desde : null,
       hasta: esRango ? hasta ?? this.hasta : null,
       lugar: quitarLugar ? null : lugar ?? this.lugar,
-      soloConCupos: soloConCupos ?? this.soloConCupos,
+      soloConCupos:
+          nuevoPeriodo != PeriodoPartidos.vencidos &&
+          (soloConCupos ?? this.soloConCupos),
     );
   }
+
+  /// Limpia la búsqueda y los filtros sin cambiar de categoría.
+  FiltroPartidos limpiar() => FiltroPartidos(periodo: periodo);
 
   /// Intervalo [inicio, fin) de fechas que exige el filtro, tomando [ahora]
   /// como referencia. Es null si no hay filtro de fecha.
@@ -127,6 +140,14 @@ class FiltroPartidos {
 
   /// La misma regla que la consulta, aplicada en memoria.
   bool coincide(ModeloPartido p, DateTime ahora) {
+    if (periodo != PeriodoPartidos.todos) {
+      final inicio = p.fechaInicio;
+      if (inicio == null) return false;
+      final vencido = inicio.isBefore(ahora);
+      if (periodo == PeriodoPartidos.vencidos ? !vencido : vencido) {
+        return false;
+      }
+    }
     if (!coincideTitulo(p.titulo)) return false;
     if (deporte != null && p.disciplina != deporte) return false;
     if (lugar != null &&
