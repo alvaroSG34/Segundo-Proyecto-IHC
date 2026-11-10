@@ -203,5 +203,6 @@ requiere activación explícita.
 
 ## 9. Commit
 
-**Pendiente:** crear el commit que incluya la funcionalidad, las pruebas, el
-esquema actualizado, este documento y las capturas guardadas en `evidencias/`.
+La funcionalidad, el esquema actualizado, las pruebas y esta evidencia quedaron
+registrados en
+[b054888 — feat: completar resultados y E2E de Tarea 8](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/commit/b054888d320df6269d4aee4ff2ff2c5b3444993a).
