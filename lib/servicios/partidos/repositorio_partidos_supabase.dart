@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../modelos/evento_historial.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
+import '../../modelos/propuesta_equipos.dart';
 import 'repositorio_partidos.dart';
 
 /// Repositorio sobre la base de datos compartida de Supabase (PostgreSQL).
@@ -19,6 +20,64 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
   final SupabaseClient _cliente;
 
   RepositorioPartidosSupabase(this._cliente);
+
+  @override
+  Future<List<ParticipantePartido>> obtenerParticipantes(String partidoId) =>
+      _ejecutar(() async {
+        final filas = await _cliente.rpc(
+          'obtener_participantes_equipos',
+          params: {'p_partido': partidoId},
+        );
+        return [
+          for (final f in filas as List)
+            ParticipantePartido(
+              id: f['id'] as String,
+              nombre: f['nombre'] as String,
+              esOrganizador: f['es_organizador'] as bool,
+            ),
+        ];
+      });
+
+  @override
+  Future<PropuestaEquipos?> obtenerPropuesta(String partidoId) =>
+      _ejecutar(() async {
+        final fila = await _cliente
+            .from('propuestas_equipos')
+            .select()
+            .eq('partido_id', partidoId)
+            .maybeSingle();
+        return fila == null ? null : PropuestaEquipos.desdeFila(fila);
+      });
+
+  @override
+  Future<void> guardarPropuesta(String partidoId, PropuestaEquipos propuesta) =>
+      _ejecutar(() async {
+        await _cliente.rpc(
+          'guardar_propuesta_equipos',
+          params: {
+            'p_partido': partidoId,
+            'p_equipo_a': propuesta.equipoA,
+            'p_equipo_b': propuesta.equipoB,
+            'p_capitan_rival': propuesta.capitanRivalId,
+          },
+        );
+      });
+
+  @override
+  Future<void> responderPropuesta(
+    String partidoId,
+    String revision,
+    bool acepta,
+  ) => _ejecutar(() async {
+    await _cliente.rpc(
+      'responder_propuesta_equipos',
+      params: {
+        'p_partido': partidoId,
+        'p_revision': revision,
+        'p_acepta': acepta,
+      },
+    );
+  });
 
   /// Traduce el filtro a las condiciones que se envían a la base de datos
   /// (todas se combinan con AND).
@@ -275,33 +334,6 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
           todos.sort((a, b) => b.fechaInicio.compareTo(a.fechaInicio));
           return todos;
         }
-      });
-
-  @override
-  Future<Map<String, List<String>>> obtenerJugadoresInscritos() =>
-      _ejecutar(() async {
-        final mios = await _cliente
-            .from('partidos')
-            .select('id')
-            .eq('organizador_id', _usuarioId);
-        final ids = {
-          for (final f in mios) f['id'] as String,
-          ...await _idsInscritos(),
-        };
-        if (ids.isEmpty) return <String, List<String>>{};
-
-        final filas = await _cliente
-            .from('inscripciones')
-            .select('partido_id, jugador_nombre')
-            .inFilter('partido_id', ids.toList())
-            .order('creado_en', ascending: true);
-        final resultado = <String, List<String>>{};
-        for (final f in filas) {
-          resultado
-              .putIfAbsent(f['partido_id'] as String, () => [])
-              .add(f['jugador_nombre'] as String);
-        }
-        return resultado;
       });
 
   @override

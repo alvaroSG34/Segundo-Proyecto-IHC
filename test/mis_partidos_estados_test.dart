@@ -47,7 +47,6 @@ void main() {
     final tarjeta = tester.widget<TarjetaPartido>(find.byType(TarjetaPartido));
     expect(tarjeta.partido.id, 'con-suplentes');
     expect(tarjeta.suplentes, ['Suplente']);
-    expect(tarjeta.jugadoresUnidos, ['Titular']);
   });
 
   testWidgets(
@@ -119,16 +118,18 @@ void main() {
           expect(find.byType(TarjetaPartido), findsNothing);
         }
         for (final accion in [
-          'Explorar partidos para unirme',
-          'Ver historial de participación',
+          'Explorar',
+          'Historial de participación',
           'Crear partido',
         ]) {
-          final control = find.bySemanticsLabel(accion);
+          final control = accion == 'Historial de participación'
+              ? find.byKey(const Key('icono_abrir_historial'))
+              : find.bySemanticsLabel(RegExp('^$accion'));
           final visual = accion == 'Crear partido'
               ? find.byType(FloatingActionButton)
-              : accion == 'Explorar partidos para unirme'
-              ? find.widgetWithText(OutlinedButton, accion)
-              : find.byKey(const Key('boton_abrir_historial'));
+              : accion == 'Explorar'
+              ? find.byType(NavigationDestination).first
+              : find.byKey(const Key('icono_abrir_historial'));
           await _visible(tester, visual);
           expect(control, findsOneWidget);
           expect(
@@ -164,9 +165,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(TarjetaPartido), findsOneWidget);
         repo.fallar = true;
-        final explorar = find.widgetWithText(
-          OutlinedButton,
-          'Explorar partidos para unirme',
+        final explorar = find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Explorar'),
         );
         await _visible(tester, explorar);
         await tester.tap(explorar);

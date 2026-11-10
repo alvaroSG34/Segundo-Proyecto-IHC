@@ -3,6 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/modelo_partido.dart';
+import '../../modelos/filtro_partidos.dart';
+import '../../modelos/propuesta_equipos.dart';
+import 'vista_equipos.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
@@ -25,12 +28,14 @@ class VistaMisPartidos extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
   final RepositorioPartidos? repositorioPartidos;
   final ControladorExplorar controladorExplorar;
+  final DateTime? referenciaTemporal;
 
   const VistaMisPartidos({
     super.key,
     required this.servicioAuth,
     this.repositorioPartidos,
     required this.controladorExplorar,
+    this.referenciaTemporal,
   });
 
   @override
@@ -43,13 +48,14 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       RepositorioPartidosSupabase(Supabase.instance.client);
 
   List<ModeloPartido> _partidos = [];
-  Map<String, List<String>> _jugadoresInscritos = {};
+  Map<String, PropuestaEquipos?> _propuestas = {};
   Map<String, List<String>> _suplentes = {};
   bool _cargando = true;
   String? _errorCarga;
   int _consulta = 0;
   bool _cerrandoSesion = false;
   String _filtroActivo = 'todos';
+  PeriodoPartidos _periodo = PeriodoPartidos.todos;
 
   @override
   void initState() {
@@ -118,13 +124,19 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     try {
       final propios = await _repositorio.obtenerMisPartidos();
       final unidos = await _repositorio.obtenerPartidosUnidos();
-      final inscritos = await _repositorio.obtenerJugadoresInscritos();
       final suplentes = await _repositorio.obtenerSuplentes();
+      final propuestas = await Future.wait([
+        for (final p in [...propios, ...unidos])
+          _repositorio.obtenerPropuesta(p.id),
+      ]);
+      final ids = [...propios, ...unidos].map((p) => p.id).toList();
       if (!mounted || consulta != _consulta) return;
       setState(() {
         _partidos = [...propios, ...unidos];
-        _jugadoresInscritos = inscritos;
         _suplentes = suplentes;
+        _propuestas = {
+          for (var i = 0; i < ids.length; i++) ids[i]: propuestas[i],
+        };
         _cargando = false;
       });
     } catch (error) {
@@ -199,6 +211,20 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
     _reemplazar(guardado);
     _avisar('Partido "${guardado.titulo}" actualizado');
+  }
+
+  Future<void> _abrirEquipos(ModeloPartido partido) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VistaEquipos(
+          partido: partido,
+          repositorio: _repositorio,
+          usuarioId: widget.servicioAuth.usuarioActual!.id,
+        ),
+      ),
+    );
+    if (mounted) await _cargarPartidos();
   }
 
   Future<void> _completarEquipo(ModeloPartido partido) async {
@@ -373,11 +399,27 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final partidosFiltrados = _partidos.where((p) {
-      if (_filtroActivo == 'organizados') return p.soyOrganizador;
-      if (_filtroActivo == 'unido') return !p.soyOrganizador;
-      return true;
-    }).toList();
+    final ahora = widget.referenciaTemporal ?? DateTime.now();
+    final filtroFecha = FiltroPartidos(periodo: _periodo);
+    final partidosFiltrados =
+        _partidos.where((p) {
+          if (_filtroActivo == 'organizados' && !p.soyOrganizador) return false;
+          if (_filtroActivo == 'unido' && p.soyOrganizador) return false;
+          return filtroFecha.coincide(p, ahora);
+        }).toList()..sort((a, b) {
+          final fechaA = a.fechaInicio;
+          final fechaB = b.fechaInicio;
+          // Las fechas desconocidas quedan al final de "Todas las fechas".
+          if (fechaA == null) return fechaB == null ? a.id.compareTo(b.id) : 1;
+          if (fechaB == null) return -1;
+          final pasadoA = fechaA.isBefore(ahora);
+          final pasadoB = fechaB.isBefore(ahora);
+          if (pasadoA != pasadoB) return pasadoA ? 1 : -1;
+          final orden = pasadoA
+              ? fechaB.compareTo(fechaA)
+              : fechaA.compareTo(fechaB);
+          return orden == 0 ? a.id.compareTo(b.id) : orden;
+        });
 
     return Scaffold(
       appBar: AppBar(
@@ -464,31 +506,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                   usuario.correo,
                   usuario.carrera,
                 ),
-                const SizedBox(height: 14),
-                OutlinedButton.icon(
-                  onPressed: _explorarPartidos,
-                  icon: const Icon(LucideIcons.compass, size: 18),
-                  label: const Text('Explorar partidos para unirme'),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.standard,
-                    minimumSize: const Size(double.infinity, 52),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                FilledButton.tonalIcon(
-                  key: const Key('boton_abrir_historial'),
-                  onPressed: _abrirHistorial,
-                  icon: const Icon(LucideIcons.history, size: 18),
-                  label: const Text('Ver historial de participación'),
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.standard,
-                    minimumSize: const Size(
-                      double.infinity,
-                      48,
-                    ), // Ley de Fitts: >= 48 px
-                  ),
-                ),
-                const SizedBox(height: 24),
+
                 _construirEncabezadoLista(
                   _cargando || _errorCarga != null
                       ? null
@@ -496,6 +514,34 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                 ),
                 const SizedBox(height: 12),
                 _construirFiltros(),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<PeriodoPartidos>(
+                  key: const Key('mis_partidos_periodo'),
+                  initialValue: _periodo,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Fecha del partido',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: PeriodoPartidos.todos,
+                      child: Text('Todas las fechas'),
+                    ),
+                    DropdownMenuItem(
+                      value: PeriodoPartidos.proximos,
+                      child: Text('Próximos'),
+                    ),
+                    DropdownMenuItem(
+                      value: PeriodoPartidos.vencidos,
+                      child: Text('Pasados'),
+                    ),
+                  ],
+                  onChanged: _cargando || _cerrandoSesion
+                      ? null
+                      : (valor) {
+                          if (valor != null) setState(() => _periodo = valor);
+                        },
+                ),
                 const SizedBox(height: 16),
                 if (_cargando)
                   Semantics(
@@ -534,6 +580,20 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                   ...partidosFiltrados.map(
                     (p) => TarjetaPartido(
                       partido: p,
+                      estadoEquipos: _propuestas[p.id] == null
+                          ? 'Equipos por proponer'
+                          : 'Equipos: ${_propuestas[p.id]!.estado.etiqueta}',
+                      textoBotonEquipos:
+                          _propuestas[p.id] == null && p.soyOrganizador
+                          ? 'Proponer equipos'
+                          : 'Ver equipos',
+                      onEquipos:
+                          _propuestas[p.id] != null ||
+                              (p.soyOrganizador &&
+                                  !p.fechaPasada &&
+                                  p.estado == EstadoPartido.equipoCompleto)
+                          ? () => _abrirEquipos(p)
+                          : null,
                       onEditar: () => _editarPartido(p),
                       onCompletarEquipo: p.puedeCompletarEquipo
                           ? () => _completarEquipo(p)
@@ -547,7 +607,6 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                       onRetirarseReprogramacion: p.reconfirmacionPendiente
                           ? () => _responderReprogramacion(p, false)
                           : null,
-                      jugadoresUnidos: _jugadoresInscritos[p.id] ?? const [],
                       suplentes: p.soyOrganizador
                           ? _suplentes[p.id] ?? const []
                           : null,
@@ -769,13 +828,19 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
           ),
           const SizedBox(height: 14),
           Text(
-            'No tienes partidos en esta categoría',
+            _periodo == PeriodoPartidos.todos
+                ? 'No tienes partidos en esta categoría'
+                : _periodo == PeriodoPartidos.proximos
+                ? 'No tienes partidos próximos'
+                : 'No tienes partidos pasados',
             textAlign: TextAlign.center,
             style: TemaApp.titulo(tamano: 15),
           ),
           const SizedBox(height: 4),
           Text(
-            _filtroActivo == 'unido'
+            _periodo != PeriodoPartidos.todos
+                ? 'Prueba otra fecha o cambia la categoría.'
+                : _filtroActivo == 'unido'
                 ? 'Toca "Explorar partidos para unirme" para encontrar uno.'
                 : 'Toca "Crear partido" para agregar uno.',
             textAlign: TextAlign.center,

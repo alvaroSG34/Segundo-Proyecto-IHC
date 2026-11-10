@@ -67,7 +67,7 @@ La aplicación muestra Futsal, Básquet y Vóley, junto con las opciones «Inici
 
 **Regla en el servidor:** la función SQL comprueba la sesión, bloquea la fila del partido con `FOR UPDATE`, repite las validaciones e inserta la relación. La clave primaria compuesta `(partido_id, jugador_id)` evita duplicados. Las políticas RLS permiten lecturas con sesión y la inscripción se realiza mediante la función del servidor.
 
-**Resultado previsto por el código:** Explorar actualiza la tarjeta y muestra el mensaje de éxito con los cupos. En [vista_mis_partidos.dart](../lib/vistas/vista_mis_partidos.dart), `_cargarPartidos()` obtiene las inscripciones mediante `obtenerJugadoresInscritos()` y las pasa a `TarjetaPartido.jugadoresUnidos`. El organizador ve, por ejemplo, «Se unieron (1): Diego». Esta lista se consulta al cargar o recargar la pantalla; no se identificó una suscripción en tiempo real en este recorrido.
+**Resultado previsto por el código:** Explorar actualiza la tarjeta y muestra el mensaje de éxito con los cupos. En Mis partidos se consultan los cupos actualizados y, una vez cerrada la convocatoria, los participantes se reparten desde Proponer equipos.
 
 **Captura 2 · Resultado de unirse al partido desde Explorar.**
 
@@ -211,8 +211,6 @@ Acceso a Crear partido, Mis partidos, Explorar e Historial.
 
 ![Menú principal](menu-principal.png)
 
-### Consulta de jugadores inscritos
+### Consulta de equipos
 
-El organizador y los participantes pueden abrir la lista de inscritos en una ventana desplazable.
-
-![Lista de jugadores inscritos](jugadores-inscritos.png)
+La consulta individual de inscritos fue sustituida por la propuesta y consulta de equipos.

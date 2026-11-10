@@ -39,7 +39,6 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       RepositorioPartidosSupabase(Supabase.instance.client);
 
   List<ModeloPartido> _partidos = [];
-  Map<String, List<String>> _jugadoresInscritos = {};
   List<String> _lugares = FiltroPartidos.lugaresSugeridos;
   FiltroPartidos get _filtro => widget.controladorExplorar.filtro;
   bool _cargando = true;
@@ -63,14 +62,12 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     setState(() => _cargando = true);
     final List<ModeloPartido> partidos;
     final List<String> lugares;
-    final Map<String, List<String>> inscritos;
     try {
       partidos = await _repositorio.buscarPartidos(
         _filtro,
         ahora: widget.referenciaTemporal,
       );
       lugares = await _repositorio.obtenerLugares();
-      inscritos = await _repositorio.obtenerJugadoresInscritos();
     } on StateError catch (e) {
       if (!mounted || numero != _consulta) return;
       setState(() => _cargando = false);
@@ -81,7 +78,6 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     setState(() {
       _partidos = partidos;
       _lugares = lugares;
-      _jugadoresInscritos = inscritos;
       _cargando = false;
     });
   }
@@ -347,9 +343,6 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                           : null,
                       onEntrarEnEspera: () => _entrarEnEspera(partido),
                       onSalirDeEspera: () => _salirDeEspera(partido),
-                      jugadoresUnidos: partido.estoyUnido
-                          ? _jugadoresInscritos[partido.id] ?? const []
-                          : null,
                     ),
                   ),
                 ],

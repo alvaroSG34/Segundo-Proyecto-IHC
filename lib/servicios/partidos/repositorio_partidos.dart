@@ -1,6 +1,7 @@
 import '../../modelos/evento_historial.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
+import '../../modelos/propuesta_equipos.dart';
 
 /// Operaciones sobre partidos e inscripciones en la base de datos compartida.
 ///
@@ -11,14 +12,20 @@ import '../../modelos/modelo_partido.dart';
 /// La implementación real es RepositorioPartidosSupabase; las pruebas usan una versión
 /// en memoria con el mismo contrato.
 abstract class RepositorioPartidos {
+  Future<List<ParticipantePartido>> obtenerParticipantes(String partidoId);
+  Future<PropuestaEquipos?> obtenerPropuesta(String partidoId);
+  Future<void> guardarPropuesta(String partidoId, PropuestaEquipos propuesta);
+  Future<void> responderPropuesta(
+    String partidoId,
+    String revision,
+    bool acepta,
+  );
+
   /// Partidos que organiza el usuario actual (más recientes primero).
   Future<List<ModeloPartido>> obtenerMisPartidos();
 
   /// Partidos de otros estudiantes a los que el usuario actual se unió.
   Future<List<ModeloPartido>> obtenerPartidosUnidos();
-
-  /// Quién se unió a los partidos que organiza o integra: id -> nombres.
-  Future<Map<String, List<String>>> obtenerJugadoresInscritos();
 
   /// Nombres en orden de espera para los partidos organizados por el usuario.
   Future<Map<String, List<String>>> obtenerSuplentes();

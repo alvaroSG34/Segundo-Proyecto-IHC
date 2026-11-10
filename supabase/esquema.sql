@@ -624,3 +624,161 @@ $$;
 
 grant execute on function public.obtener_historial_usuario() to authenticated;
 
+
+-- Propuesta sencilla: una por partido, reemplazada en cada envío.
+create table if not exists public.propuestas_equipos (
+  partido_id uuid primary key references public.partidos(id) on delete cascade,
+  revision uuid not null default gen_random_uuid(),
+  equipo_a uuid[] not null,
+  equipo_b uuid[] not null,
+  capitan_rival_id uuid not null references public.perfiles(id),
+  estado text not null default 'pendiente'
+    check (estado in ('pendiente', 'aceptada', 'rechazada'))
+);
+alter table public.propuestas_equipos enable row level security;
+-- Las escrituras solo se realizan mediante las funciones de abajo.
+revoke all on public.propuestas_equipos from public, anon, authenticated;
+grant select on public.propuestas_equipos to authenticated;
+drop policy if exists "equipos: leer participantes" on public.propuestas_equipos;
+create policy "equipos: leer participantes" on public.propuestas_equipos
+for select to authenticated using (
+  exists (select 1 from public.partidos p
+    where p.id = partido_id and p.organizador_id = auth.uid())
+  or exists (select 1 from public.inscripciones i
+    where i.partido_id = propuestas_equipos.partido_id and i.jugador_id = auth.uid())
+);
+
+create or replace function public.obtener_participantes_equipos(p_partido uuid)
+returns table(id uuid, nombre text, es_organizador boolean)
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or not exists (
+    select 1 from public.partidos p where p.id = p_partido and
+      (p.organizador_id = auth.uid() or exists (
+        select 1 from public.inscripciones i
+        where i.partido_id = p.id and i.jugador_id = auth.uid()))
+  ) then
+    raise exception 'Solo los participantes pueden consultar los equipos.';
+  end if;
+  return query
+    select p.organizador_id, p.organizador_nombre, true
+      from public.partidos p where p.id = p_partido
+    union all
+    select i.jugador_id, i.jugador_nombre, false
+      from public.inscripciones i where i.partido_id = p_partido;
+end;
+$$;
+
+create or replace function public.guardar_propuesta_equipos(
+  p_partido uuid, p_equipo_a uuid[], p_equipo_b uuid[], p_capitan_rival uuid
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_partido public.partidos;
+  v_actuales uuid[];
+  v_todos uuid[];
+begin
+  select * into v_partido from public.partidos where id = p_partido for update;
+  if not found then raise exception 'Este partido ya no existe.'; end if;
+  if auth.uid() is null or v_partido.organizador_id <> auth.uid() then
+    raise exception 'Solo el organizador puede proponer equipos.';
+  end if;
+  if v_partido.fecha_inicio <= now() then
+    raise exception 'El partido ya comenzó.';
+  end if;
+  if v_partido.estado <> 'equipoCompleto' then
+    raise exception 'Cierra la convocatoria antes de proponer equipos.';
+  end if;
+  select array_agg(id) into v_actuales
+    from public.obtener_participantes_equipos(p_partido);
+  v_todos := p_equipo_a || p_equipo_b;
+  if p_equipo_a is null or p_equipo_b is null or p_capitan_rival is null
+    or cardinality(p_equipo_b) = 0
+    or not (v_partido.organizador_id = any(p_equipo_a))
+    or p_capitan_rival = v_partido.organizador_id
+    or not (p_capitan_rival = any(p_equipo_b))
+    or array_position(v_todos, null) is not null
+    or cardinality(v_todos) <> cardinality(v_actuales)
+    or (select count(distinct x) from unnest(v_todos) x) <> cardinality(v_todos)
+    or not (v_todos @> v_actuales and v_actuales @> v_todos) then
+    raise exception 'Asigna a todos una sola vez, deja al organizador en A y elige un capitán del B.';
+  end if;
+  insert into public.propuestas_equipos
+    (partido_id, equipo_a, equipo_b, capitan_rival_id)
+  values (p_partido, p_equipo_a, p_equipo_b, p_capitan_rival)
+  on conflict (partido_id) do update set
+    revision = gen_random_uuid(), equipo_a = excluded.equipo_a,
+    equipo_b = excluded.equipo_b, capitan_rival_id = excluded.capitan_rival_id,
+    estado = 'pendiente';
+end;
+$$;
+
+create or replace function public.responder_propuesta_equipos(
+  p_partido uuid, p_revision uuid, p_acepta boolean
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_partido public.partidos;
+  v_propuesta public.propuestas_equipos;
+begin
+  select * into v_partido from public.partidos where id = p_partido for update;
+  if not found then raise exception 'Este partido ya no existe.'; end if;
+  if v_partido.fecha_inicio <= now() then raise exception 'El partido ya comenzó.'; end if;
+  select * into v_propuesta from public.propuestas_equipos where partido_id = p_partido;
+  if not found or p_revision is distinct from v_propuesta.revision then
+    raise exception 'La propuesta cambió. Vuelve a abrir los equipos.';
+  end if;
+  if auth.uid() is null or auth.uid() <> v_propuesta.capitan_rival_id then
+    raise exception 'Solo el capitán rival puede responder.';
+  end if;
+  if v_propuesta.estado <> 'pendiente' then
+    raise exception 'Esta propuesta ya tiene respuesta.';
+  end if;
+  if p_acepta is null then raise exception 'Indica si aceptas o rechazas.'; end if;
+  update public.propuestas_equipos set estado =
+    case when p_acepta then 'aceptada' else 'rechazada' end
+    where partido_id = p_partido;
+end;
+$$;
+
+-- Los cambios de participantes usan el mismo bloqueo de partido que las RPC.
+-- Los UPDATE de reconfirmación no modifican el reparto.
+create or replace function public.invalidar_equipos_inscripcion()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_id uuid;
+begin
+  if TG_OP = 'DELETE' then v_id := old.partido_id;
+  else v_id := new.partido_id; end if;
+  perform 1 from public.partidos where id = v_id for update;
+  delete from public.propuestas_equipos where partido_id = v_id;
+  return null;
+end;
+$$;
+drop trigger if exists invalidar_equipos_inscripcion on public.inscripciones;
+create trigger invalidar_equipos_inscripcion
+  after insert or delete on public.inscripciones
+  for each row execute function public.invalidar_equipos_inscripcion();
+
+create or replace function public.invalidar_equipos_reprogramacion()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.fecha_inicio is distinct from old.fecha_inicio
+    or new.ubicacion is distinct from old.ubicacion then
+    delete from public.propuestas_equipos where partido_id = new.id;
+  end if;
+  return null;
+end;
+$$;
+drop trigger if exists invalidar_equipos_reprogramacion on public.partidos;
+create trigger invalidar_equipos_reprogramacion
+  after update on public.partidos
+  for each row execute function public.invalidar_equipos_reprogramacion();
+
+revoke all on function public.obtener_participantes_equipos(uuid) from public, anon;
+revoke all on function public.guardar_propuesta_equipos(uuid, uuid[], uuid[], uuid) from public, anon;
+revoke all on function public.responder_propuesta_equipos(uuid, uuid, boolean) from public, anon;
+revoke all on function public.invalidar_equipos_inscripcion() from public, anon, authenticated;
+revoke all on function public.invalidar_equipos_reprogramacion() from public, anon, authenticated;
+grant execute on function public.obtener_participantes_equipos(uuid) to authenticated;
+grant execute on function public.guardar_propuesta_equipos(uuid, uuid[], uuid[], uuid) to authenticated;
+grant execute on function public.responder_propuesta_equipos(uuid, uuid, boolean) to authenticated;

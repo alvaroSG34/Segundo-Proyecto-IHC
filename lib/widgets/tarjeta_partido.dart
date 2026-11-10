@@ -9,6 +9,9 @@ import '../tema/tema_app.dart';
 class TarjetaPartido extends StatelessWidget {
   final ModeloPartido partido;
 
+  final VoidCallback? onEquipos;
+  final String? estadoEquipos;
+  final String textoBotonEquipos;
   final VoidCallback? onEditar;
   final VoidCallback? onEliminar;
   final VoidCallback? onCompletarEquipo;
@@ -22,14 +25,14 @@ class TarjetaPartido extends StatelessWidget {
   /// "Salir del partido" (H3): lo ve quien se unió, mientras la regla lo permita.
   final VoidCallback? onSalir;
 
-  /// Nombres de quienes se unieron desde Explorar. Si se entrega, el
-  /// organizador y los jugadores inscritos ven la lista en la tarjeta.
-  final List<String>? jugadoresUnidos;
   final List<String>? suplentes;
 
   const TarjetaPartido({
     super.key,
     required this.partido,
+    this.onEquipos,
+    this.estadoEquipos,
+    this.textoBotonEquipos = 'Ver equipos',
     this.onEditar,
     this.onEliminar,
     this.onCompletarEquipo,
@@ -40,7 +43,6 @@ class TarjetaPartido extends StatelessWidget {
     this.onEntrarEnEspera,
     this.onSalirDeEspera,
     this.onSalir,
-    this.jugadoresUnidos,
     this.suplentes,
   });
 
@@ -255,11 +257,15 @@ class TarjetaPartido extends StatelessWidget {
               ),
             ],
           ),
-          // QUIÉN SE UNIÓ (organizador y jugadores inscritos)
-          if ((partido.soyOrganizador || partido.estoyUnido) &&
-              jugadoresUnidos != null) ...[
+          if (estadoEquipos != null) ...[
             const SizedBox(height: 12),
-            _construirJugadoresUnidos(context, jugadoresUnidos!),
+            Text(estadoEquipos!),
+            if (onEquipos != null)
+              OutlinedButton.icon(
+                onPressed: onEquipos,
+                icon: const Icon(Icons.groups_outlined),
+                label: Text(textoBotonEquipos),
+              ),
           ],
           if (partido.soyOrganizador &&
               suplentes != null &&
@@ -459,59 +465,6 @@ class TarjetaPartido extends StatelessWidget {
             ],
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _construirJugadoresUnidos(BuildContext context, List<String> nombres) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        icon: const Icon(LucideIcons.users, size: 18),
-        label: Text('Ver jugadores inscritos (${nombres.length})'),
-        style: OutlinedButton.styleFrom(
-          visualDensity: VisualDensity.standard,
-          minimumSize: const Size(0, 48),
-          foregroundColor: TemaApp.textoPrincipal,
-          backgroundColor: TemaApp.superficieSuave,
-          side: const BorderSide(color: TemaApp.borde),
-        ),
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text('Jugadores inscritos (${nombres.length})'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.sizeOf(ctx).height * 0.5,
-                  ),
-                  child: nombres.isEmpty
-                      ? const Text('Todavía no se unió nadie desde Explorar.')
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: nombres.length,
-                          itemBuilder: (_, indice) => ListTile(
-                            leading: const Icon(Icons.person_outline),
-                            title: Text(nombres[indice]),
-                          ),
-                        ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.standard,
-                    minimumSize: const Size(64, 48),
-                  ),
-                  child: const Text('Cerrar'),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
