@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:unisport/config/configuracion_supabase.dart';
 import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
+import 'package:unisport/modelos/propuesta_equipos.dart';
 import 'package:unisport/servicios/autenticacion/servicio_autenticacion.dart';
 import 'package:unisport/servicios/partidos/repositorio_partidos_supabase.dart';
 
@@ -41,7 +42,9 @@ void main() {
       // Dispositivo 1: organizador
       final clienteOrganizador = nuevoCliente();
       final organizador = ServicioAutenticacionSupabase(clienteOrganizador);
-      final partidosOrganizador = RepositorioPartidosSupabase(clienteOrganizador);
+      final partidosOrganizador = RepositorioPartidosSupabase(
+        clienteOrganizador,
+      );
       expect(
         await organizador.registrarUsuario(
           nombre: 'Organizador $marca',
@@ -51,7 +54,8 @@ void main() {
           deporteFavorito: 'Futsal',
         ),
         isNull,
-        reason: 'En Supabase: Authentication > Sign In / Providers > Email, '
+        reason:
+            'En Supabase: Authentication > Sign In / Providers > Email, '
             'desactiva "Confirm email"',
       );
 
@@ -110,10 +114,57 @@ void main() {
           ),
         );
 
-        // El organizador ve, desde su dispositivo, quién se unió
-        final inscritos = await partidosOrganizador
-            .obtenerJugadoresInscritos();
-        expect(inscritos[creado.id], ['Jugador $marca']);
+        // El organizador reparte y el otro dispositivo responde.
+        final participantes = await partidosOrganizador.obtenerParticipantes(
+          creado.id,
+        );
+        final propuesta = PropuestaEquipos(
+          revision: '',
+          equipoA: [participantes.singleWhere((p) => p.esOrganizador).id],
+          equipoB: [participantes.singleWhere((p) => !p.esOrganizador).id],
+          capitanRivalId: clienteJugador.auth.currentUser!.id,
+        );
+        await partidosOrganizador.guardarPropuesta(creado.id, propuesta);
+        final primera = (await partidosJugador.obtenerPropuesta(creado.id))!;
+        await expectLater(
+          partidosOrganizador.responderPropuesta(
+            creado.id,
+            primera.revision,
+            true,
+          ),
+          throwsStateError,
+        );
+        await partidosJugador.responderPropuesta(
+          creado.id,
+          primera.revision,
+          false,
+        );
+        expect(
+          (await partidosOrganizador.obtenerPropuesta(creado.id))!.estado,
+          EstadoPropuesta.rechazada,
+        );
+        await partidosOrganizador.guardarPropuesta(creado.id, propuesta);
+        await expectLater(
+          partidosJugador.responderPropuesta(creado.id, primera.revision, true),
+          throwsStateError,
+        );
+        final segunda = (await partidosJugador.obtenerPropuesta(creado.id))!;
+        await partidosJugador.responderPropuesta(
+          creado.id,
+          segunda.revision,
+          true,
+        );
+        expect(
+          (await partidosOrganizador.obtenerPropuesta(creado.id))!.estado,
+          EstadoPropuesta.aceptada,
+        );
+        await partidosOrganizador.reprogramarPartido(
+          creado.id,
+          DateTime(2099, 10, 11, 19),
+          'Coliseo Campus',
+          'Cambio de fecha',
+        );
+        expect(await partidosJugador.obtenerPropuesta(creado.id), isNull);
 
         // RLS: el jugador no puede eliminar un partido ajeno
         await partidosJugador.eliminarPartido(creado.id);

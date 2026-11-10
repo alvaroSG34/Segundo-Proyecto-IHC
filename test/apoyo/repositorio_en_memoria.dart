@@ -1,6 +1,7 @@
 import 'package:unisport/modelos/evento_historial.dart';
 import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
+import 'package:unisport/modelos/propuesta_equipos.dart';
 import 'package:unisport/servicios/partidos/repositorio_partidos.dart';
 
 /// Repositorio en memoria para las pruebas: mismo contrato que
@@ -12,6 +13,87 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   String usuarioNombre;
 
   RepositorioEnMemoria({this.usuarioId = '', this.usuarioNombre = ''});
+
+  final Map<String, PropuestaEquipos> _propuestas = {};
+  int _revisionPropuesta = 0;
+
+  @override
+  Future<List<ParticipantePartido>> obtenerParticipantes(
+    String partidoId,
+  ) async {
+    final fila = _buscar(partidoId);
+    if (fila.organizadorId != usuarioId && !_inscrito(partidoId)) {
+      throw StateError('Solo los participantes pueden consultar los equipos.');
+    }
+    return [
+      ParticipantePartido(
+        id: fila.organizadorId,
+        nombre: fila.partido.organizadorNombre,
+        esOrganizador: true,
+      ),
+      for (final i in _inscripciones.where((i) => i.partidoId == partidoId))
+        ParticipantePartido(id: i.jugadorId, nombre: i.nombre),
+    ];
+  }
+
+  @override
+  Future<PropuestaEquipos?> obtenerPropuesta(String partidoId) async {
+    await obtenerParticipantes(partidoId);
+    return _propuestas[partidoId];
+  }
+
+  @override
+  Future<void> guardarPropuesta(
+    String partidoId,
+    PropuestaEquipos propuesta,
+  ) async {
+    final fila = _delOrganizador(
+      partidoId,
+      'Solo el organizador puede proponer equipos.',
+    );
+    if (!fila.partido.fechaInicio!.isAfter(DateTime.now())) {
+      throw StateError('El partido ya comenzó.');
+    }
+    if (fila.partido.estado != EstadoPartido.equipoCompleto) {
+      throw StateError('Cierra la convocatoria antes de proponer equipos.');
+    }
+    propuesta.validar(await obtenerParticipantes(partidoId));
+    _propuestas[partidoId] = PropuestaEquipos(
+      revision: '${++_revisionPropuesta}',
+      equipoA: propuesta.equipoA,
+      equipoB: propuesta.equipoB,
+      capitanRivalId: propuesta.capitanRivalId,
+    );
+  }
+
+  @override
+  Future<void> responderPropuesta(
+    String partidoId,
+    String revision,
+    bool acepta,
+  ) async {
+    final fila = _buscar(partidoId);
+    if (!fila.partido.fechaInicio!.isAfter(DateTime.now())) {
+      throw StateError('El partido ya comenzó.');
+    }
+    final propuesta = _propuestas[partidoId];
+    if (propuesta == null || propuesta.revision != revision) {
+      throw StateError('La propuesta cambió. Vuelve a abrir los equipos.');
+    }
+    if (usuarioId != propuesta.capitanRivalId) {
+      throw StateError('Solo el capitán rival puede responder.');
+    }
+    if (propuesta.estado != EstadoPropuesta.pendiente) {
+      throw StateError('Esta propuesta ya tiene respuesta.');
+    }
+    _propuestas[partidoId] = PropuestaEquipos(
+      revision: revision,
+      equipoA: propuesta.equipoA,
+      equipoB: propuesta.equipoB,
+      capitanRivalId: propuesta.capitanRivalId,
+      estado: acepta ? EstadoPropuesta.aceptada : EstadoPropuesta.rechazada,
+    );
+  }
 
   final Map<String, _Fila> _partidos = {};
   final List<({String partidoId, String jugadorId, String nombre})>
@@ -129,18 +211,6 @@ class RepositorioEnMemoria implements RepositorioPartidos {
 
     participados.sort((a, b) => b.fechaInicio.compareTo(a.fechaInicio));
     return participados;
-  }
-
-  @override
-  Future<Map<String, List<String>>> obtenerJugadoresInscritos() async {
-    final resultado = <String, List<String>>{};
-    for (final i in _inscripciones) {
-      if (_partidos[i.partidoId]?.organizadorId == usuarioId ||
-          _inscrito(i.partidoId)) {
-        resultado.putIfAbsent(i.partidoId, () => []).add(i.nombre);
-      }
-    }
-    return resultado;
   }
 
   @override
@@ -263,6 +333,7 @@ class RepositorioEnMemoria implements RepositorioPartidos {
         nuevaUbicacion.trim() == fila.partido.ubicacion) {
       throw StateError('Cambia la fecha, la hora o el lugar del partido.');
     }
+    _propuestas.remove(partidoId);
     _reconfirmacionesPendientes.removeWhere((i) => i.$1 == partidoId);
     _reconfirmacionesAceptadas.removeWhere((i) => i.$1 == partidoId);
     for (final i in _inscripciones.where((i) => i.partidoId == partidoId)) {
@@ -304,6 +375,7 @@ class RepositorioEnMemoria implements RepositorioPartidos {
         ),
       );
     }
+    _propuestas.remove(partidoId);
     _inscripciones.removeWhere(
       (i) => i.partidoId == partidoId && i.jugadorId == usuarioId,
     );
@@ -345,6 +417,7 @@ class RepositorioEnMemoria implements RepositorioPartidos {
     _partidos.remove(partidoId);
     _inscripciones.removeWhere((i) => i.partidoId == partidoId);
     _suplentes.removeWhere((i) => i.partidoId == partidoId);
+    _propuestas.remove(partidoId);
     _reconfirmacionesPendientes.removeWhere((i) => i.$1 == partidoId);
     _reconfirmacionesAceptadas.removeWhere((i) => i.$1 == partidoId);
   }
@@ -353,6 +426,7 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   Future<ModeloPartido> unirseAPartido(String partidoId) async {
     final fila = _buscar(partidoId);
     final unido = _visto(fila).unirse(); // lanza StateError con el motivo
+    _propuestas.remove(partidoId);
     _inscripciones.add((
       partidoId: partidoId,
       jugadorId: usuarioId,
@@ -370,6 +444,7 @@ class RepositorioEnMemoria implements RepositorioPartidos {
       usuarioId,
     ));
     _reconfirmacionesAceptadas.remove((partidoId, usuarioId));
+    _propuestas.remove(partidoId);
     _inscripciones.removeWhere(
       (i) => i.partidoId == partidoId && i.jugadorId == usuarioId,
     );

@@ -119,9 +119,12 @@ void main() {
       final recuperado = (await repositorio.obtenerMisPartidos()).single;
       expect(recuperado.estado, EstadoPartido.equipoCompleto);
       expect(recuperado.cuposOcupados, recuperado.cuposTotales);
-      expect((await repositorio.obtenerJugadoresInscritos())[creado.id], [
-        'Diego',
-      ]);
+      expect(
+        (await repositorio.obtenerParticipantes(creado.id))
+            .where((p) => !p.esOrganizador)
+            .map((p) => p.nombre),
+        ['Diego'],
+      );
     });
 
     test(
@@ -139,7 +142,11 @@ void main() {
 
         expect(cerrado.estado, EstadoPartido.equipoCompleto);
         expect(cerrado.cuposOcupados, 1);
-        expect(await repositorio.obtenerJugadoresInscritos(), isEmpty);
+        expect(
+          (await repositorio.obtenerParticipantes(creado.id))
+              .where((p) => !p.esOrganizador),
+          isEmpty,
+        );
         await expectLater(
           repositorio.unirseAPartido(creado.id),
           throwsStateError,

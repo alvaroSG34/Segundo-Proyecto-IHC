@@ -82,9 +82,12 @@ void main() {
       expect(finalPartido.respuestasPendientes, 0);
       expect(finalPartido.cuposOcupados, 3);
       expect(finalPartido.estaLleno, isTrue);
-      expect(await repo.obtenerJugadoresInscritos(), {
-        partido.id: ['Ana', 'Carla'],
-      });
+      expect(
+        (await repo.obtenerParticipantes(partido.id))
+            .where((p) => !p.esOrganizador)
+            .map((p) => p.nombre),
+        ['Ana', 'Carla'],
+      );
       expect(await repo.obtenerSuplentes(), isEmpty);
     },
   );

@@ -1,6 +1,6 @@
 import 'modelo_partido.dart';
 
-/// Categoría temporal de Explorar, independiente de los filtros activos.
+/// Categoría temporal usada en Explorar y Mis partidos.
 enum PeriodoPartidos { todos, proximos, vencidos }
 
 /// Opciones del filtro por fecha (Issue #9, requisito #6).
