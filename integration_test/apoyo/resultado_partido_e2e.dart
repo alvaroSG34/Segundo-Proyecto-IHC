@@ -65,11 +65,15 @@ Future<SupabaseClient> inicializarSupabaseE2E() async {
 
 Future<PartidoResultadoE2E> prepararPartidoResultado(
   SupabaseClient cliente,
-  String escenario,
-) async {
+  String escenario, {
+  bool equiposAceptados = true,
+}) async {
   final marca = DateTime.now().microsecondsSinceEpoch;
   final titulo = 'E2E Resultado $escenario $marca';
-  final fechaInicio = DateTime.now().toUtc().add(const Duration(seconds: 30));
+  // El recorrido de interfaz necesita tiempo para proponer y aceptar equipos.
+  final fechaInicio = DateTime.now().toUtc().add(
+    Duration(seconds: equiposAceptados ? 30 : 240),
+  );
 
   final sesionOrganizador = await cliente.auth
       .signInWithPassword(
@@ -111,43 +115,45 @@ Future<PartidoResultadoE2E> prepararPartidoResultado(
       .rpc('unirse_a_partido', params: {'p_partido': partidoId})
       .timeout(limite);
 
-  await cliente.auth
-      .signInWithPassword(
-        email: organizadorCorreo.trim(),
-        password: organizadorClave,
-      )
-      .timeout(limite);
-  await cliente
-      .rpc(
-        'guardar_propuesta_equipos',
-        params: {
-          'p_partido': partidoId,
-          'p_equipo_a': [organizadorId],
-          'p_equipo_b': [capitanId],
-          'p_capitan_rival': capitanId,
-        },
-      )
-      .timeout(limite);
-  final propuesta = await cliente
-      .from('propuestas_equipos')
-      .select('revision')
-      .eq('partido_id', partidoId)
-      .single()
-      .timeout(limite);
+  if (equiposAceptados) {
+    await cliente.auth
+        .signInWithPassword(
+          email: organizadorCorreo.trim(),
+          password: organizadorClave,
+        )
+        .timeout(limite);
+    await cliente
+        .rpc(
+          'guardar_propuesta_equipos',
+          params: {
+            'p_partido': partidoId,
+            'p_equipo_a': [organizadorId],
+            'p_equipo_b': [capitanId],
+            'p_capitan_rival': capitanId,
+          },
+        )
+        .timeout(limite);
+    final propuesta = await cliente
+        .from('propuestas_equipos')
+        .select('revision')
+        .eq('partido_id', partidoId)
+        .single()
+        .timeout(limite);
 
-  await cliente.auth
-      .signInWithPassword(email: capitanCorreo.trim(), password: capitanClave)
-      .timeout(limite);
-  await cliente
-      .rpc(
-        'responder_propuesta_equipos',
-        params: {
-          'p_partido': partidoId,
-          'p_revision': propuesta['revision'],
-          'p_acepta': true,
-        },
-      )
-      .timeout(limite);
+    await cliente.auth
+        .signInWithPassword(email: capitanCorreo.trim(), password: capitanClave)
+        .timeout(limite);
+    await cliente
+        .rpc(
+          'responder_propuesta_equipos',
+          params: {
+            'p_partido': partidoId,
+            'p_revision': propuesta['revision'],
+            'p_acepta': true,
+          },
+        )
+        .timeout(limite);
+  }
   await cliente.auth.signOut().timeout(limite);
 
   return PartidoResultadoE2E(
@@ -218,13 +224,14 @@ Future<void> cambiarSesionUI(
   String correo,
   String clave,
 ) async {
+  await tester.pumpAndSettle();
   for (
     var intento = 0;
     intento < 4 && find.byType(VistaPrincipal).evaluate().isEmpty;
     intento++
   ) {
     await tester.pageBack();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
   }
   await esperar(tester, find.byType(VistaPrincipal));
   await tocar(tester, find.text('CERRAR SESIÓN'));
@@ -234,8 +241,9 @@ Future<void> cambiarSesionUI(
 
 Future<void> abrirPartidoUI(
   WidgetTester tester,
-  PartidoResultadoE2E partido,
-) async {
+  PartidoResultadoE2E partido, {
+  bool proponerEquipos = false,
+}) async {
   await tocar(tester, find.widgetWithText(ElevatedButton, 'Mis\nPartidos'));
   await esperar(tester, find.byType(VistaMisPartidos));
   final tarjeta = find.byWidgetPredicate(
@@ -249,7 +257,7 @@ Future<void> abrirPartidoUI(
   );
   final verEquipos = find.descendant(
     of: tarjeta,
-    matching: find.text('Ver equipos'),
+    matching: find.text(proponerEquipos ? 'Proponer equipos' : 'Ver equipos'),
   );
   await tocar(tester, verEquipos);
   await esperar(tester, find.byType(VistaEquipos));
@@ -261,6 +269,7 @@ Future<void> recargarPartidoUI(
   PartidoResultadoE2E partido,
 ) async {
   await tester.pageBack();
+  await tester.pumpAndSettle();
   await esperar(tester, find.byType(VistaMisPartidos));
   final tarjeta = find.byWidgetPredicate(
     (widget) => widget is TarjetaPartido && widget.partido.id == partido.id,

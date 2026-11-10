@@ -123,6 +123,13 @@ registra el marcador; el capitán lo disputa con motivo; el organizador corrige
 y el capitán confirma. Finalmente se vuelve a abrir la pantalla para comprobar
 la persistencia del resultado y del historial.
 
+La E2E `resultado_partido_flujo_test.dart` automatiza este recorrido completo:
+reparte los equipos, selecciona al capitán rival, envía la propuesta y cambia
+de cuenta para aceptarla desde la interfaz. La preparación en Supabase crea
+únicamente el partido y la inscripción; deja los equipos sin proponer. El
+partido se programa con cuatro minutos de margen para completar la aceptación
+antes del inicio y se espera esa hora real antes de registrar el marcador.
+
 ## 6. Persistencia y permisos
 
 [`esquema.sql`](../supabase/esquema.sql) incorpora:
@@ -153,12 +160,15 @@ políticas y funciones.
 - [`resultado_partido_test.dart`](../test/resultado_partido_test.dart): reglas,
   permisos y recorrido de interfaz.
 - [`resultado_partido_flujo_test.dart`](../integration_test/resultado_partido_flujo_test.dart):
-  E2E real con registro, disputa, corrección, confirmación y recarga.
+  E2E real con propuesta, aceptación, registro, disputa, corrección,
+  confirmación y recarga desde la interfaz.
 - [`resultado_partido_restricciones_test.dart`](../integration_test/resultado_partido_restricciones_test.dart):
   E2E real de permisos, respuesta duplicada y resultado definitivo.
 - [`resultado_partido_e2e.dart`](../integration_test/apoyo/resultado_partido_e2e.dart):
   preparación y limpieza de datos compartida por las E2E. Las cuentas se
   reciben mediante `--dart-define`; las credenciales no se guardan en Git.
+  El recorrido completo prepara un partido sin equipos; la E2E de
+  restricciones conserva la preparación con equipos aceptados.
 
 ## 8. Verificación técnica
 
@@ -190,6 +200,16 @@ requiere activación explícita.
 
 El auxiliar de las E2E permite esperar la actualización del marcador sin
 confundir el motivo de una disputa con un error de ejecución.
+
+**Revalidación del recorrido completo (10/11/2026):**
+`resultado_partido_flujo_test.dart` aprobó contra Supabase real en el emulador
+Android (`All tests passed!`, 6 minutos y 16 segundos). Esta ejecución incluyó
+la propuesta y la aceptación desde la interfaz, además del registro, disputa,
+corrección, confirmación y comprobación del historial después de recargar.
+La E2E `resultado_partido_restricciones_test.dart` también volvió a aprobar
+(`All tests passed!`, 2 minutos y 15 segundos), verificando permisos, respuesta
+única y bloqueo del resultado definitivo con el auxiliar compartido actualizado.
+`flutter analyze --no-pub` terminó sin incidencias.
 
 ## 9. Commit
 
