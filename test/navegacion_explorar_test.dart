@@ -40,7 +40,7 @@ void main() {
 
   for (final explorar in [false, true]) {
     testWidgets(
-      'inscritos ven a sus compañeros en ${explorar ? 'Explorar' : 'Mis partidos'}',
+      'inscritos consultan su partido en ${explorar ? 'Explorar' : 'Mis partidos'}',
       (tester) async {
         final auth = conPartidoDeLorgio();
         await auth.iniciarSesion('diego@unisport.edu', '123456');
@@ -66,23 +66,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.ensureVisible(find.text('Ver jugadores inscritos (2)'));
-        await tester.tap(find.text('Ver jugadores inscritos (2)'));
-        await tester.pumpAndSettle();
-        expect(
-          find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.text('Diego'),
-          ),
-          findsOneWidget,
-        );
-        expect(
-          find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.text('Ana'),
-          ),
-          findsOneWidget,
-        );
+        expect(find.textContaining('Ver jugadores inscritos'), findsNothing);
+        expect(find.text('3/10'), findsOneWidget);
+        expect(find.byType(AlertDialog), findsNothing);
       },
     );
   }

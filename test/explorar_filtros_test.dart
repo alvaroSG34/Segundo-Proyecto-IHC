@@ -99,7 +99,7 @@ void main() {
 
     expect(find.text('3/10'), findsOneWidget);
     expect(find.text('Ya formas parte de este equipo.'), findsOneWidget);
-    expect(find.text('Ver jugadores inscritos (1)'), findsOneWidget);
+    expect(find.textContaining('Ver jugadores inscritos'), findsNothing);
     expect(find.text('Unirme al equipo'), findsNothing);
   });
 

@@ -64,9 +64,12 @@ void main() {
       expect(await repo.obtenerSuplentes(), {
         'partido-1': ['Carla'],
       });
-      expect(await repo.obtenerJugadoresInscritos(), {
-        'partido-1': ['Beto'],
-      });
+      expect(
+        (await repo.obtenerParticipantes('partido-1'))
+            .where((p) => !p.esOrganizador)
+            .map((p) => p.nombre),
+        ['Beto'],
+      );
     },
   );
 

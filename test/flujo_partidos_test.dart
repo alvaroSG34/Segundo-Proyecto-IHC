@@ -63,7 +63,12 @@ void main() {
 
     comoLorgio();
     expect((await bd.obtenerMisPartidos()).single.cuposOcupados, 2);
-    expect((await bd.obtenerJugadoresInscritos())[creado.id], ['Diego']);
+    expect(
+      (await bd.obtenerParticipantes(creado.id))
+          .where((p) => !p.esOrganizador)
+          .map((p) => p.nombre),
+      ['Diego'],
+    );
   });
 
   test('no se puede unir dos veces y los cupos no cambian', () async {

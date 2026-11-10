@@ -257,7 +257,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final botonHistorial = find.byKey(const Key('boton_abrir_historial'));
+        final botonHistorial = find.byKey(const Key('icono_abrir_historial'));
         expect(botonHistorial, findsOneWidget);
 
         final tamano = tester.getSize(botonHistorial);
