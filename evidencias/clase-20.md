@@ -81,8 +81,5 @@ Las pruebas de [periodo_partidos_test.dart](../test/periodo_partidos_test.dart) 
 
 ## 6. Enlace al commit
 
-**Commit de esta mejora: pendiente de crear y enlazar.** Al preparar este documento, los cambios de Explorar todavía estaban en el árbol de trabajo local.
-
-La base previa es [6e65282 — Fix: Cambio de Tema y estructurando botones](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/commit/6e65282cbd4fa6accb21e82a5677a2f6deed4511). Este enlace identifica la versión anterior; debe añadirse aquí el enlace al commit que incluya la reorganización de Explorar y esta evidencia.
-
-**Pendiente:** añadir el enlace al commit de la mejora.
+La mejora de arquitectura de información y su evidencia quedaron registradas en
+[7d14d1c — fix de la clase 20](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/commit/7d14d1cca88bd410bef72d76b2e6744ef0464d41).

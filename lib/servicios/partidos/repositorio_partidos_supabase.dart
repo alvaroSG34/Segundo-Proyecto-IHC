@@ -5,6 +5,7 @@ import '../../modelos/evento_historial.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../modelos/propuesta_equipos.dart';
+import '../../modelos/resultado_partido.dart';
 import 'repositorio_partidos.dart';
 
 /// Repositorio sobre la base de datos compartida de Supabase (PostgreSQL).
@@ -78,6 +79,71 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
       },
     );
   });
+
+  @override
+  Future<ResultadoValidadoPartido?> obtenerResultado(String partidoId) =>
+      _ejecutar(() async {
+        final fila = await _cliente
+            .from('resultados_partido')
+            .select()
+            .eq('partido_id', partidoId)
+            .maybeSingle();
+        if (fila == null) return null;
+        final eventos = await _cliente
+            .from('historial_resultados')
+            .select()
+            .eq('partido_id', partidoId)
+            .order('creado_en', ascending: true);
+        return ResultadoValidadoPartido.desdeFila(
+          fila,
+          historial: [
+            for (final evento in eventos)
+              EventoResultadoPartido.desdeFila(evento),
+          ],
+        );
+      });
+
+  @override
+  Future<void> registrarResultado(
+    String partidoId,
+    int marcadorEquipoA,
+    int marcadorEquipoB,
+  ) => _ejecutar(() async {
+    ResultadoValidadoPartido.validarMarcador(marcadorEquipoA, marcadorEquipoB);
+    await _cliente.rpc(
+      'registrar_resultado_partido',
+      params: {
+        'p_partido': partidoId,
+        'p_marcador_a': marcadorEquipoA,
+        'p_marcador_b': marcadorEquipoB,
+      },
+    );
+  });
+
+  @override
+  Future<void> disputarResultado(
+    String partidoId,
+    String revision,
+    String motivo,
+  ) => _ejecutar(() async {
+    await _cliente.rpc(
+      'disputar_resultado_partido',
+      params: {
+        'p_partido': partidoId,
+        'p_revision': revision,
+        'p_motivo': motivo,
+      },
+    );
+  });
+
+  @override
+  Future<void> confirmarResultado(String partidoId, String revision) =>
+      _ejecutar(() async {
+        await _cliente.rpc(
+          'confirmar_resultado_partido',
+          params: {'p_partido': partidoId, 'p_revision': revision},
+        );
+      });
 
   /// Traduce el filtro a las condiciones que se envían a la base de datos
   /// (todas se combinan con AND).

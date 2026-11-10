@@ -2,6 +2,7 @@ import 'package:unisport/modelos/evento_historial.dart';
 import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/modelos/propuesta_equipos.dart';
+import 'package:unisport/modelos/resultado_partido.dart';
 import 'package:unisport/servicios/partidos/repositorio_partidos.dart';
 
 /// Repositorio en memoria para las pruebas: mismo contrato que
@@ -15,7 +16,10 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   RepositorioEnMemoria({this.usuarioId = '', this.usuarioNombre = ''});
 
   final Map<String, PropuestaEquipos> _propuestas = {};
+  final Map<String, ResultadoValidadoPartido> _resultados = {};
+  final Map<String, List<EventoResultadoPartido>> _historialResultados = {};
   int _revisionPropuesta = 0;
+  int _revisionResultado = 0;
 
   @override
   Future<List<ParticipantePartido>> obtenerParticipantes(
@@ -93,6 +97,152 @@ class RepositorioEnMemoria implements RepositorioPartidos {
       capitanRivalId: propuesta.capitanRivalId,
       estado: acepta ? EstadoPropuesta.aceptada : EstadoPropuesta.rechazada,
     );
+  }
+
+  @override
+  Future<ResultadoValidadoPartido?> obtenerResultado(String partidoId) async {
+    await obtenerParticipantes(partidoId);
+    final resultado = _resultados[partidoId];
+    if (resultado == null) return null;
+    return ResultadoValidadoPartido(
+      revision: resultado.revision,
+      marcadorEquipoA: resultado.marcadorEquipoA,
+      marcadorEquipoB: resultado.marcadorEquipoB,
+      estado: resultado.estado,
+      motivoDisputa: resultado.motivoDisputa,
+      historial: _historialResultados[partidoId] ?? const [],
+    );
+  }
+
+  @override
+  Future<void> registrarResultado(
+    String partidoId,
+    int marcadorEquipoA,
+    int marcadorEquipoB,
+  ) async {
+    ResultadoValidadoPartido.validarMarcador(marcadorEquipoA, marcadorEquipoB);
+    final fila = _delOrganizador(
+      partidoId,
+      'Solo el organizador puede registrar o corregir el marcador.',
+    );
+    if (fila.partido.fechaInicio!.isAfter(DateTime.now())) {
+      throw StateError(
+        'Registra el marcador cuando el partido haya terminado.',
+      );
+    }
+    final propuesta = _propuestas[partidoId];
+    if (propuesta?.estado != EstadoPropuesta.aceptada) {
+      throw StateError(
+        'Los equipos deben estar aceptados antes de registrar el marcador.',
+      );
+    }
+    final anterior = _resultados[partidoId];
+    if (anterior != null &&
+        anterior.estado != EstadoResultadoPartido.disputado) {
+      throw StateError(
+        anterior.esDefinitivo
+            ? 'El resultado confirmado es definitivo.'
+            : 'Espera la respuesta del capitán rival.',
+      );
+    }
+    final revision = '${++_revisionResultado}';
+    _resultados[partidoId] = ResultadoValidadoPartido(
+      revision: revision,
+      marcadorEquipoA: marcadorEquipoA,
+      marcadorEquipoB: marcadorEquipoB,
+      estado: EstadoResultadoPartido.pendiente,
+    );
+    _agregarEventoResultado(
+      partidoId,
+      EventoResultadoPartido(
+        accion: anterior == null
+            ? AccionResultadoPartido.registrado
+            : AccionResultadoPartido.corregido,
+        marcadorEquipoA: marcadorEquipoA,
+        marcadorEquipoB: marcadorEquipoB,
+        actorNombre: usuarioNombre,
+        fecha: DateTime.now(),
+      ),
+    );
+  }
+
+  @override
+  Future<void> disputarResultado(
+    String partidoId,
+    String revision,
+    String motivo,
+  ) async {
+    final texto = motivo.trim();
+    if (texto.isEmpty) {
+      throw StateError('Explica el motivo de la disputa.');
+    }
+    final resultado = _resultadoPendienteDelCapitan(partidoId, revision);
+    _resultados[partidoId] = ResultadoValidadoPartido(
+      revision: resultado.revision,
+      marcadorEquipoA: resultado.marcadorEquipoA,
+      marcadorEquipoB: resultado.marcadorEquipoB,
+      estado: EstadoResultadoPartido.disputado,
+      motivoDisputa: texto,
+    );
+    _agregarEventoResultado(
+      partidoId,
+      EventoResultadoPartido(
+        accion: AccionResultadoPartido.disputado,
+        marcadorEquipoA: resultado.marcadorEquipoA,
+        marcadorEquipoB: resultado.marcadorEquipoB,
+        motivo: texto,
+        actorNombre: usuarioNombre,
+        fecha: DateTime.now(),
+      ),
+    );
+  }
+
+  @override
+  Future<void> confirmarResultado(String partidoId, String revision) async {
+    final resultado = _resultadoPendienteDelCapitan(partidoId, revision);
+    _resultados[partidoId] = ResultadoValidadoPartido(
+      revision: resultado.revision,
+      marcadorEquipoA: resultado.marcadorEquipoA,
+      marcadorEquipoB: resultado.marcadorEquipoB,
+      estado: EstadoResultadoPartido.confirmado,
+    );
+    _agregarEventoResultado(
+      partidoId,
+      EventoResultadoPartido(
+        accion: AccionResultadoPartido.confirmado,
+        marcadorEquipoA: resultado.marcadorEquipoA,
+        marcadorEquipoB: resultado.marcadorEquipoB,
+        actorNombre: usuarioNombre,
+        fecha: DateTime.now(),
+      ),
+    );
+  }
+
+  ResultadoValidadoPartido _resultadoPendienteDelCapitan(
+    String partidoId,
+    String revision,
+  ) {
+    final propuesta = _propuestas[partidoId];
+    if (propuesta == null || usuarioId != propuesta.capitanRivalId) {
+      throw StateError(
+        'Solo el capitán rival puede confirmar o disputar el resultado.',
+      );
+    }
+    final resultado = _resultados[partidoId];
+    if (resultado == null || resultado.revision != revision) {
+      throw StateError('El marcador cambió. Vuelve a cargar el resultado.');
+    }
+    if (resultado.estado != EstadoResultadoPartido.pendiente) {
+      throw StateError('Este marcador ya tiene respuesta.');
+    }
+    return resultado;
+  }
+
+  void _agregarEventoResultado(
+    String partidoId,
+    EventoResultadoPartido evento,
+  ) {
+    _historialResultados.putIfAbsent(partidoId, () => []).add(evento);
   }
 
   final Map<String, _Fila> _partidos = {};
@@ -334,6 +484,8 @@ class RepositorioEnMemoria implements RepositorioPartidos {
       throw StateError('Cambia la fecha, la hora o el lugar del partido.');
     }
     _propuestas.remove(partidoId);
+    _resultados.remove(partidoId);
+    _historialResultados.remove(partidoId);
     _reconfirmacionesPendientes.removeWhere((i) => i.$1 == partidoId);
     _reconfirmacionesAceptadas.removeWhere((i) => i.$1 == partidoId);
     for (final i in _inscripciones.where((i) => i.partidoId == partidoId)) {
@@ -418,6 +570,8 @@ class RepositorioEnMemoria implements RepositorioPartidos {
     _inscripciones.removeWhere((i) => i.partidoId == partidoId);
     _suplentes.removeWhere((i) => i.partidoId == partidoId);
     _propuestas.remove(partidoId);
+    _resultados.remove(partidoId);
+    _historialResultados.remove(partidoId);
     _reconfirmacionesPendientes.removeWhere((i) => i.$1 == partidoId);
     _reconfirmacionesAceptadas.removeWhere((i) => i.$1 == partidoId);
   }

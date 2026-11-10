@@ -782,3 +782,207 @@ revoke all on function public.invalidar_equipos_reprogramacion() from public, an
 grant execute on function public.obtener_participantes_equipos(uuid) to authenticated;
 grant execute on function public.guardar_propuesta_equipos(uuid, uuid[], uuid[], uuid) to authenticated;
 grant execute on function public.responder_propuesta_equipos(uuid, uuid, boolean) to authenticated;
+
+-- -----------------------------------------------------------------------------
+-- Tarea 8 · Resultado validado entre los capitanes
+-- Solo un resultado confirmado por el capitán rival se considera definitivo.
+-- -----------------------------------------------------------------------------
+create table if not exists public.resultados_partido (
+  partido_id uuid primary key references public.partidos(id) on delete cascade,
+  revision uuid not null default gen_random_uuid(),
+  marcador_equipo_a int not null check (marcador_equipo_a between 0 and 999),
+  marcador_equipo_b int not null check (marcador_equipo_b between 0 and 999),
+  estado text not null default 'pendiente'
+    check (estado in ('pendiente', 'disputado', 'confirmado')),
+  motivo_disputa text,
+  actualizado_en timestamptz not null default now()
+);
+
+create table if not exists public.historial_resultados (
+  id bigint generated always as identity primary key,
+  partido_id uuid not null references public.partidos(id) on delete cascade,
+  revision uuid not null,
+  accion text not null
+    check (accion in ('registrado', 'disputado', 'corregido', 'confirmado')),
+  marcador_equipo_a int not null check (marcador_equipo_a between 0 and 999),
+  marcador_equipo_b int not null check (marcador_equipo_b between 0 and 999),
+  motivo text,
+  actor_id uuid references public.perfiles(id) on delete set null,
+  actor_nombre text not null,
+  creado_en timestamptz not null default now()
+);
+create index if not exists historial_resultados_partido_idx
+  on public.historial_resultados(partido_id, creado_en, id);
+
+alter table public.resultados_partido enable row level security;
+alter table public.historial_resultados enable row level security;
+revoke all on public.resultados_partido from public, anon, authenticated;
+revoke all on public.historial_resultados from public, anon, authenticated;
+grant select on public.resultados_partido to authenticated;
+grant select on public.historial_resultados to authenticated;
+
+drop policy if exists "resultados: leer participantes" on public.resultados_partido;
+create policy "resultados: leer participantes" on public.resultados_partido
+for select to authenticated using (
+  exists (select 1 from public.partidos p
+    where p.id = partido_id and p.organizador_id = auth.uid())
+  or exists (select 1 from public.inscripciones i
+    where i.partido_id = resultados_partido.partido_id
+      and i.jugador_id = auth.uid())
+);
+
+drop policy if exists "historial resultados: leer participantes" on public.historial_resultados;
+create policy "historial resultados: leer participantes" on public.historial_resultados
+for select to authenticated using (
+  exists (select 1 from public.partidos p
+    where p.id = partido_id and p.organizador_id = auth.uid())
+  or exists (select 1 from public.inscripciones i
+    where i.partido_id = historial_resultados.partido_id
+      and i.jugador_id = auth.uid())
+);
+
+create or replace function public.registrar_resultado_partido(
+  p_partido uuid, p_marcador_a int, p_marcador_b int
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_partido public.partidos;
+  v_resultado public.resultados_partido;
+  v_revision uuid := gen_random_uuid();
+  v_accion text;
+  v_nombre text;
+begin
+  if p_marcador_a is null or p_marcador_b is null
+    or p_marcador_a not between 0 and 999
+    or p_marcador_b not between 0 and 999 then
+    raise exception 'El marcador debe contener valores entre 0 y 999.';
+  end if;
+  select * into v_partido from public.partidos where id = p_partido for update;
+  if not found then raise exception 'Este partido ya no existe.'; end if;
+  if auth.uid() is null or v_partido.organizador_id <> auth.uid() then
+    raise exception 'Solo el organizador puede registrar o corregir el marcador.';
+  end if;
+  if v_partido.fecha_inicio > now() then
+    raise exception 'Registra el marcador cuando el partido haya terminado.';
+  end if;
+  if not exists (select 1 from public.propuestas_equipos pe
+    where pe.partido_id = p_partido and pe.estado = 'aceptada') then
+    raise exception 'Los equipos deben estar aceptados antes de registrar el marcador.';
+  end if;
+
+  select * into v_resultado from public.resultados_partido
+    where partido_id = p_partido for update;
+  if found then
+    if v_resultado.estado = 'confirmado' then
+      raise exception 'El resultado confirmado es definitivo.';
+    elsif v_resultado.estado <> 'disputado' then
+      raise exception 'Espera la respuesta del capitán rival.';
+    end if;
+    v_accion := 'corregido';
+    update public.resultados_partido set
+      revision = v_revision,
+      marcador_equipo_a = p_marcador_a,
+      marcador_equipo_b = p_marcador_b,
+      estado = 'pendiente',
+      motivo_disputa = null,
+      actualizado_en = now()
+    where partido_id = p_partido;
+  else
+    v_accion := 'registrado';
+    insert into public.resultados_partido
+      (partido_id, revision, marcador_equipo_a, marcador_equipo_b)
+    values (p_partido, v_revision, p_marcador_a, p_marcador_b);
+  end if;
+
+  select nombre into v_nombre from public.perfiles where id = auth.uid();
+  insert into public.historial_resultados
+    (partido_id, revision, accion, marcador_equipo_a, marcador_equipo_b,
+     actor_id, actor_nombre)
+  values (p_partido, v_revision, v_accion, p_marcador_a, p_marcador_b,
+          auth.uid(), coalesce(v_nombre, v_partido.organizador_nombre));
+end;
+$$;
+
+create or replace function public.disputar_resultado_partido(
+  p_partido uuid, p_revision uuid, p_motivo text
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_resultado public.resultados_partido;
+  v_propuesta public.propuestas_equipos;
+  v_nombre text;
+begin
+  perform 1 from public.partidos where id = p_partido for update;
+  if not found then raise exception 'Este partido ya no existe.'; end if;
+  select * into v_propuesta from public.propuestas_equipos
+    where partido_id = p_partido;
+  if not found or auth.uid() is null or auth.uid() <> v_propuesta.capitan_rival_id then
+    raise exception 'Solo el capitán rival puede confirmar o disputar el resultado.';
+  end if;
+  select * into v_resultado from public.resultados_partido
+    where partido_id = p_partido for update;
+  if not found or p_revision is distinct from v_resultado.revision then
+    raise exception 'El marcador cambió. Vuelve a cargar el resultado.';
+  end if;
+  if v_resultado.estado <> 'pendiente' then
+    raise exception 'Este marcador ya tiene respuesta.';
+  end if;
+  if nullif(trim(p_motivo), '') is null then
+    raise exception 'Explica el motivo de la disputa.';
+  end if;
+  update public.resultados_partido set estado = 'disputado',
+    motivo_disputa = trim(p_motivo), actualizado_en = now()
+    where partido_id = p_partido;
+  select nombre into v_nombre from public.perfiles where id = auth.uid();
+  insert into public.historial_resultados
+    (partido_id, revision, accion, marcador_equipo_a, marcador_equipo_b,
+     motivo, actor_id, actor_nombre)
+  values (p_partido, v_resultado.revision, 'disputado',
+          v_resultado.marcador_equipo_a, v_resultado.marcador_equipo_b,
+          trim(p_motivo), auth.uid(), coalesce(v_nombre, 'Capitán rival'));
+end;
+$$;
+
+create or replace function public.confirmar_resultado_partido(
+  p_partido uuid, p_revision uuid
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_resultado public.resultados_partido;
+  v_propuesta public.propuestas_equipos;
+  v_nombre text;
+begin
+  perform 1 from public.partidos where id = p_partido for update;
+  if not found then raise exception 'Este partido ya no existe.'; end if;
+  select * into v_propuesta from public.propuestas_equipos
+    where partido_id = p_partido;
+  if not found or auth.uid() is null or auth.uid() <> v_propuesta.capitan_rival_id then
+    raise exception 'Solo el capitán rival puede confirmar o disputar el resultado.';
+  end if;
+  select * into v_resultado from public.resultados_partido
+    where partido_id = p_partido for update;
+  if not found or p_revision is distinct from v_resultado.revision then
+    raise exception 'El marcador cambió. Vuelve a cargar el resultado.';
+  end if;
+  if v_resultado.estado <> 'pendiente' then
+    raise exception 'Este marcador ya tiene respuesta.';
+  end if;
+  update public.resultados_partido set estado = 'confirmado',
+    motivo_disputa = null, actualizado_en = now()
+    where partido_id = p_partido;
+  select nombre into v_nombre from public.perfiles where id = auth.uid();
+  insert into public.historial_resultados
+    (partido_id, revision, accion, marcador_equipo_a, marcador_equipo_b,
+     actor_id, actor_nombre)
+  values (p_partido, v_resultado.revision, 'confirmado',
+          v_resultado.marcador_equipo_a, v_resultado.marcador_equipo_b,
+          auth.uid(), coalesce(v_nombre, 'Capitán rival'));
+end;
+$$;
+
+revoke all on function public.registrar_resultado_partido(uuid, int, int) from public, anon;
+revoke all on function public.disputar_resultado_partido(uuid, uuid, text) from public, anon;
+revoke all on function public.confirmar_resultado_partido(uuid, uuid) from public, anon;
+grant execute on function public.registrar_resultado_partido(uuid, int, int) to authenticated;
+grant execute on function public.disputar_resultado_partido(uuid, uuid, text) to authenticated;
+grant execute on function public.confirmar_resultado_partido(uuid, uuid) to authenticated;

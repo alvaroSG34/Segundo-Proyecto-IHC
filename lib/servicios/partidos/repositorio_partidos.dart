@@ -2,6 +2,7 @@ import '../../modelos/evento_historial.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../modelos/propuesta_equipos.dart';
+import '../../modelos/resultado_partido.dart';
 
 /// Operaciones sobre partidos e inscripciones en la base de datos compartida.
 ///
@@ -20,6 +21,18 @@ abstract class RepositorioPartidos {
     String revision,
     bool acepta,
   );
+  Future<ResultadoValidadoPartido?> obtenerResultado(String partidoId);
+  Future<void> registrarResultado(
+    String partidoId,
+    int marcadorEquipoA,
+    int marcadorEquipoB,
+  );
+  Future<void> disputarResultado(
+    String partidoId,
+    String revision,
+    String motivo,
+  );
+  Future<void> confirmarResultado(String partidoId, String revision);
 
   /// Partidos que organiza el usuario actual (más recientes primero).
   Future<List<ModeloPartido>> obtenerMisPartidos();
