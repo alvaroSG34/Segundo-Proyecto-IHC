@@ -47,10 +47,10 @@ de una lista.
   rechace.
 - Una propuesta rechazada puede ser corregida y enviada nuevamente.
 
-Las capturas aportadas muestran el partido `asd` con la convocatoria cerrada,
-dos participantes y la propuesta aceptada. También muestran la pantalla de
-edición, la selección de `juan2` como capitán del Equipo B y las acciones
-**Aceptar** y **Rechazar** disponibles para esa persona.
+Las capturas reales corresponden al partido
+`E2E Resultado evidencia 1794332784185703`, con `alvaro` como organizador y
+capitán del Equipo A, y `juan2` como capitán del Equipo B. La propuesta y su
+aceptación se realizaron desde la interfaz antes del inicio del partido.
 
 ### Resultado y validación
 
@@ -65,76 +65,63 @@ edición, la selección de `juan2` como capitán del Equipo B y las acciones
   **Confirmado**.
 - `esDefinitivo` solo es verdadero en el estado **Confirmado**.
 
-Las capturas del partido `prueba22` muestran la propuesta aceptada, el formulario
-de registro, el marcador `2 - 2`, el estado **Pendiente de confirmación**, las
-acciones **Confirmar resultado** y **Disputar resultado**, y el diálogo que pide
-el motivo de la disputa.
+El organizador registró `2 - 1`. El capitán rival disputó el marcador indicando
+«El segundo gol no fue válido». El organizador corrigió a `1 - 1`, que volvió a
+quedar **Pendiente de confirmación**, y el capitán rival confirmó la corrección.
 
 La captura final muestra el estado **Confirmado**, el aviso de resultado
 definitivo y la persistencia de estos eventos:
 
-- `Marcador registrado · 2 - 2 · juan2`.
-- `Resultado confirmado · 2 - 2 · alvaro`.
+- `Marcador registrado · 2 - 1 · alvaro`.
+- `Marcador disputado · 2 - 1 · juan2`, con el motivo de la disputa.
+- `Marcador corregido · 1 - 1 · alvaro`.
+- `Resultado confirmado · 1 - 1 · juan2`.
 
-## 4. Capturas nuevas por guardar en el repositorio
+## 4. Capturas reales del recorrido
 
-Las imágenes fueron aportadas durante la revisión, pero todavía no existen como
-archivos dentro de `evidencias/`. Para enlazarlas definitivamente deben guardarse
-con estos nombres:
+Las ocho capturas siguientes se tomaron directamente de la aplicación Flutter
+en un emulador Android conectado a Supabase real el **10/11/2026**. Todas
+corresponden al mismo partido y al mismo recorrido.
 
-| Archivo | Contenido que ya fue capturado |
+| Archivo | Contenido verificado |
 |---|---|
 | `tarea-8-propuesta-pendiente.png` | Equipos A y B con propuesta pendiente y botones Aceptar/Rechazar |
 | `tarea-8-propuesta-aceptada.png` | Equipos aceptados con ambos capitanes |
-| `tarea-8-registrar-marcador.png` | Formulario del organizador con el marcador 2 - 2 |
+| `tarea-8-registrar-marcador.png` | Formulario del organizador con el marcador 2 - 1 |
 | `tarea-8-resultado-pendiente.png` | Marcador pendiente y acciones Confirmar/Disputar |
 | `tarea-8-dialogo-disputa.png` | Diálogo para escribir el motivo |
+| `tarea-8-resultado-disputado.png` | Estado Disputado, motivo y evento de disputa en el historial |
+| `tarea-8-resultado-corregido.png` | Marcador 1 - 1 pendiente de nueva confirmación y evento de corrección |
 | `tarea-8-resultado-confirmado.png` | Resultado definitivo e historial después de recargar |
 
-Cuando los archivos estén guardados, se pueden incorporar con:
-
-```markdown
 ![Propuesta pendiente](tarea-8-propuesta-pendiente.png)
+
 ![Propuesta aceptada](tarea-8-propuesta-aceptada.png)
+
 ![Registro del marcador](tarea-8-registrar-marcador.png)
+
 ![Resultado pendiente](tarea-8-resultado-pendiente.png)
+
 ![Diálogo de disputa](tarea-8-dialogo-disputa.png)
+
+![Resultado disputado con motivo e historial](tarea-8-resultado-disputado.png)
+
+![Resultado corregido pendiente de nueva confirmación](tarea-8-resultado-corregido.png)
+
 ![Resultado confirmado e historial](tarea-8-resultado-confirmado.png)
-```
 
-## 5. Evidencia que falta para el recorrido obligatorio
+## 5. Comprobación de persistencia
 
-Las capturas actuales prueban un recorrido de **registro → confirmación directa**.
-Todavía no demuestran completamente el recorrido obligatorio **registro →
-disputa → corrección → confirmación**, porque el historial final no contiene
-los eventos `Marcador disputado` y `Marcador corregido`.
+Después de confirmar la corrección se volvió a abrir la pantalla del partido.
+La captura final muestra el marcador `1 - 1`, el estado **Confirmado** y los
+cuatro eventos conservados en Supabase: registro, disputa con motivo,
+corrección y confirmación.
 
-Faltan dos capturas:
-
-1. `tarea-8-resultado-disputado.png`: estado **Disputado**, motivo visible y
-   evento **Marcador disputado** en el historial.
-2. `tarea-8-resultado-corregido.png`: marcador corregido, estado **Pendiente de
-   confirmación** y evento **Marcador corregido** en el historial.
-
-La captura final debe realizarse después de esa corrección y mostrar los cuatro
-eventos: registrado, disputado, corregido y confirmado.
-
-### Mockups generados para preparar la evidencia
-
-Las siguientes imágenes son **simulaciones para documentación**. Ayudan a
-visualizar las dos pantallas que faltan y a saber qué debe aparecer cuando se
-repita el recorrido, pero **no reemplazan las capturas reales de la aplicación
-conectada a Supabase**.
-
-![Simulación del resultado disputado, con motivo e historial](tarea-8-resultado-disputado-simulacion.png)
-
-![Simulación del marcador corregido y pendiente de confirmación](tarea-8-resultado-corregido-simulacion.png)
-
-Para producir la evidencia válida se debe usar un partido nuevo: registrar un
-marcador, ingresar como capitán rival para disputarlo, volver como organizador
-para corregirlo y finalmente ingresar otra vez como capitán rival para
-confirmarlo. El partido anterior ya quedó confirmado y, por regla de negocio,
-su resultado es definitivo.
+Para repetir el recorrido con dos cuentas, el organizador propone los equipos
+y el capitán rival acepta antes del inicio. Después del partido, el organizador
+registra el marcador; el capitán lo disputa con motivo; el organizador corrige
+y el capitán confirma. Finalmente se vuelve a abrir la pantalla para comprobar
+la persistencia del resultado y del historial.
 
 ## 6. Persistencia y permisos
 
@@ -201,8 +188,14 @@ duplicados y el bloqueo del resultado definitivo. La suite completa terminó con
 incidencias. La prueba omitida corresponde a otra integración con Supabase que
 requiere activación explícita.
 
+El auxiliar de las E2E permite esperar la actualización del marcador sin
+confundir el motivo de una disputa con un error de ejecución.
+
 ## 9. Commit
 
 La funcionalidad, el esquema actualizado, las pruebas y esta evidencia quedaron
 registrados en
 [b054888 — feat: completar resultados y E2E de Tarea 8](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/commit/b054888d320df6269d4aee4ff2ff2c5b3444993a).
+
+Las ocho capturas reales, esta actualización del documento y el ajuste del
+auxiliar E2E se incorporan en el commit de actualización de evidencia.

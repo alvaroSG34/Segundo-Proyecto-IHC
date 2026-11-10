@@ -313,6 +313,7 @@ Future<void> esperar(
         (widget) =>
             widget is CajaMensaje &&
             widget.tipo == TipoMensaje.error &&
+            !widget.texto.startsWith('Motivo de la disputa:') &&
             !widget.texto.startsWith('Resultado definitivo:'),
       ),
     );
