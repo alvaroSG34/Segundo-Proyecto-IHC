@@ -5,6 +5,7 @@ import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/modelos/propuesta_equipos.dart';
 import 'package:unisport/servicios/autenticacion/servicio_autenticacion.dart';
+import 'package:unisport/servicios/analitica/servicio_analitica.dart';
 import 'package:unisport/servicios/partidos/repositorio_partidos_supabase.dart';
 
 /// Prueba de integración contra la base de datos REAL de Supabase:
@@ -63,6 +64,7 @@ void main() {
       final clienteJugador = nuevoCliente();
       final jugador = ServicioAutenticacionSupabase(clienteJugador);
       final partidosJugador = RepositorioPartidosSupabase(clienteJugador);
+      final analiticaJugador = ServicioAnaliticaSupabase(clienteJugador);
       expect(
         await jugador.registrarUsuario(
           nombre: 'Jugador $marca',
@@ -90,6 +92,8 @@ void main() {
       );
 
       try {
+        final resumenAntes = await analiticaJugador.obtenerResumen();
+
         // El jugador lo encuentra desde su dispositivo con la búsqueda
         final encontrados = await partidosJugador.buscarPartidos(
           FiltroPartidos(texto: titulo, soloConCupos: true),
@@ -97,10 +101,40 @@ void main() {
         expect(encontrados.single.id, creado.id);
         expect(encontrados.single.puedeUnirse, isTrue);
 
+        await analiticaJugador.track(EventosAnalitica.unionIniciada, {
+          'partido_id': creado.id,
+        });
+
         // Se une: ocupa el último cupo y el servidor completa el equipo
         final unido = await partidosJugador.unirseAPartido(creado.id);
+        await analiticaJugador.track(EventosAnalitica.partidoUnido, {
+          'partido_id': creado.id,
+        });
         expect(unido.cuposOcupados, 2);
         expect(unido.estado, EstadoPartido.equipoCompleto);
+
+        final resumenDespues = await analiticaJugador.obtenerResumen();
+        expect(
+          resumenDespues.unionesIniciadas,
+          resumenAntes.unionesIniciadas + 1,
+        );
+        expect(resumenDespues.partidosUnidos, resumenAntes.partidosUnidos + 1);
+        final eventos = await analiticaJugador.obtenerEventos();
+        final eventosDelPartido = eventos
+            .where((evento) => evento.props['partido_id'] == creado.id)
+            .map((evento) => evento.evento);
+        expect(
+          eventosDelPartido,
+          containsAll([
+            EventosAnalitica.unionIniciada,
+            EventosAnalitica.partidoUnido,
+          ]),
+        );
+        await expectLater(
+          clienteJugador.from('eventos').select(),
+          throwsA(isA<PostgrestException>()),
+          reason: 'Los eventos individuales no deben exponerse al cliente.',
+        );
 
         // El servidor rechaza unirse dos veces
         await expectLater(

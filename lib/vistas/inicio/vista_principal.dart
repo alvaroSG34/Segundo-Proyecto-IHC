@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/partidos/controlador_explorar.dart';
@@ -11,15 +12,18 @@ import '../partidos/vista_explorar_partidos.dart';
 import '../partidos/vista_historial.dart';
 import 'vista_inicio_publico.dart';
 import '../partidos/vista_mis_partidos.dart';
+import '../analitica/vista_analitica.dart';
 
 class VistaPrincipal extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
   final RepositorioPartidos? repositorioPartidos;
+  final ServicioAnalitica? servicioAnalitica;
 
   const VistaPrincipal({
     super.key,
     required this.servicioAuth,
     this.repositorioPartidos,
+    this.servicioAnalitica,
   });
 
   @override
@@ -30,6 +34,11 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
   late final RepositorioPartidos _repositorio =
       widget.repositorioPartidos ??
       RepositorioPartidosSupabase(Supabase.instance.client);
+  late final ServicioAnalitica _analitica =
+      widget.servicioAnalitica ??
+      (widget.repositorioPartidos == null
+          ? ServicioAnaliticaSupabase(Supabase.instance.client)
+          : const ServicioAnaliticaNula());
 
   // Vive mientras el menú esté abierto y se comparte con sus pantallas.
   final _controladorExplorar = ControladorExplorar();
@@ -227,6 +236,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                           MaterialPageRoute(
                             builder: (_) => VistaExplorarPartidos(
                               repositorioPartidos: _repositorio,
+                              servicioAnalitica: _analitica,
                               controladorExplorar: _controladorExplorar,
                               servicioAuth: widget.servicioAuth,
                             ),
@@ -247,6 +257,17 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                       }),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  _boton('Analítica', const Color(0xFF475569), () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        settings: const RouteSettings(name: '/analitica'),
+                        builder: (_) =>
+                            VistaAnalitica(servicioAnalitica: _analitica),
+                      ),
+                    );
+                  }),
                   const SizedBox(height: 24),
                   Center(
                     child: OutlinedButton.icon(

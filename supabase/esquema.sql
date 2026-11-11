@@ -62,6 +62,99 @@ create table if not exists public.lista_espera (
   unique (partido_id, jugador_id)
 );
 
+-- Eventos de analitica. La tabla no se expone directamente: las escrituras y
+-- los conteos pasan por funciones que toman el usuario de la sesion.
+create table if not exists public.eventos (
+  id         bigint generated always as identity primary key,
+  usuario_id uuid not null references auth.users(id) on delete cascade,
+  evento     text not null
+             check (evento in ('union_iniciada', 'partido_unido')),
+  props      jsonb not null default '{}'::jsonb,
+  fecha      timestamptz not null default now(),
+  check (jsonb_typeof(props) = 'object')
+);
+create index if not exists eventos_evento_fecha_idx
+  on public.eventos(evento, fecha);
+
+alter table public.eventos enable row level security;
+revoke all on public.eventos from public, anon, authenticated;
+
+create or replace function public.track(p_evento text, p_props jsonb default '{}'::jsonb)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_usuario uuid := auth.uid();
+begin
+  if v_usuario is null then
+    raise exception 'Debes iniciar sesion para registrar eventos.';
+  end if;
+  if p_evento not in ('union_iniciada', 'partido_unido') then
+    raise exception 'Evento de analitica no permitido.';
+  end if;
+  if p_props is null or jsonb_typeof(p_props) <> 'object' then
+    raise exception 'Las propiedades del evento deben ser un objeto.';
+  end if;
+
+  insert into public.eventos(usuario_id, evento, props)
+  values (v_usuario, p_evento, p_props);
+end;
+$$;
+
+create or replace function public.obtener_resumen_analitica()
+returns jsonb
+language plpgsql
+stable
+security definer set search_path = public
+as $$
+declare
+  v_usuario uuid := auth.uid();
+  v_iniciadas bigint;
+  v_finalizadas bigint;
+begin
+  if v_usuario is null then
+    raise exception 'Debes iniciar sesion para consultar la analitica.';
+  end if;
+
+  select
+    count(*) filter (where evento = 'union_iniciada'),
+    count(*) filter (where evento = 'partido_unido')
+  into v_iniciadas, v_finalizadas
+  from public.eventos;
+
+  return jsonb_build_object(
+    'uniones_iniciadas', v_iniciadas,
+    'partidos_unidos', v_finalizadas
+  );
+end;
+$$;
+
+create or replace function public.obtener_eventos_analitica()
+returns table(evento text, props jsonb, fecha timestamptz)
+language plpgsql
+stable
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Debes iniciar sesion para consultar la analitica.';
+  end if;
+
+  return query
+  select e.evento, e.props, e.fecha
+  from public.eventos e
+  order by e.fecha desc, e.id desc;
+end;
+$$;
+
+revoke all on function public.track(text, jsonb) from public, anon;
+revoke all on function public.obtener_resumen_analitica() from public, anon;
+revoke all on function public.obtener_eventos_analitica() from public, anon;
+grant execute on function public.track(text, jsonb) to authenticated;
+grant execute on function public.obtener_resumen_analitica() to authenticated;
+grant execute on function public.obtener_eventos_analitica() to authenticated;
+
 -- La plaza se conserva hasta que cada titular responda a una reprogramación.
 alter table public.partidos
   add column if not exists reprogramacion_motivo text,

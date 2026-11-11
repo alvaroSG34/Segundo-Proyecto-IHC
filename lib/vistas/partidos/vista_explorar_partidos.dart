@@ -6,6 +6,7 @@ import '../../servicios/partidos/controlador_explorar.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../tema/caja_mensaje.dart';
@@ -18,6 +19,7 @@ import '../../widgets/tarjeta_partido.dart';
 class VistaExplorarPartidos extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
   final RepositorioPartidos? repositorioPartidos;
+  final ServicioAnalitica servicioAnalitica;
   final ControladorExplorar controladorExplorar;
   final DateTime? referenciaTemporal;
 
@@ -25,6 +27,7 @@ class VistaExplorarPartidos extends StatefulWidget {
     super.key,
     required this.servicioAuth,
     this.repositorioPartidos,
+    this.servicioAnalitica = const ServicioAnaliticaNula(),
     required this.controladorExplorar,
     this.referenciaTemporal,
   });
@@ -98,6 +101,11 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
 
   // ACCIÓN "UNIRME AL EQUIPO": la regla del modelo decide; si rechaza, se explica el motivo
   Future<void> _unirse(ModeloPartido partido) async {
+    await _registrarEvento(EventosAnalitica.unionIniciada, {
+      'partido_id': partido.id,
+    });
+    if (!mounted) return;
+
     final motivo = partido.motivoRechazoUnirse;
     if (motivo != null) {
       _avisar('No puedes unirte. $motivo', error: true);
@@ -128,6 +136,11 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       final unido = await _repositorio.unirseAPartido(partido.id);
       if (!mounted) return;
 
+      await _registrarEvento(EventosAnalitica.partidoUnido, {
+        'partido_id': partido.id,
+      });
+      if (!mounted) return;
+
       setState(() {
         _partidos = [for (final p in _partidos) p.id == partido.id ? unido : p];
       });
@@ -144,6 +157,18 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       if (!mounted) return;
       _avisar('No puedes unirte. ${e.message}', error: true);
       await _cargar();
+    }
+  }
+
+  /// La analitica nunca debe impedir ni revertir una accion del usuario.
+  Future<void> _registrarEvento(
+    String evento,
+    Map<String, dynamic> props,
+  ) async {
+    try {
+      await widget.servicioAnalitica.track(evento, props);
+    } catch (e) {
+      debugPrint('No se pudo registrar $evento: $e');
     }
   }
 
