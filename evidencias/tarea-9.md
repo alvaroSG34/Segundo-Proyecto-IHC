@@ -212,6 +212,26 @@ UniSport permite que un jugador abandone un partido. Si faltan **2 horas o más*
 - En Mis partidos, el organizador dispone del botón **Ver bajas tardías (n)**, con el nombre y la fecha de cada registro.
 - La promoción del primer suplente se mantiene tanto para una salida a tiempo como para una baja tardía. Si no hay suplentes, el cupo queda libre.
 
+### Evidencia visual de la baja tardía
+
+#### 3. Advertencia antes de salir
+
+![Diálogo de confirmación de una baja tardía](tarea-9-baja-tardia-dialogo.jpeg)
+
+Cuando faltan menos de dos horas, la aplicación informa la consecuencia antes de retirar al jugador. La acción explícita **Registrar baja tardía** evita que la salida se confunda con una baja realizada a tiempo.
+
+#### 4. Registro disponible para el organizador
+
+![Partido del organizador con una baja tardía registrada](tarea-9-baja-tardia-organizador.jpeg)
+
+Después de confirmar la salida, el cupo queda libre y la cuenta organizadora ve **Ver bajas tardías (1)** dentro del partido afectado.
+
+#### 5. Detalle de la baja registrada
+
+![Detalle con el jugador y la fecha de la baja tardía](tarea-9-baja-tardia-detalle.jpeg)
+
+El detalle muestra el nombre del jugador y el momento de la salida. Esta información se consulta mediante la función protegida de Supabase y solo está disponible para el organizador del partido.
+
 ### Decisiones de interacción
 
 La salida tardía no se bloquea porque impedir retirarse dejaría información incorrecta sobre quién asistirá. En cambio, el diálogo explica la consecuencia antes de confirmar y el organizador recibe un registro visible. No se muestra la lista a otros jugadores ni se expone directamente la tabla de la base de datos.
