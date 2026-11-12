@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -25,6 +27,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Un suplente ocupa el cupo que deja un titular', (tester) async {
+    await verificarTracksAlTerminar(['espera_iniciada']);
     expect(
       [
         _organizadorCorreo,
@@ -84,7 +87,7 @@ void main() {
     await _tocar(tester, find.text('Guardar partido'));
     await _esperar(
       tester,
-      find.text('Partido creado y guardado correctamente.').first,
+      find.text('Partido creado y guardado correctamente.'),
       motivo: 'El organizador debe poder guardar el partido.',
     );
 
@@ -205,6 +208,7 @@ Future<Finder> _buscarPartido(WidgetTester tester, String titulo) async {
   await _tocar(tester, find.widgetWithText(ElevatedButton, 'Explorar'));
   await _esperar(tester, find.byType(VistaExplorarPartidos));
   await _escribir(tester, find.byType(TextField), titulo);
+  await tester.pump(const Duration(milliseconds: 600));
   return _esperarPartido(
     tester,
     titulo,

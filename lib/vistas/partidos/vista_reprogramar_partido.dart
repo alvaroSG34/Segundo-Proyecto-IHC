@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../modelos/modelo_partido.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../tema/tema_app.dart';
 
@@ -8,11 +9,13 @@ import '../../tema/tema_app.dart';
 class VistaReprogramarPartido extends StatefulWidget {
   final ModeloPartido partido;
   final RepositorioPartidos repositorio;
+  final ServicioAnalitica servicioAnalitica;
 
   const VistaReprogramarPartido({
     super.key,
     required this.partido,
     required this.repositorio,
+    this.servicioAnalitica = const ServicioAnaliticaNula(),
   });
 
   @override
@@ -21,12 +24,26 @@ class VistaReprogramarPartido extends StatefulWidget {
 }
 
 class _VistaReprogramarPartidoState extends State<VistaReprogramarPartido> {
+  final _intentoId = crearIntentoId();
   final _formulario = GlobalKey<FormState>();
   late final _lugar = TextEditingController(text: widget.partido.ubicacion);
   final _motivo = TextEditingController();
   late DateTime _fecha = widget.partido.fechaInicio ?? DateTime.now();
   bool _guardando = false;
   String? _error;
+
+  void _registrar(String evento, [String? codigo]) {
+    registrarEvento(widget.servicioAnalitica, evento, {
+      'intento_id': _intentoId,
+      'codigo_error': ?codigo,
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _registrar(EventosAnalitica.reprogramacionIniciada);
+  }
 
   @override
   void dispose() {
@@ -79,14 +96,23 @@ class _VistaReprogramarPartidoState extends State<VistaReprogramarPartido> {
   }
 
   Future<void> _guardar() async {
-    if (_guardando || !_formulario.currentState!.validate()) return;
+    if (_guardando) return;
+    if (!_formulario.currentState!.validate()) {
+      _registrar(
+        EventosAnalitica.reprogramacionFallida,
+        'validacion_formulario',
+      );
+      return;
+    }
     if (!_fecha.isAfter(DateTime.now())) {
+      _registrar(EventosAnalitica.reprogramacionFallida, 'regla_negocio');
       setState(() => _error = 'La nueva fecha debe ser futura.');
       return;
     }
     if (widget.partido.fechaInicio != null &&
         _fecha.isAtSameMomentAs(widget.partido.fechaInicio!) &&
         _lugar.text.trim() == widget.partido.ubicacion) {
+      _registrar(EventosAnalitica.reprogramacionFallida, 'regla_negocio');
       setState(() => _error = 'Cambia la fecha, la hora o el lugar.');
       return;
     }
@@ -101,14 +127,21 @@ class _VistaReprogramarPartidoState extends State<VistaReprogramarPartido> {
         _lugar.text.trim(),
         _motivo.text.trim(),
       );
+      registrarEvento(
+        widget.servicioAnalitica,
+        EventosAnalitica.partidoReprogramado,
+        {'intento_id': _intentoId},
+      );
       if (mounted) {
         Navigator.pop(context, guardado);
       }
     } on StateError catch (error) {
+      _registrar(EventosAnalitica.reprogramacionFallida, 'servicio_partidos');
       if (mounted) {
         setState(() => _error = error.message);
       }
     } catch (_) {
+      _registrar(EventosAnalitica.reprogramacionFallida, 'servicio_partidos');
       if (mounted) {
         setState(() => _error = 'No se pudo reprogramar el partido.');
       }

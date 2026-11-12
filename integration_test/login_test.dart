@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +27,7 @@ void main() {
   testWidgets('Iniciar sesión: alternativos, accesibilidad y acceso autorizado', (
     tester,
   ) async {
+    await verificarTracksAlTerminar(['login_iniciado']);
     expect(
       _correo.trim().contains('@') && _clave.trim().length >= 6,
       isTrue,
@@ -209,9 +212,13 @@ void main() {
       debugPrint('Login E2E · 7/10: Ruta protegida');
       await tester.pageBack();
       await _esperar(tester, find.byType(VistaInicioPublico));
-      await _tocar(tester, find.text('Mis partidos'));
+      abrirRutaProtegidaE2E(tester);
       await _esperar(tester, find.byType(VistaLogin));
-      await _mensajeVisible(tester, 'Inicia sesión para ver tus partidos.');
+      await tester.pumpAndSettle();
+      await _mensajeVisible(
+        tester,
+        'Debes iniciar sesión para acceder a "Mis Partidos".',
+      );
       expect(
         find.byType(VistaMisPartidos),
         findsNothing,

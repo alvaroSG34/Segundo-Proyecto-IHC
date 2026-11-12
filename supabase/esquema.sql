@@ -1,20 +1,7 @@
--- =============================================================================
--- UniSport · Base de datos compartida en Supabase (PostgreSQL)
---
--- Cómo usarlo: Supabase -> SQL Editor -> New query -> pegar TODO este archivo
--- -> Run. Se puede volver a ejecutar sin perder datos.
---
--- Las reglas de negocio se aplican aquí en el servidor (con los mismos mensajes
--- que lib/modelos/modelo_partido.dart), así se respetan aunque varios teléfonos
--- actúen al mismo tiempo.
--- =============================================================================
+-- UniSport: ejecutar todo en el SQL Editor de Supabase.
+-- Puede volver a ejecutarse sobre una base existente sin borrar sus datos.
 
--- -----------------------------------------------------------------------------
 -- Tablas
--- -----------------------------------------------------------------------------
-
--- Datos públicos de cada estudiante. El correo y la contraseña los guarda
--- Supabase Auth (tabla auth.users), con la contraseña cifrada.
 create table if not exists public.perfiles (
   id               uuid primary key references auth.users (id) on delete cascade,
   nombre           text not null,
@@ -62,19 +49,39 @@ create table if not exists public.lista_espera (
   unique (partido_id, jugador_id)
 );
 
--- Eventos de analitica. La tabla no se expone directamente: las escrituras y
--- los conteos pasan por funciones que toman el usuario de la sesion.
+-- Analitica: acceso mediante funciones; consulta con sesion.
 create table if not exists public.eventos (
   id         bigint generated always as identity primary key,
-  usuario_id uuid not null references auth.users(id) on delete cascade,
-  evento     text not null
-             check (evento in ('union_iniciada', 'partido_unido')),
+  usuario_id uuid references auth.users(id) on delete cascade,
+  evento     text not null,
   props      jsonb not null default '{}'::jsonb,
   fecha      timestamptz not null default now(),
   check (jsonb_typeof(props) = 'object')
 );
 create index if not exists eventos_evento_fecha_idx
   on public.eventos(evento, fecha);
+
+-- Compatibilidad: conservar usuario_id historico y actualizar los eventos permitidos.
+alter table public.eventos alter column usuario_id drop not null;
+alter table public.eventos drop constraint if exists eventos_evento_check;
+alter table public.eventos add constraint eventos_evento_check check (
+  evento in ('union_fallida', 'busqueda_iniciada', 'login_iniciado',
+             'espera_iniciada', 'reprogramacion_iniciada', 'reprogramacion_fallida',
+             'reconfirmacion_iniciada', 'reconfirmacion_fallida', 'respuesta_propuesta_iniciada',
+             'respuesta_propuesta_fallida', 'validacion_resultado_iniciada', 'validacion_resultado_fallida',
+             'edicion_iniciada', 'edicion_fallida', 'eliminacion_iniciada',
+             'eliminacion_fallida', 'recuperacion_iniciada', 'recuperacion_fallida',
+             'union_iniciada', 'partido_unido', 'creacion_iniciada',
+             'partido_creado', 'creacion_fallida', 'busqueda_realizada',
+             'busqueda_sin_resultados', 'busqueda_fallida', 'registro_iniciado',
+             'registro_completado', 'registro_fallido', 'login_exitoso',
+             'login_fallido', 'salida_iniciada', 'salida_completada',
+             'salida_fallida', 'espera_confirmada', 'espera_fallida',
+             'suplente_promovido', 'partido_reprogramado', 'reprogramacion_aceptada',
+             'reprogramacion_rechazada', 'propuesta_aceptada', 'propuesta_rechazada',
+             'resultado_confirmado', 'resultado_disputado', 'partido_editado',
+             'partido_eliminado', 'recuperacion_solicitada')
+);
 
 alter table public.eventos enable row level security;
 revoke all on public.eventos from public, anon, authenticated;
@@ -85,48 +92,89 @@ language plpgsql
 security definer set search_path = public
 as $$
 declare
-  v_usuario uuid := auth.uid();
+  v_props jsonb;
 begin
-  if v_usuario is null then
-    raise exception 'Debes iniciar sesion para registrar eventos.';
+  if auth.uid() is null and (p_evento is null or p_evento not in (
+    'registro_iniciado', 'registro_completado', 'registro_fallido',
+    'login_iniciado', 'login_exitoso', 'login_fallido',
+    'recuperacion_iniciada', 'recuperacion_solicitada', 'recuperacion_fallida'
+  )) then
+    raise exception 'Debes iniciar sesion para registrar este evento.';
   end if;
-  if p_evento not in ('union_iniciada', 'partido_unido') then
-    raise exception 'Evento de analitica no permitido.';
+  if p_evento = 'suplente_promovido' then
+    raise exception 'La promocion solo se registra en el servidor.';
   end if;
   if p_props is null or jsonb_typeof(p_props) <> 'object' then
     raise exception 'Las propiedades del evento deben ser un objeto.';
   end if;
+  if jsonb_typeof(p_props->'intento_id') is distinct from 'string'
+     or (p_props->>'intento_id') !~ '^[0-9a-f]{32}$' then
+    raise exception 'Identificador de intento no valido.';
+  end if;
+  v_props := p_props - 'intento_id';
 
-  insert into public.eventos(usuario_id, evento, props)
-  values (v_usuario, p_evento, p_props);
-end;
-$$;
-
-create or replace function public.obtener_resumen_analitica()
-returns jsonb
-language plpgsql
-stable
-security definer set search_path = public
-as $$
-declare
-  v_usuario uuid := auth.uid();
-  v_iniciadas bigint;
-  v_finalizadas bigint;
-begin
-  if v_usuario is null then
-    raise exception 'Debes iniciar sesion para consultar la analitica.';
+  if p_evento in ('busqueda_iniciada', 'busqueda_realizada', 'busqueda_sin_resultados', 'busqueda_fallida') then
+    if jsonb_typeof(p_props->'filtros_activos') is distinct from 'array' then
+      raise exception 'Lista de filtros no valida.';
+    end if;
+    if jsonb_array_length(p_props->'filtros_activos') > 6 or exists (
+      select 1 from jsonb_array_elements(p_props->'filtros_activos') as filtro(valor)
+      where jsonb_typeof(valor) <> 'string'
+         or valor #>> '{}' not in ('texto', 'deporte', 'fecha', 'lugar', 'cupos', 'periodo')
+    ) then
+      raise exception 'Tipo de filtro no permitido.';
+    end if;
+    v_props := v_props - 'filtros_activos';
+    if p_evento in ('busqueda_realizada', 'busqueda_sin_resultados') then
+      if jsonb_typeof(p_props->'cantidad_resultados') is distinct from 'number'
+         or (p_props->>'cantidad_resultados') !~ '^[0-9]+$'
+         or (p_evento = 'busqueda_sin_resultados' and (p_props->>'cantidad_resultados')::numeric <> 0) then
+        raise exception 'Cantidad de resultados no valida.';
+      end if;
+      v_props := v_props - 'cantidad_resultados';
+    end if;
   end if;
 
-  select
-    count(*) filter (where evento = 'union_iniciada'),
-    count(*) filter (where evento = 'partido_unido')
-  into v_iniciadas, v_finalizadas
-  from public.eventos;
+  if p_evento in ('union_iniciada', 'partido_unido', 'union_fallida') and p_props ? 'partido_id' then
+    if jsonb_typeof(p_props->'partido_id') <> 'string' then
+      raise exception 'Identificador de partido no valido.';
+    end if;
+    v_props := v_props - 'partido_id';
+  end if;
 
-  return jsonb_build_object(
-    'uniones_iniciadas', v_iniciadas,
-    'partidos_unidos', v_finalizadas
-  );
+  if p_evento in ('union_fallida', 'creacion_fallida', 'busqueda_fallida',
+      'registro_fallido', 'login_fallido', 'salida_fallida', 'espera_fallida',
+      'reprogramacion_fallida', 'reconfirmacion_fallida', 'respuesta_propuesta_fallida',
+      'validacion_resultado_fallida', 'edicion_fallida', 'eliminacion_fallida', 'recuperacion_fallida') then
+    if jsonb_typeof(p_props->'codigo_error') is distinct from 'string' then
+      raise exception 'Codigo de error no valido.';
+    end if;
+    if p_evento in ('registro_fallido', 'login_fallido', 'recuperacion_fallida') then
+      if p_props->>'codigo_error' not in ('validacion_formulario', 'servicio_autenticacion') then
+        raise exception 'Codigo de autenticacion no permitido.';
+      end if;
+    elsif p_evento = 'busqueda_fallida' then
+      if p_props->>'codigo_error' not in ('consulta_fallida', 'carga_lugares_fallida') then
+        raise exception 'Codigo de busqueda no permitido.';
+      end if;
+    elsif p_props->>'codigo_error' not in ('validacion_formulario', 'regla_negocio', 'persistencia_fallida', 'servicio_partidos') then
+      raise exception 'Codigo de partidos no permitido.';
+    end if;
+    v_props := v_props - 'codigo_error';
+  end if;
+
+  if p_evento = 'salida_completada' and p_props ? 'anticipacion' then
+    if jsonb_typeof(p_props->'anticipacion') <> 'string' or p_props->>'anticipacion' not in (
+      'menos_1_hora', 'entre_1_y_24_horas', 'mas_24_horas', 'partido_iniciado'
+    ) then
+      raise exception 'Anticipacion no permitida.';
+    end if;
+    v_props := v_props - 'anticipacion';
+  end if;
+  if v_props <> '{}'::jsonb then
+    raise exception 'Propiedades del evento no permitidas.';
+  end if;
+  insert into public.eventos(evento, props) values (p_evento, p_props);
 end;
 $$;
 
@@ -148,12 +196,11 @@ begin
 end;
 $$;
 
-revoke all on function public.track(text, jsonb) from public, anon;
-revoke all on function public.obtener_resumen_analitica() from public, anon;
-revoke all on function public.obtener_eventos_analitica() from public, anon;
-grant execute on function public.track(text, jsonb) to authenticated;
-grant execute on function public.obtener_resumen_analitica() to authenticated;
-grant execute on function public.obtener_eventos_analitica() to authenticated;
+revoke all on function public.track(text, jsonb),
+  public.obtener_eventos_analitica() from public, anon;
+grant execute on function public.track(text, jsonb),
+  public.obtener_eventos_analitica() to authenticated;
+grant execute on function public.track(text, jsonb) to anon;
 
 -- La plaza se conserva hasta que cada titular responda a una reprogramación.
 alter table public.partidos
@@ -170,9 +217,7 @@ create index if not exists partidos_organizador_idx on public.partidos (organiza
 create index if not exists inscripciones_jugador_idx on public.inscripciones (jugador_id);
 create index if not exists lista_espera_partido_idx on public.lista_espera (partido_id, id);
 
--- -----------------------------------------------------------------------------
 -- Al registrarse, se crea su perfil con los datos enviados desde la app
--- -----------------------------------------------------------------------------
 create or replace function public.crear_perfil_nuevo_usuario()
 returns trigger
 language plpgsql
@@ -197,9 +242,7 @@ create trigger al_crear_usuario
   after insert on auth.users
   for each row execute function public.crear_perfil_nuevo_usuario();
 
--- -----------------------------------------------------------------------------
 -- Seguridad por fila (RLS): cada usuario solo modifica lo suyo
--- -----------------------------------------------------------------------------
 alter table public.perfiles      enable row level security;
 alter table public.partidos      enable row level security;
 alter table public.inscripciones enable row level security;
@@ -239,11 +282,9 @@ drop policy if exists "lista de espera: leer (con sesión)" on public.lista_espe
 create policy "lista de espera: leer (con sesión)" on public.lista_espera
   for select to authenticated using (true);
 
--- -----------------------------------------------------------------------------
 -- Funciones con las reglas de negocio (se llaman desde la app con rpc)
 -- "for update" bloquea la fila del partido mientras dura la operación, así dos
 -- teléfonos no pueden ocupar el mismo último cupo.
--- -----------------------------------------------------------------------------
 
 -- Regla de unión (issues #2 y #7, requisito #5)
 create or replace function public.unirse_a_partido(p_partido uuid)
@@ -496,6 +537,12 @@ begin
       insert into public.inscripciones
         (partido_id, jugador_id, jugador_nombre, reconfirmacion_pendiente)
       values (p_partido, v_suplente.jugador_id, v_suplente.jugador_nombre, true);
+      -- Un fallo de analitica no debe impedir que entre el suplente.
+      begin
+        insert into public.eventos(evento, props) values ('suplente_promovido', '{}');
+      exception when others then
+        null;
+      end;
       -- Una respuesta pendiente sale y otra entra: el contador y el cupo no cambian.
     else
       update public.partidos
@@ -561,6 +608,12 @@ begin
       (partido_id, jugador_id, jugador_nombre, reconfirmacion_pendiente)
     values (p_partido, v_suplente.jugador_id, v_suplente.jugador_nombre,
             v_partido.reconfirmaciones_pendientes > 0);
+    -- Un fallo de analitica no debe impedir que entre el suplente.
+    begin
+      insert into public.eventos(evento, props) values ('suplente_promovido', '{}');
+    exception when others then
+      null;
+    end;
     update public.partidos
        set reconfirmaciones_pendientes = reconfirmaciones_pendientes
            - case when v_estaba_pendiente then 1 else 0 end
@@ -654,23 +707,20 @@ begin
 end;
 $$;
 
-grant execute on function public.unirse_a_partido(uuid)           to authenticated;
-grant execute on function public.salir_del_partido(uuid)           to authenticated;
-grant execute on function public.entrar_lista_espera(uuid)         to authenticated;
-grant execute on function public.salir_lista_espera(uuid)          to authenticated;
-grant execute on function public.editar_partido(uuid, text, text, text, timestamptz, int)
-  to authenticated;
-grant execute on function public.completar_equipo(uuid)              to authenticated;
-revoke all on function public.reprogramar_partido(uuid, timestamptz, text, text) from public, anon;
-revoke all on function public.responder_reprogramacion(uuid, boolean) from public, anon;
-grant execute on function public.reprogramar_partido(uuid, timestamptz, text, text) to authenticated;
-grant execute on function public.responder_reprogramacion(uuid, boolean) to authenticated;
+grant execute on function public.unirse_a_partido(uuid),
+  public.salir_del_partido(uuid),
+  public.entrar_lista_espera(uuid),
+  public.salir_lista_espera(uuid),
+  public.editar_partido(uuid, text, text, text, timestamptz, int),
+  public.completar_equipo(uuid) to authenticated;
+revoke all on function public.reprogramar_partido(uuid, timestamptz, text, text),
+  public.responder_reprogramacion(uuid, boolean) from public, anon;
+grant execute on function public.reprogramar_partido(uuid, timestamptz, text, text),
+  public.responder_reprogramacion(uuid, boolean) to authenticated;
 
--- -----------------------------------------------------------------------------
 -- Historial de participación (Clase 16 · Tarea 4)
 -- Devuelve los partidos donde el usuario participó (como organizador o inscrito),
 -- ordenados con los más recientes primero.
--- -----------------------------------------------------------------------------
 create or replace function public.obtener_historial_usuario()
 returns table (
   id uuid,
@@ -716,7 +766,6 @@ end;
 $$;
 
 grant execute on function public.obtener_historial_usuario() to authenticated;
-
 
 -- Propuesta sencilla: una por partido, reemplazada en cada envío.
 create table if not exists public.propuestas_equipos (
@@ -867,19 +916,17 @@ create trigger invalidar_equipos_reprogramacion
   after update on public.partidos
   for each row execute function public.invalidar_equipos_reprogramacion();
 
-revoke all on function public.obtener_participantes_equipos(uuid) from public, anon;
-revoke all on function public.guardar_propuesta_equipos(uuid, uuid[], uuid[], uuid) from public, anon;
-revoke all on function public.responder_propuesta_equipos(uuid, uuid, boolean) from public, anon;
-revoke all on function public.invalidar_equipos_inscripcion() from public, anon, authenticated;
-revoke all on function public.invalidar_equipos_reprogramacion() from public, anon, authenticated;
-grant execute on function public.obtener_participantes_equipos(uuid) to authenticated;
-grant execute on function public.guardar_propuesta_equipos(uuid, uuid[], uuid[], uuid) to authenticated;
-grant execute on function public.responder_propuesta_equipos(uuid, uuid, boolean) to authenticated;
+revoke all on function public.obtener_participantes_equipos(uuid),
+  public.guardar_propuesta_equipos(uuid, uuid[], uuid[], uuid),
+  public.responder_propuesta_equipos(uuid, uuid, boolean) from public, anon;
+revoke all on function public.invalidar_equipos_inscripcion(),
+  public.invalidar_equipos_reprogramacion() from public, anon, authenticated;
+grant execute on function public.obtener_participantes_equipos(uuid),
+  public.guardar_propuesta_equipos(uuid, uuid[], uuid[], uuid),
+  public.responder_propuesta_equipos(uuid, uuid, boolean) to authenticated;
 
--- -----------------------------------------------------------------------------
 -- Tarea 8 · Resultado validado entre los capitanes
 -- Solo un resultado confirmado por el capitán rival se considera definitivo.
--- -----------------------------------------------------------------------------
 create table if not exists public.resultados_partido (
   partido_id uuid primary key references public.partidos(id) on delete cascade,
   revision uuid not null default gen_random_uuid(),
@@ -1073,9 +1120,9 @@ begin
 end;
 $$;
 
-revoke all on function public.registrar_resultado_partido(uuid, int, int) from public, anon;
-revoke all on function public.disputar_resultado_partido(uuid, uuid, text) from public, anon;
-revoke all on function public.confirmar_resultado_partido(uuid, uuid) from public, anon;
-grant execute on function public.registrar_resultado_partido(uuid, int, int) to authenticated;
-grant execute on function public.disputar_resultado_partido(uuid, uuid, text) to authenticated;
-grant execute on function public.confirmar_resultado_partido(uuid, uuid) to authenticated;
+revoke all on function public.registrar_resultado_partido(uuid, int, int),
+  public.disputar_resultado_partido(uuid, uuid, text),
+  public.confirmar_resultado_partido(uuid, uuid) from public, anon;
+grant execute on function public.registrar_resultado_partido(uuid, int, int),
+  public.disputar_resultado_partido(uuid, uuid, text),
+  public.confirmar_resultado_partido(uuid, uuid) to authenticated;

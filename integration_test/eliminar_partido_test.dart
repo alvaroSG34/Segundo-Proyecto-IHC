@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -23,6 +25,7 @@ void main() {
   testWidgets('Eliminar partido: cancelar, confirmar y comprobar borrado real', (
     tester,
   ) async {
+    await verificarTracksAlTerminar(['eliminacion_iniciada']);
     expect(
       _correo.trim().contains('@') && _clave.trim().length >= 6,
       isTrue,

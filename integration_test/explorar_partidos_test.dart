@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -26,6 +28,7 @@ void main() {
   testWidgets(
     'Explorar partidos: búsqueda, deporte, sin resultados y restauración',
     (tester) async {
+      await verificarTracksAlTerminar(['busqueda_iniciada']);
       expect(
         [_correo, _correoAux].every((c) => c.trim().contains('@')) &&
             [_clave, _claveAux].every((c) => c.trim().length >= 6),
@@ -401,8 +404,10 @@ void _cantidad(WidgetTester tester, int cantidad) {
   );
 }
 
-Future<void> _listo(WidgetTester tester) =>
-    _esperar(tester, find.byKey(const Key('explorar_cargando')), ausente: true);
+Future<void> _listo(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 600));
+  await _esperar(tester, find.byKey(const Key('explorar_cargando')), ausente: true);
+}
 void _accesible(
   WidgetTester tester,
   Finder accesible,

@@ -4,18 +4,21 @@ import '../../modelos/modelo_partido.dart';
 import '../../modelos/propuesta_equipos.dart';
 import '../../modelos/resultado_partido.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../tema/caja_mensaje.dart';
 
 class VistaEquipos extends StatefulWidget {
   final ModeloPartido partido;
   final RepositorioPartidos repositorio;
   final String usuarioId;
+  final ServicioAnalitica servicioAnalitica;
 
   const VistaEquipos({
     super.key,
     required this.partido,
     required this.repositorio,
     required this.usuarioId,
+    this.servicioAnalitica = const ServicioAnaliticaNula(),
   });
 
   @override
@@ -137,6 +140,12 @@ class _VistaEquiposState extends State<VistaEquipos> {
 
   Future<void> _responder(bool acepta) async {
     if (_guardando) return;
+    final props = {'intento_id': crearIntentoId()};
+    registrarEvento(
+      widget.servicioAnalitica,
+      EventosAnalitica.respuestaPropuestaIniciada,
+      props,
+    );
     setState(() {
       _guardando = true;
       _error = null;
@@ -147,8 +156,20 @@ class _VistaEquiposState extends State<VistaEquipos> {
         _propuesta!.revision,
         acepta,
       );
+      registrarEvento(
+        widget.servicioAnalitica,
+        acepta
+            ? EventosAnalitica.propuestaAceptada
+            : EventosAnalitica.propuestaRechazada,
+        props,
+      );
       await _cargar();
     } on StateError catch (e) {
+      registrarEvento(
+        widget.servicioAnalitica,
+        EventosAnalitica.respuestaPropuestaFallida,
+        {...props, 'codigo_error': 'servicio_partidos'},
+      );
       // Recargar evita seguir mostrando una propuesta que ya fue reemplazada.
       await _cargar();
       if (mounted) setState(() => _error = e.message);
@@ -184,6 +205,8 @@ class _VistaEquiposState extends State<VistaEquipos> {
   }
 
   Future<void> _disputarResultado() async {
+    if (_guardando) return;
+    final props = _iniciarValidacionResultado();
     var motivoEscrito = '';
     final motivo = await showDialog<String>(
       context: context,
@@ -212,22 +235,43 @@ class _VistaEquiposState extends State<VistaEquipos> {
     );
     if (motivo == null || !mounted) return;
     await _actuarSobreResultado(
+      EventosAnalitica.resultadoDisputado,
       () => widget.repositorio.disputarResultado(
         _partido.id,
         _resultado!.revision,
         motivo,
       ),
+      props,
     );
   }
 
-  Future<void> _confirmarResultado() => _actuarSobreResultado(
-    () => widget.repositorio.confirmarResultado(
-      _partido.id,
-      _resultado!.revision,
-    ),
-  );
+  Map<String, String> _iniciarValidacionResultado() {
+    final props = {'intento_id': crearIntentoId()};
+    registrarEvento(
+      widget.servicioAnalitica,
+      EventosAnalitica.validacionResultadoIniciada,
+      props,
+    );
+    return props;
+  }
 
-  Future<void> _actuarSobreResultado(Future<void> Function() accion) async {
+  Future<void> _confirmarResultado() async {
+    if (_guardando) return;
+    await _actuarSobreResultado(
+      EventosAnalitica.resultadoConfirmado,
+      () => widget.repositorio.confirmarResultado(
+        _partido.id,
+        _resultado!.revision,
+      ),
+      _iniciarValidacionResultado(),
+    );
+  }
+
+  Future<void> _actuarSobreResultado(
+    String evento,
+    Future<void> Function() accion,
+    Map<String, String> props,
+  ) async {
     if (_guardando) return;
     setState(() {
       _guardando = true;
@@ -235,8 +279,14 @@ class _VistaEquiposState extends State<VistaEquipos> {
     });
     try {
       await accion();
+      registrarEvento(widget.servicioAnalitica, evento, props);
       await _cargar();
     } on StateError catch (e) {
+      registrarEvento(
+        widget.servicioAnalitica,
+        EventosAnalitica.validacionResultadoFallida,
+        {...props, 'codigo_error': 'servicio_partidos'},
+      );
       await _cargar();
       if (mounted) setState(() => _error = e.message);
     } finally {

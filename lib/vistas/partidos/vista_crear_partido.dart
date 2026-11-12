@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../tema/caja_mensaje.dart';
 import '../../tema/iconos_deporte.dart';
@@ -19,12 +20,14 @@ class VistaCrearPartido extends StatefulWidget {
   final String organizadorNombre;
   final ModeloPartido? partidoAEditar;
   final Future<ModeloPartido> Function(ModeloPartido)? guardarPartido;
+  final ServicioAnalitica servicioAnalitica;
 
   const VistaCrearPartido({
     super.key,
     required this.organizadorNombre,
     this.partidoAEditar,
     this.guardarPartido,
+    this.servicioAnalitica = const ServicioAnaliticaNula(),
   });
 
   /// Devuelve el partido persistido, o null si se cancela o no hay organizador.
@@ -32,6 +35,7 @@ class VistaCrearPartido extends StatefulWidget {
     BuildContext context, {
     required String? organizadorNombre,
     required RepositorioPartidos repositorio,
+    ServicioAnalitica servicioAnalitica = const ServicioAnaliticaNula(),
   }) async {
     if (organizadorNombre == null) return null;
     return Navigator.push<ModeloPartido>(
@@ -40,6 +44,7 @@ class VistaCrearPartido extends StatefulWidget {
         builder: (_) => VistaCrearPartido(
           organizadorNombre: organizadorNombre,
           guardarPartido: repositorio.crearPartido,
+          servicioAnalitica: servicioAnalitica,
         ),
       ),
     );
@@ -77,6 +82,21 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
   bool _intentoEnviar = false;
   bool _guardando = false;
   String? _errorGuardado;
+  // Aleatorio por apertura del formulario; no identifica cuenta ni dispositivo.
+  final _intentoId = crearIntentoId();
+  void _registrarEvento(String evento, {String? codigoError}) {
+    if (_esEdicion) {
+      if (evento == EventosAnalitica.creacionIniciada) {
+        evento = EventosAnalitica.edicionIniciada;
+      }
+      if (evento == EventosAnalitica.creacionFallida) {
+        evento = EventosAnalitica.edicionFallida;
+      }
+    }
+    final props = {'intento_id': _intentoId};
+    if (codigoError != null) props['codigo_error'] = codigoError;
+    registrarEvento(widget.servicioAnalitica, evento, props);
+  }
 
   void _refrescar() {
     if (mounted) setState(() {});
@@ -91,6 +111,7 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
   @override
   void initState() {
     super.initState();
+    _registrarEvento(EventosAnalitica.creacionIniciada);
     if (_esEdicion) {
       final p = widget.partidoAEditar!;
       _tituloCtrl.text = p.titulo;
@@ -174,6 +195,10 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     });
     final formularioValido = _formKey.currentState!.validate();
     if (!formularioValido || _fecha == null || _hora == null) {
+      _registrarEvento(
+        EventosAnalitica.creacionFallida,
+        codigoError: 'validacion_formulario',
+      );
       _claveSacudida.currentState?.sacudir();
       return;
     }
@@ -205,6 +230,10 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
               estoyUnido: true,
             );
     } on StateError catch (e) {
+      _registrarEvento(
+        EventosAnalitica.creacionFallida,
+        codigoError: 'regla_negocio',
+      );
       _claveSacudida.currentState?.sacudir();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), backgroundColor: TemaApp.rojoAlerta),
@@ -222,10 +251,19 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     setState(() => _guardando = true);
     try {
       final guardado = await guardar(partido);
+      _registrarEvento(
+        _esEdicion
+            ? EventosAnalitica.partidoEditado
+            : EventosAnalitica.partidoCreado,
+      );
       if (!mounted) return;
       setState(() => _guardando = false);
       Navigator.pop(context, guardado);
     } catch (error) {
+      _registrarEvento(
+        EventosAnalitica.creacionFallida,
+        codigoError: 'persistencia_fallida',
+      );
       if (!mounted) return;
       setState(() {
         _guardando = false;

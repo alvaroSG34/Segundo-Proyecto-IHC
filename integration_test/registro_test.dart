@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +25,7 @@ void main() {
   testWidgets('Registrarse: alternativos, accesibilidad y perfil persistido', (
     tester,
   ) async {
+    await verificarTracksAlTerminar(['registro_iniciado']);
     expect(
       _correoExistente.trim(),
       isNotEmpty,
@@ -60,10 +63,11 @@ void main() {
 
       // 1. Permiso: una persona sin sesión no accede a Mis partidos.
       debugPrint('Registro E2E · 1/9: Permiso sin sesión');
-      await _tocar(tester, find.text('Mis partidos'));
+      abrirRutaProtegidaE2E(tester);
       await _esperar(tester, find.byType(VistaLogin));
+      await tester.pumpAndSettle();
       expect(
-        find.text('Inicia sesión para ver tus partidos.'),
+        find.text('Debes iniciar sesión para acceder a "Mis Partidos".'),
         findsOneWidget,
         reason: 'El bloqueo debe explicar cómo acceder.',
       );

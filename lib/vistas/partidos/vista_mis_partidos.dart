@@ -9,6 +9,7 @@ import 'vista_equipos.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/caja_mensaje.dart';
 import '../../tema/tema_app.dart';
@@ -27,6 +28,7 @@ import '../autenticacion/vista_login.dart';
 class VistaMisPartidos extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
   final RepositorioPartidos? repositorioPartidos;
+  final ServicioAnalitica? servicioAnalitica;
   final ControladorExplorar controladorExplorar;
   final DateTime? referenciaTemporal;
 
@@ -34,6 +36,7 @@ class VistaMisPartidos extends StatefulWidget {
     super.key,
     required this.servicioAuth,
     this.repositorioPartidos,
+    this.servicioAnalitica,
     required this.controladorExplorar,
     this.referenciaTemporal,
   });
@@ -46,6 +49,9 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   late final RepositorioPartidos _repositorio =
       widget.repositorioPartidos ??
       RepositorioPartidosSupabase(Supabase.instance.client);
+  late final _analitica =
+      widget.servicioAnalitica ??
+      crearAnalitica(widget.repositorioPartidos == null);
 
   List<ModeloPartido> _partidos = [];
   Map<String, PropuestaEquipos?> _propuestas = {};
@@ -157,6 +163,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       MaterialPageRoute(
         builder: (_) => VistaExplorarPartidos(
           repositorioPartidos: _repositorio,
+          servicioAnalitica: _analitica,
           controladorExplorar: widget.controladorExplorar,
           servicioAuth: widget.servicioAuth,
         ),
@@ -172,6 +179,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       MaterialPageRoute(
         builder: (_) => VistaHistorial(
           repositorioPartidos: _repositorio,
+          servicioAnalitica: _analitica,
           controladorExplorar: widget.controladorExplorar,
           servicioAuth: widget.servicioAuth,
         ),
@@ -185,6 +193,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       context,
       organizadorNombre: widget.servicioAuth.usuarioActual?.nombre,
       repositorio: _repositorio,
+      servicioAnalitica: _analitica,
     );
     if (guardado == null || !mounted) return;
     setState(() => _partidos = [guardado, ..._partidos]);
@@ -203,6 +212,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
           organizadorNombre: usuario.nombre,
           partidoAEditar: partido,
           guardarPartido: _repositorio.editarPartido,
+          servicioAnalitica: _analitica,
         ),
       ),
     );
@@ -220,6 +230,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
         builder: (_) => VistaEquipos(
           partido: partido,
           repositorio: _repositorio,
+          servicioAnalitica: _analitica,
           usuarioId: widget.servicioAuth.usuarioActual!.id,
         ),
       ),
@@ -245,6 +256,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
         builder: (_) => VistaReprogramarPartido(
           partido: partido,
           repositorio: _repositorio,
+          servicioAnalitica: _analitica,
         ),
       ),
     );
@@ -257,6 +269,8 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     ModeloPartido partido,
     bool acepta,
   ) async {
+    final props = {'intento_id': crearIntentoId()};
+    registrarEvento(_analitica, EventosAnalitica.reconfirmacionIniciada, props);
     if (!acepta) {
       final confirmar = await confirmarAccion(
         context,
@@ -269,7 +283,21 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     final resultado = await _intentar(
       () => _repositorio.responderReprogramacion(partido.id, acepta),
     );
-    if (resultado == null || !mounted) return;
+    if (resultado == null) {
+      registrarEvento(_analitica, EventosAnalitica.reconfirmacionFallida, {
+        ...props,
+        'codigo_error': 'servicio_partidos',
+      });
+      return;
+    }
+    registrarEvento(
+      _analitica,
+      acepta
+          ? EventosAnalitica.reprogramacionAceptada
+          : EventosAnalitica.reprogramacionRechazada,
+      props,
+    );
+    if (!mounted) return;
     await _cargarPartidos();
     if (mounted) {
       _avisar(
@@ -280,6 +308,8 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
   // ACCIÓN "ELIMINAR PARTIDO": solicita confirmación previa antes de borrar
   Future<void> _eliminarPartido(ModeloPartido partido) async {
+    final props = {'intento_id': crearIntentoId()};
+    registrarEvento(_analitica, EventosAnalitica.eliminacionIniciada, props);
     final confirmar = await confirmarAccion(
       context,
       titulo: '¿Eliminar partido?',
@@ -306,9 +336,17 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
     final eliminado = await _intentar(() async {
       await _repositorio.eliminarPartido(partido.id);
+      registrarEvento(_analitica, EventosAnalitica.partidoEliminado, props);
       return true;
     });
-    if (eliminado == null || !mounted) return;
+    if (eliminado == null) {
+      registrarEvento(_analitica, EventosAnalitica.eliminacionFallida, {
+        ...props,
+        'codigo_error': 'servicio_partidos',
+      });
+      return;
+    }
+    if (!mounted) return;
 
     setState(() {
       _partidos = _partidos.where((p) => p.id != partido.id).toList();
@@ -318,6 +356,8 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
   // ACCIÓN "SALIR DEL PARTIDO" (H3): quien se había unido libera su cupo
   Future<void> _salirDelPartido(ModeloPartido partido) async {
+    final props = {'intento_id': crearIntentoId()};
+    registrarEvento(_analitica, EventosAnalitica.salidaIniciada, props);
     final confirmar = await confirmarAccion(
       context,
       titulo: '¿Salir del partido?',
@@ -333,6 +373,13 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
 
     try {
       final salido = await _repositorio.salirDelPartido(partido.id);
+      final resultado = {...props};
+      final anticipacion = anticipacionSalida(
+        partido.fechaInicio,
+        widget.referenciaTemporal ?? DateTime.now(),
+      );
+      if (anticipacion != null) resultado['anticipacion'] = anticipacion;
+      registrarEvento(_analitica, EventosAnalitica.salidaCompletada, resultado);
       if (!mounted) return;
       setState(
         () => _partidos = _partidos.where((p) => p.id != partido.id).toList(),
@@ -347,11 +394,17 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
         ),
       );
       await _cargarPartidos();
-    } on StateError catch (e) {
+    } catch (e) {
+      registrarEvento(_analitica, EventosAnalitica.salidaFallida, {
+        ...props,
+        'codigo_error': 'servicio_partidos',
+      });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No puedes salir. ${e.message}'),
+          content: Text(
+            'No puedes salir. ${e is StateError ? e.message : 'Intenta nuevamente.'}',
+          ),
           backgroundColor: TemaApp.rojoAlerta,
         ),
       );

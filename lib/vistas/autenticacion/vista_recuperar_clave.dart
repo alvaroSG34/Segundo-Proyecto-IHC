@@ -3,24 +3,48 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../tema/caja_mensaje.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/boton_accion.dart';
 
 /// Solicita a Supabase las instrucciones de recuperación de contraseña.
 class VistaRecuperarClave extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final ServicioAnalitica? servicioAnalitica;
 
-  const VistaRecuperarClave({super.key, required this.servicioAuth});
+  const VistaRecuperarClave({
+    super.key,
+    required this.servicioAuth,
+    this.servicioAnalitica,
+  });
 
   @override
   State<VistaRecuperarClave> createState() => _VistaRecuperarClaveState();
 }
 
 class _VistaRecuperarClaveState extends State<VistaRecuperarClave> {
+  late final _analitica =
+      widget.servicioAnalitica ??
+      crearAnalitica(widget.servicioAuth is ServicioAutenticacionSupabase);
   final _controladorCorreo = TextEditingController();
   bool _enviado = false;
   String? _mensajeError;
   bool _cargando = false;
+
+  final _intentoId = crearIntentoId();
+
+  void _registrar(String evento, [String? codigo]) {
+    registrarEvento(_analitica, evento, {
+      'intento_id': _intentoId,
+      'codigo_error': ?codigo,
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _registrar(EventosAnalitica.recuperacionIniciada);
+  }
 
   @override
   void dispose() {
@@ -29,8 +53,10 @@ class _VistaRecuperarClaveState extends State<VistaRecuperarClave> {
   }
 
   Future<void> _solicitarRecuperacion() async {
+    if (_cargando || _enviado) return;
     final correo = _controladorCorreo.text.trim();
     if (correo.isEmpty || !correo.contains('@')) {
+      _registrar(EventosAnalitica.recuperacionFallida, 'validacion_formulario');
       setState(() => _mensajeError = 'Ingresa un correo electrónico válido');
       return;
     }
@@ -40,7 +66,20 @@ class _VistaRecuperarClaveState extends State<VistaRecuperarClave> {
       _mensajeError = null;
     });
 
-    final error = await widget.servicioAuth.recuperarContrasena(correo);
+    String? error;
+    try {
+      error = await widget.servicioAuth.recuperarContrasena(correo);
+    } catch (_) {
+      error = 'No se pudo solicitar la recuperacion. Intenta nuevamente.';
+    }
+    if (error == null) {
+      _registrar(EventosAnalitica.recuperacionSolicitada);
+    } else {
+      _registrar(
+        EventosAnalitica.recuperacionFallida,
+        'servicio_autenticacion',
+      );
+    }
 
     if (!mounted) return;
     setState(() {

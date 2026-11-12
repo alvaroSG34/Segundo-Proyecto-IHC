@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/evento_historial.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/partidos/controlador_explorar.dart';
@@ -27,6 +28,7 @@ import '../autenticacion/vista_login.dart';
 class VistaHistorial extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
   final RepositorioPartidos? repositorioPartidos;
+  final ServicioAnalitica? servicioAnalitica;
   final ControladorExplorar controladorExplorar;
   final DateTime? referenciaTemporal;
 
@@ -34,6 +36,7 @@ class VistaHistorial extends StatefulWidget {
     super.key,
     required this.servicioAuth,
     this.repositorioPartidos,
+    this.servicioAnalitica,
     required this.controladorExplorar,
     this.referenciaTemporal,
   });
@@ -46,6 +49,9 @@ class _VistaHistorialState extends State<VistaHistorial> {
   late final RepositorioPartidos _repositorio =
       widget.repositorioPartidos ??
       RepositorioPartidosSupabase(Supabase.instance.client);
+  late final _analitica =
+      widget.servicioAnalitica ??
+      crearAnalitica(widget.repositorioPartidos == null);
 
   List<EventoHistorial> _eventos = [];
   bool _cargando = true;
@@ -110,6 +116,7 @@ class _VistaHistorialState extends State<VistaHistorial> {
       MaterialPageRoute(
         builder: (_) => VistaExplorarPartidos(
           repositorioPartidos: _repositorio,
+          servicioAnalitica: _analitica,
           controladorExplorar: widget.controladorExplorar,
           servicioAuth: widget.servicioAuth,
         ),
@@ -122,6 +129,7 @@ class _VistaHistorialState extends State<VistaHistorial> {
       context,
       organizadorNombre: widget.servicioAuth.usuarioActual?.nombre,
       repositorio: _repositorio,
+      servicioAnalitica: _analitica,
     );
     if (creado != null && mounted) await _cargarHistorial();
   }

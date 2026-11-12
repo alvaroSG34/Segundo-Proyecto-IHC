@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +27,7 @@ void main() {
   testWidgets(
     'Solicitar recuperación: alternativos, accesibilidad y respuesta genérica',
     (tester) async {
+      await verificarTracksAlTerminar(['recuperacion_iniciada']);
       // Dirección única sin preparación de cuenta ni buzón: no prueba entrega.
       final correo =
           'e2e-recuperacion-${DateTime.now().microsecondsSinceEpoch}@example.com';

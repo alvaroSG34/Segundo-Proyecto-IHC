@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +26,7 @@ void main() {
   testWidgets(
     'Crear partido: alternativos, accesibilidad, guardado y persistencia',
     (tester) async {
+      await verificarTracksAlTerminar(['creacion_iniciada']);
       expect(
         _correo.trim().contains('@') && _clave.trim().length >= 6,
         isTrue,

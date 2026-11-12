@@ -48,8 +48,15 @@ void main() {
     await auth.iniciarSesion('diego@unisport.edu', '123456');
 
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(
+        home: VistaExplorarPartidos(
+          repositorioPartidos: auth.repositorio,
+          controladorExplorar: controladorExplorar,
+          servicioAuth: auth,
+        ),
+      ),
     );
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
     expect(find.text('2 partidos encontrados'), findsOneWidget);
@@ -57,6 +64,7 @@ void main() {
 
     // Búsqueda con resultados
     await tester.enterText(find.byType(TextField), 'vóley');
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
     expect(find.text('1 partido encontrado'), findsOneWidget);
     expect(find.text('Vóley mixto'), findsOneWidget);
@@ -64,6 +72,7 @@ void main() {
 
     // Búsqueda sin resultados: mensaje claro en lugar de lista vacía
     await tester.enterText(find.byType(TextField), 'rugby');
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
     expect(
       find.text('Ningún partido coincide con tu búsqueda'),
@@ -72,8 +81,10 @@ void main() {
 
     // Quitar filtros vuelve a mostrar todo
     await tester.ensureVisible(find.text('Quitar filtros'));
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Quitar filtros'));
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
     expect(find.text('2 partidos encontrados'), findsOneWidget);
   });
@@ -87,14 +98,23 @@ void main() {
     await auth.iniciarSesion('diego@unisport.edu', '123456');
 
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(
+        home: VistaExplorarPartidos(
+          repositorioPartidos: auth.repositorio,
+          controladorExplorar: controladorExplorar,
+          servicioAuth: auth,
+        ),
+      ),
     );
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
     await tester.tap(find.text('Unirme al equipo'));
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
     expect(find.text('¿Unirte al equipo?'), findsOneWidget);
     await tester.tap(find.text('Sí, unirme'));
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
     expect(find.text('3/10'), findsOneWidget);
@@ -103,73 +123,124 @@ void main() {
     expect(find.text('Unirme al equipo'), findsNothing);
   });
 
-  testWidgets('H3: cancelar la confirmación no ocupa ningún cupo', (tester) async {
+  testWidgets('H3: cancelar la confirmación no ocupa ningún cupo', (
+    tester,
+  ) async {
     final auth = ServicioAutenticacionFalso();
-    auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
+    auth.repositorio.sembrar(
+      'u-lorgio',
+      partido('a', 'Futsal nocturno', 'Futsal'),
+    );
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(
+        home: VistaExplorarPartidos(
+          repositorioPartidos: auth.repositorio,
+          controladorExplorar: controladorExplorar,
+          servicioAuth: auth,
+        ),
+      ),
     );
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
     await tester.tap(find.text('Unirme al equipo'));
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancelar'));
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
 
     expect(find.text('2/10'), findsOneWidget);
     expect(find.text('Unirme al equipo'), findsOneWidget);
   });
 
-  testWidgets('H7: el filtro se conserva al salir y volver a Explorar', (tester) async {
+  testWidgets('H7: el filtro se conserva al salir y volver a Explorar', (
+    tester,
+  ) async {
     final auth = ServicioAutenticacionFalso();
-    auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
+    auth.repositorio.sembrar(
+      'u-lorgio',
+      partido('a', 'Futsal nocturno', 'Futsal'),
+    );
     await auth.iniciarSesion('diego@unisport.edu', '123456');
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(
+        home: VistaExplorarPartidos(
+          repositorioPartidos: auth.repositorio,
+          controladorExplorar: controladorExplorar,
+          servicioAuth: auth,
+        ),
+      ),
     );
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
     await tester.enterText(find.byType(TextField), 'futsal');
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox()));
     await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
+      MaterialApp(
+        home: VistaExplorarPartidos(
+          repositorioPartidos: auth.repositorio,
+          controladorExplorar: controladorExplorar,
+          servicioAuth: auth,
+        ),
+      ),
     );
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
     expect(find.text('Nombre: "futsal"'), findsOneWidget);
   });
 
-  testWidgets('H3: tras unirse se puede salir del partido y el cupo se libera', (
-    tester,
-  ) async {
-    final auth = ServicioAutenticacionFalso();
-    auth.repositorio.sembrar('u-lorgio', partido('a', 'Futsal nocturno', 'Futsal'));
-    await auth.iniciarSesion('diego@unisport.edu', '123456');
-    await tester.pumpWidget(
-      MaterialApp(home: VistaExplorarPartidos(repositorioPartidos: auth.repositorio, controladorExplorar: controladorExplorar, servicioAuth: auth)),
-    );
-    await tester.pump();
+  testWidgets(
+    'H3: tras unirse se puede salir del partido y el cupo se libera',
+    (tester) async {
+      final auth = ServicioAutenticacionFalso();
+      auth.repositorio.sembrar(
+        'u-lorgio',
+        partido('a', 'Futsal nocturno', 'Futsal'),
+      );
+      await auth.iniciarSesion('diego@unisport.edu', '123456');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VistaExplorarPartidos(
+            repositorioPartidos: auth.repositorio,
+            controladorExplorar: controladorExplorar,
+            servicioAuth: auth,
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
 
-    await tester.tap(find.text('Unirme al equipo'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Sí, unirme'));
-    await tester.pumpAndSettle();
-    expect(find.text('3/10'), findsOneWidget);
+      await tester.tap(find.text('Unirme al equipo'));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sí, unirme'));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
+      expect(find.text('3/10'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Salir del partido'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Salir del partido'));
-    await tester.pumpAndSettle();
-    expect(find.text('¿Salir del partido?'), findsOneWidget);
-    await tester.tap(find.text('Sí, salir'));
-    await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Salir del partido'));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Salir del partido'));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
+      expect(find.text('¿Salir del partido?'), findsOneWidget);
+      await tester.tap(find.text('Sí, salir'));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
 
-    expect(find.text('2/10'), findsOneWidget);
-    expect(find.text('Unirme al equipo'), findsOneWidget);
-    expect(find.textContaining('Ver jugadores inscritos'), findsNothing);
-  });
+      expect(find.text('2/10'), findsOneWidget);
+      expect(find.text('Unirme al equipo'), findsOneWidget);
+      expect(find.textContaining('Ver jugadores inscritos'), findsNothing);
+    },
+  );
 }

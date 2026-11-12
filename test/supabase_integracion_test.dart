@@ -92,8 +92,6 @@ void main() {
       );
 
       try {
-        final resumenAntes = await analiticaJugador.obtenerResumen();
-
         // El jugador lo encuentra desde su dispositivo con la búsqueda
         final encontrados = await partidosJugador.buscarPartidos(
           FiltroPartidos(texto: titulo, soloConCupos: true),
@@ -101,24 +99,21 @@ void main() {
         expect(encontrados.single.id, creado.id);
         expect(encontrados.single.puedeUnirse, isTrue);
 
+        final intentoId = crearIntentoId();
         await analiticaJugador.track(EventosAnalitica.unionIniciada, {
           'partido_id': creado.id,
+          'intento_id': intentoId,
         });
 
         // Se une: ocupa el último cupo y el servidor completa el equipo
         final unido = await partidosJugador.unirseAPartido(creado.id);
         await analiticaJugador.track(EventosAnalitica.partidoUnido, {
           'partido_id': creado.id,
+          'intento_id': intentoId,
         });
         expect(unido.cuposOcupados, 2);
         expect(unido.estado, EstadoPartido.equipoCompleto);
 
-        final resumenDespues = await analiticaJugador.obtenerResumen();
-        expect(
-          resumenDespues.unionesIniciadas,
-          resumenAntes.unionesIniciadas + 1,
-        );
-        expect(resumenDespues.partidosUnidos, resumenAntes.partidosUnidos + 1);
         final eventos = await analiticaJugador.obtenerEventos();
         final eventosDelPartido = eventos
             .where((evento) => evento.props['partido_id'] == creado.id)

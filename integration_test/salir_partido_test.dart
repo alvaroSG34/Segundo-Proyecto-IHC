@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -25,6 +27,7 @@ void main() {
   testWidgets(
     'Salir de un partido: cancelar, confirmar y liberar el último cupo',
     (tester) async {
+      await verificarTracksAlTerminar(['salida_iniciada']);
       expect(
         [_correo, _correoAux].every((v) => v.trim().contains('@')) &&
             [_clave, _claveAux].every((v) => v.trim().length >= 6),

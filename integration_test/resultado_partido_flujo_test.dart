@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -10,6 +12,10 @@ void main() {
   testWidgets(
     'Resultado E2E: proponer, aceptar, registrar, disputar, corregir, confirmar y recargar',
     (tester) async {
+      await verificarTracksAlTerminar([
+        'respuesta_propuesta_iniciada',
+        'validacion_resultado_iniciada',
+      ]);
       validarCredencialesE2E();
       final cliente = await inicializarSupabaseE2E();
       final partido = await prepararPartidoResultado(

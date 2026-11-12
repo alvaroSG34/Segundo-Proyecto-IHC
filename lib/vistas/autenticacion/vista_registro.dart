@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../tema/caja_mensaje.dart';
 import '../../tema/iconos_deporte.dart';
 import '../../tema/tema_app.dart';
@@ -14,14 +15,30 @@ import '../inicio/vista_principal.dart';
 /// Formulario de registro simple para nuevos estudiantes universitarios
 class VistaRegistro extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final ServicioAnalitica? servicioAnalitica;
 
-  const VistaRegistro({super.key, required this.servicioAuth});
+  const VistaRegistro({
+    super.key,
+    required this.servicioAuth,
+    this.servicioAnalitica,
+  });
 
   @override
   State<VistaRegistro> createState() => _VistaRegistroState();
 }
 
 class _VistaRegistroState extends State<VistaRegistro> {
+  late final _analitica =
+      widget.servicioAnalitica ??
+      crearAnalitica(widget.servicioAuth is ServicioAutenticacionSupabase);
+  final _intentoId = crearIntentoId();
+
+  void _registrar(String evento, [String? codigoError]) {
+    final props = {'intento_id': _intentoId};
+    if (codigoError != null) props['codigo_error'] = codigoError;
+    registrarEvento(_analitica, evento, props);
+  }
+
   final _claveFormulario = GlobalKey<FormState>();
   final _claveSacudida = GlobalKey<SacudidaState>();
   final _controladorNombre = TextEditingController();
@@ -46,6 +63,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
   @override
   void initState() {
     super.initState();
+    _registrar(EventosAnalitica.registroIniciado);
     _controladorCorreo.addListener(_refrescar);
   }
 
@@ -60,22 +78,34 @@ class _VistaRegistroState extends State<VistaRegistro> {
   }
 
   Future<void> _ejecutarRegistro() async {
+    if (_estadoBoton != EstadoBoton.normal) return;
     setState(() => _mensajeError = null);
 
     if (!_claveFormulario.currentState!.validate()) {
+      _registrar(EventosAnalitica.registroFallido, 'validacion_formulario');
       _claveSacudida.currentState?.sacudir();
       return;
     }
 
     setState(() => _estadoBoton = EstadoBoton.cargando);
 
-    final error = await widget.servicioAuth.registrarUsuario(
-      nombre: _controladorNombre.text,
-      correo: _controladorCorreo.text,
-      contrasena: _controladorContrasena.text,
-      carrera: _controladorCarrera.text,
-      deporteFavorito: _deporteSeleccionado,
-    );
+    String? error;
+    try {
+      error = await widget.servicioAuth.registrarUsuario(
+        nombre: _controladorNombre.text,
+        correo: _controladorCorreo.text,
+        contrasena: _controladorContrasena.text,
+        carrera: _controladorCarrera.text,
+        deporteFavorito: _deporteSeleccionado,
+      );
+    } catch (_) {
+      error = 'No se pudo completar el registro. Intenta nuevamente.';
+    }
+    if (error == null) {
+      _registrar(EventosAnalitica.registroCompletado);
+    } else {
+      _registrar(EventosAnalitica.registroFallido, 'servicio_autenticacion');
+    }
 
     if (!mounted) return;
 
@@ -96,7 +126,10 @@ class _VistaRegistroState extends State<VistaRegistro> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaPrincipal(servicioAuth: widget.servicioAuth),
+        builder: (_) => VistaPrincipal(
+          servicioAuth: widget.servicioAuth,
+          servicioAnalitica: _analitica,
+        ),
       ),
       (ruta) => false,
     );
@@ -277,8 +310,8 @@ class _VistaRegistroState extends State<VistaRegistro> {
 
                     const SizedBox(height: 18),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
                       children: [
                         const Text(
                           '¿Ya tienes cuenta? ',
@@ -291,6 +324,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
                               MaterialPageRoute(
                                 builder: (_) => VistaLogin(
                                   servicioAuth: widget.servicioAuth,
+                                  servicioAnalitica: _analitica,
                                 ),
                               ),
                             );

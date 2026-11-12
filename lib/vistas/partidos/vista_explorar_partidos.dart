@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -48,6 +50,35 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
 
   // Evita que una consulta lenta pise el resultado de una más reciente
   int _consulta = 0;
+  Timer? _analiticaBusqueda;
+
+  @override
+  void dispose() {
+    _analiticaBusqueda?.cancel();
+    super.dispose();
+  }
+
+  void _registrarBusqueda(
+    String evento,
+    FiltroPartidos filtro,
+    String intentoId, {
+    int? cantidadResultados,
+    String? codigoError,
+  }) {
+    registrarEvento(widget.servicioAnalitica, evento, {
+      'intento_id': intentoId,
+      'filtros_activos': [
+        if (filtro.tieneTexto) 'texto',
+        if (filtro.deporte != null) 'deporte',
+        if (filtro.fecha != FiltroFecha.cualquiera) 'fecha',
+        if (filtro.lugar != null) 'lugar',
+        if (filtro.soloConCupos) 'cupos',
+        if (filtro.periodo != PeriodoPartidos.todos) 'periodo',
+      ],
+      'cantidad_resultados': ?cantidadResultados,
+      'codigo_error': ?codigoError,
+    });
+  }
 
   @override
   void initState() {
@@ -57,24 +88,43 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
 
   // Interfaz -> consulta -> base de datos: cada cambio de filtro vuelve a
   // pedir los partidos a la base de datos de Supabase con buscarPartidos.
-  Future<void> _cargar() async {
+  Future<void> _cargar({bool registrarBusqueda = false}) async {
     final usuario = widget.servicioAuth.usuarioActual;
     if (usuario == null) return;
 
     final numero = ++_consulta;
+    final filtro = _filtro;
+    final intentoId = registrarBusqueda ? crearIntentoId() : '';
+    if (registrarBusqueda) {
+      _registrarBusqueda(EventosAnalitica.busquedaIniciada, filtro, intentoId);
+    }
+    _analiticaBusqueda?.cancel();
     setState(() => _cargando = true);
     final List<ModeloPartido> partidos;
     final List<String> lugares;
+    var codigoError = 'consulta_fallida';
     try {
       partidos = await _repositorio.buscarPartidos(
-        _filtro,
+        filtro,
         ahora: widget.referenciaTemporal,
       );
+      codigoError = 'carga_lugares_fallida';
       lugares = await _repositorio.obtenerLugares();
-    } on StateError catch (e) {
+    } catch (e) {
       if (!mounted || numero != _consulta) return;
       setState(() => _cargando = false);
-      _avisar(e.message, error: true);
+      _avisar(
+        e is StateError ? e.message : 'No se pudieron cargar los partidos.',
+        error: true,
+      );
+      if (registrarBusqueda) {
+        _registrarBusqueda(
+          EventosAnalitica.busquedaFallida,
+          filtro,
+          intentoId,
+          codigoError: codigoError,
+        );
+      }
       return;
     }
     if (!mounted || numero != _consulta) return;
@@ -83,11 +133,32 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       _lugares = lugares;
       _cargando = false;
     });
+    if (registrarBusqueda) {
+      _registrarBusqueda(
+        EventosAnalitica.busquedaRealizada,
+        filtro,
+        intentoId,
+        cantidadResultados: partidos.length,
+      );
+      if (partidos.isEmpty) {
+        _registrarBusqueda(
+          EventosAnalitica.busquedaSinResultados,
+          filtro,
+          intentoId,
+          cantidadResultados: 0,
+        );
+      }
+    }
   }
 
   void _cambiarFiltro(FiltroPartidos nuevo) {
     setState(() => widget.controladorExplorar.actualizarFiltro(nuevo));
-    _cargar();
+    ++_consulta;
+    _analiticaBusqueda?.cancel();
+    _analiticaBusqueda = Timer(
+      const Duration(milliseconds: 500),
+      () => _cargar(registrarBusqueda: true),
+    );
   }
 
   void _avisar(String texto, {bool error = false}) {
@@ -101,13 +172,16 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
 
   // ACCIÓN "UNIRME AL EQUIPO": la regla del modelo decide; si rechaza, se explica el motivo
   Future<void> _unirse(ModeloPartido partido) async {
-    await _registrarEvento(EventosAnalitica.unionIniciada, {
-      'partido_id': partido.id,
-    });
-    if (!mounted) return;
+    final analitica = widget.servicioAnalitica;
+    final props = {'partido_id': partido.id, 'intento_id': crearIntentoId()};
+    registrarEvento(analitica, EventosAnalitica.unionIniciada, props);
 
     final motivo = partido.motivoRechazoUnirse;
     if (motivo != null) {
+      registrarEvento(analitica, EventosAnalitica.unionFallida, {
+        ...props,
+        'codigo_error': 'regla_negocio',
+      });
       _avisar('No puedes unirte. $motivo', error: true);
       return;
     }
@@ -134,11 +208,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     try {
       // El servidor vuelve a aplicar la regla sobre el dato guardado
       final unido = await _repositorio.unirseAPartido(partido.id);
-      if (!mounted) return;
-
-      await _registrarEvento(EventosAnalitica.partidoUnido, {
-        'partido_id': partido.id,
-      });
+      registrarEvento(analitica, EventosAnalitica.partidoUnido, props);
       if (!mounted) return;
 
       setState(() {
@@ -154,26 +224,21 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       await _cargar();
     } on StateError catch (e) {
       // El dato guardado cambió (por ejemplo, otro ocupó el último cupo)
+      registrarEvento(analitica, EventosAnalitica.unionFallida, {
+        ...props,
+        'codigo_error': 'servicio_partidos',
+      });
       if (!mounted) return;
       _avisar('No puedes unirte. ${e.message}', error: true);
       await _cargar();
     }
   }
 
-  /// La analitica nunca debe impedir ni revertir una accion del usuario.
-  Future<void> _registrarEvento(
-    String evento,
-    Map<String, dynamic> props,
-  ) async {
-    try {
-      await widget.servicioAnalitica.track(evento, props);
-    } catch (e) {
-      debugPrint('No se pudo registrar $evento: $e');
-    }
-  }
-
   // ACCIÓN "SALIR DEL PARTIDO" (H3): pide confirmación y libera el cupo
   Future<void> _salir(ModeloPartido partido) async {
+    final analitica = widget.servicioAnalitica;
+    final props = {'intento_id': crearIntentoId()};
+    registrarEvento(analitica, EventosAnalitica.salidaIniciada, props);
     final confirmar = await confirmarAccion(
       context,
       titulo: '¿Salir del partido?',
@@ -194,6 +259,13 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
 
     try {
       final salido = await _repositorio.salirDelPartido(partido.id);
+      final resultado = {...props};
+      final anticipacion = anticipacionSalida(
+        partido.fechaInicio,
+        widget.referenciaTemporal ?? DateTime.now(),
+      );
+      if (anticipacion != null) resultado['anticipacion'] = anticipacion;
+      registrarEvento(analitica, EventosAnalitica.salidaCompletada, resultado);
       if (!mounted) return;
       setState(() {
         _partidos = [
@@ -206,9 +278,16 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
             : 'Saliste de "${salido.titulo}". Tu cupo quedó libre.',
       );
       await _cargar();
-    } on StateError catch (e) {
+    } catch (e) {
+      registrarEvento(analitica, EventosAnalitica.salidaFallida, {
+        ...props,
+        'codigo_error': 'servicio_partidos',
+      });
       if (!mounted) return;
-      _avisar('No puedes salir. ${e.message}', error: true);
+      _avisar(
+        'No puedes salir. ${e is StateError ? e.message : 'Intenta nuevamente.'}',
+        error: true,
+      );
       await _cargar();
     }
   }
@@ -217,6 +296,12 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     ModeloPartido partido,
     bool acepta,
   ) async {
+    final props = {'intento_id': crearIntentoId()};
+    registrarEvento(
+      widget.servicioAnalitica,
+      EventosAnalitica.reconfirmacionIniciada,
+      props,
+    );
     if (!acepta) {
       final confirmar = await confirmarAccion(
         context,
@@ -228,6 +313,13 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     }
     try {
       await _repositorio.responderReprogramacion(partido.id, acepta);
+      registrarEvento(
+        widget.servicioAnalitica,
+        acepta
+            ? EventosAnalitica.reprogramacionAceptada
+            : EventosAnalitica.reprogramacionRechazada,
+        props,
+      );
       if (!mounted) return;
       await _cargar();
       if (mounted) {
@@ -236,6 +328,11 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
         );
       }
     } on StateError catch (error) {
+      registrarEvento(
+        widget.servicioAnalitica,
+        EventosAnalitica.reconfirmacionFallida,
+        {...props, 'codigo_error': 'servicio_partidos'},
+      );
       if (!mounted) return;
       _avisar(error.message, error: true);
       await _cargar();
@@ -243,16 +340,37 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
   }
 
   Future<void> _entrarEnEspera(ModeloPartido partido) async {
+    final props = {'intento_id': crearIntentoId()};
+    registrarEvento(
+      widget.servicioAnalitica,
+      EventosAnalitica.esperaIniciada,
+      props,
+    );
     try {
       final actualizado = await _repositorio.entrarEnEspera(partido.id);
+      registrarEvento(
+        widget.servicioAnalitica,
+        EventosAnalitica.esperaConfirmada,
+        props,
+      );
       if (!mounted) return;
       _avisar(
         'Estás en la lista de suplentes. Turno ${actualizado.posicionEspera}.',
       );
       await _cargar();
-    } on StateError catch (e) {
+    } catch (e) {
+      registrarEvento(
+        widget.servicioAnalitica,
+        EventosAnalitica.esperaFallida,
+        {...props, 'codigo_error': 'servicio_partidos'},
+      );
       if (!mounted) return;
-      _avisar(e.message, error: true);
+      _avisar(
+        e is StateError
+            ? e.message
+            : 'No se pudo entrar en espera. Intenta nuevamente.',
+        error: true,
+      );
       await _cargar();
     }
   }

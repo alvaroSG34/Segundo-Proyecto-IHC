@@ -1,3 +1,5 @@
+import 'apoyo/analitica_e2e.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +27,7 @@ void main() {
   testWidgets(
     'Editar partido: alternativos, carga, persistencia y restricciones de cupos',
     (tester) async {
+      await verificarTracksAlTerminar(['edicion_iniciada']);
       expect(
         _correo.trim().contains('@') && _clave.trim().length >= 6,
         isTrue,
@@ -279,7 +282,11 @@ void main() {
         await _precarga(tester, abierto);
 
         debugPrint('Editar E2E · 6/8: mínimo de cupos ocupados');
-        for (final esperado in [3, 2, 1]) {
+        for (
+          var esperado = abierto.cuposTotales - 1;
+          esperado >= 2;
+          esperado--
+        ) {
           await _tocar(tester, _accion('Disminuir cupos'));
           _cupos(tester, esperado);
         }
@@ -289,15 +296,13 @@ void main() {
               .properties
               .enabled,
           isFalse,
-          reason: 'No debe reducirse por debajo del cupo del organizador.',
+          reason: 'No debe reducirse por debajo del mínimo de dos cupos.',
         );
         await tester.tap(_marco('Disminuir cupos'), warnIfMissed: false);
         await tester.pump(const Duration(milliseconds: 100));
-        _cupos(tester, 1);
-        for (final esperado in [2, 3]) {
-          await _tocar(tester, _accion('Aumentar cupos'));
-          _cupos(tester, esperado);
-        }
+        _cupos(tester, 2);
+        await _tocar(tester, _accion('Aumentar cupos'));
+        _cupos(tester, 3);
 
         debugPrint('Editar E2E · 7/8: cambios, vista previa y carga');
         await _escribir(tester, 'partido_titulo', tituloNuevo);

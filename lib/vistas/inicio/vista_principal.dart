@@ -34,11 +34,9 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
   late final RepositorioPartidos _repositorio =
       widget.repositorioPartidos ??
       RepositorioPartidosSupabase(Supabase.instance.client);
-  late final ServicioAnalitica _analitica =
+  late final _analitica =
       widget.servicioAnalitica ??
-      (widget.repositorioPartidos == null
-          ? ServicioAnaliticaSupabase(Supabase.instance.client)
-          : const ServicioAnaliticaNula());
+      crearAnalitica(widget.repositorioPartidos == null);
 
   // Vive mientras el menú esté abierto y se comparte con sus pantallas.
   final _controladorExplorar = ControladorExplorar();
@@ -48,6 +46,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
       context,
       organizadorNombre: widget.servicioAuth.usuarioActual?.nombre,
       repositorio: _repositorio,
+      servicioAnalitica: _analitica,
     );
     if (creado == null || !context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -224,6 +223,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                           MaterialPageRoute(
                             builder: (_) => VistaMisPartidos(
                               repositorioPartidos: _repositorio,
+                              servicioAnalitica: _analitica,
                               controladorExplorar: _controladorExplorar,
                               servicioAuth: widget.servicioAuth,
                             ),
@@ -249,6 +249,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                           MaterialPageRoute(
                             builder: (_) => VistaHistorial(
                               repositorioPartidos: _repositorio,
+                              servicioAnalitica: _analitica,
                               controladorExplorar: _controladorExplorar,
                               servicioAuth: widget.servicioAuth,
                             ),

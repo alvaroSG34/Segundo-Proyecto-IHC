@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../tema/caja_mensaje.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/animaciones.dart';
@@ -14,11 +15,13 @@ import '../inicio/vista_principal.dart';
 /// Formulario de inicio de sesión de UniSport
 class VistaLogin extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final ServicioAnalitica? servicioAnalitica;
   final String? mensajeRedireccion;
 
   const VistaLogin({
     super.key,
     required this.servicioAuth,
+    this.servicioAnalitica,
     this.mensajeRedireccion,
   });
 
@@ -27,6 +30,17 @@ class VistaLogin extends StatefulWidget {
 }
 
 class _VistaLoginState extends State<VistaLogin> {
+  late final _analitica =
+      widget.servicioAnalitica ??
+      crearAnalitica(widget.servicioAuth is ServicioAutenticacionSupabase);
+  final _intentoId = crearIntentoId();
+
+  void _registrar(String evento, [String? codigoError]) {
+    final props = {'intento_id': _intentoId};
+    if (codigoError != null) props['codigo_error'] = codigoError;
+    registrarEvento(_analitica, evento, props);
+  }
+
   final _claveFormulario = GlobalKey<FormState>();
   final _claveSacudida = GlobalKey<SacudidaState>();
   final _controladorCorreo = TextEditingController();
@@ -46,6 +60,7 @@ class _VistaLoginState extends State<VistaLogin> {
   @override
   void initState() {
     super.initState();
+    _registrar(EventosAnalitica.loginIniciado);
     _controladorCorreo.addListener(_refrescar);
   }
 
@@ -58,19 +73,31 @@ class _VistaLoginState extends State<VistaLogin> {
   }
 
   Future<void> _ejecutarLogin() async {
+    if (_estadoBoton != EstadoBoton.normal) return;
     setState(() => _mensajeError = null);
 
     if (!_claveFormulario.currentState!.validate()) {
+      _registrar(EventosAnalitica.loginFallido, 'validacion_formulario');
       _claveSacudida.currentState?.sacudir();
       return;
     }
 
     setState(() => _estadoBoton = EstadoBoton.cargando);
 
-    final error = await widget.servicioAuth.iniciarSesion(
-      _controladorCorreo.text,
-      _controladorContrasena.text,
-    );
+    String? error;
+    try {
+      error = await widget.servicioAuth.iniciarSesion(
+        _controladorCorreo.text,
+        _controladorContrasena.text,
+      );
+    } catch (_) {
+      error = 'No se pudo iniciar sesion. Intenta nuevamente.';
+    }
+    if (error == null) {
+      _registrar(EventosAnalitica.loginExitoso);
+    } else {
+      _registrar(EventosAnalitica.loginFallido, 'servicio_autenticacion');
+    }
 
     if (!mounted) return;
 
@@ -90,7 +117,10 @@ class _VistaLoginState extends State<VistaLogin> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaPrincipal(servicioAuth: widget.servicioAuth),
+        builder: (_) => VistaPrincipal(
+          servicioAuth: widget.servicioAuth,
+          servicioAnalitica: _analitica,
+        ),
       ),
       (ruta) => false,
     );
@@ -217,6 +247,7 @@ class _VistaLoginState extends State<VistaLogin> {
                             MaterialPageRoute(
                               builder: (_) => VistaRecuperarClave(
                                 servicioAuth: widget.servicioAuth,
+                                servicioAnalitica: _analitica,
                               ),
                             ),
                           );
@@ -265,6 +296,7 @@ class _VistaLoginState extends State<VistaLogin> {
                                 MaterialPageRoute(
                                   builder: (_) => VistaRegistro(
                                     servicioAuth: widget.servicioAuth,
+                                    servicioAnalitica: _analitica,
                                   ),
                                 ),
                               );
