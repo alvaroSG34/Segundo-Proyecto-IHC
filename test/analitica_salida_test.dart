@@ -99,7 +99,7 @@ Future<void> _abrirSalida(WidgetTester tester) async {
 }
 
 Future<void> _confirmar(WidgetTester tester) async {
-  await tester.tap(find.text('Sí, salir'));
+  await tester.tap(find.text('Registrar baja tardía'));
   await tester.pumpAndSettle();
 }
 
@@ -162,7 +162,7 @@ void main() {
     );
 
     testWidgets(
-      '$pantalla: salida confirmada registra anticipacion sin datos del partido',
+      '$pantalla: baja tardía registra anticipacion sin datos del partido',
       (tester) async {
         final analitica = _Analitica();
         final repositorio = _Repositorio();
@@ -182,6 +182,7 @@ void main() {
         expect(repositorio.salidas, 1);
         expect(await repositorio.obtenerPartidosUnidos(), isEmpty);
         expect(find.text('Salir del partido'), findsNothing);
+        expect(find.textContaining('Baja tardía registrada'), findsOneWidget);
       },
     );
 

@@ -227,6 +227,15 @@ class ModeloPartido {
 
   bool get puedeSalir => motivoRechazoSalir == null;
 
+  /// Una salida dentro de las dos horas previas se permite, pero se registra
+  /// como baja tardía para que el organizador pueda verla.
+  bool esBajaTardia({DateTime? ahora}) {
+    final inicio = fechaInicio;
+    if (inicio == null) return false;
+    final restante = inicio.difference(ahora ?? DateTime.now());
+    return restante > Duration.zero && restante < const Duration(hours: 2);
+  }
+
   /// Acción "Salir del partido". Devuelve una copia con un cupo menos ocupado.
   /// Lanza [StateError] con el motivo si la regla lo rechaza.
   ModeloPartido salir() {

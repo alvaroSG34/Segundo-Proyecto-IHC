@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../modelos/baja_tardia.dart';
 import '../modelos/modelo_partido.dart';
 import '../tema/iconos_deporte.dart';
 import '../tema/tema_app.dart';
@@ -26,6 +27,7 @@ class TarjetaPartido extends StatelessWidget {
   final VoidCallback? onSalir;
 
   final List<String>? suplentes;
+  final List<BajaTardia>? bajasTardias;
 
   const TarjetaPartido({
     super.key,
@@ -44,6 +46,7 @@ class TarjetaPartido extends StatelessWidget {
     this.onSalirDeEspera,
     this.onSalir,
     this.suplentes,
+    this.bajasTardias,
   });
 
   @override
@@ -273,6 +276,12 @@ class TarjetaPartido extends StatelessWidget {
             const SizedBox(height: 8),
             _construirSuplentes(context, suplentes!),
           ],
+          if (partido.soyOrganizador &&
+              bajasTardias != null &&
+              bajasTardias!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _construirBajasTardias(context, bajasTardias!),
+          ],
           // ACCIONES DEL ORGANIZADOR
           if (partido.soyOrganizador) ...[
             if (onReprogramar != null && partido.puedeReprogramar) ...[
@@ -488,6 +497,54 @@ class TarjetaPartido extends StatelessWidget {
                 itemBuilder: (_, indice) => ListTile(
                   leading: CircleAvatar(child: Text('${indice + 1}')),
                   title: Text(nombres[indice]),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _construirBajasTardias(BuildContext context, List<BajaTardia> bajas) {
+    String fecha(DateTime valor) {
+      String dos(int numero) => numero.toString().padLeft(2, '0');
+      return '${dos(valor.day)}/${dos(valor.month)}/${valor.year} · '
+          '${dos(valor.hour)}:${dos(valor.minute)}';
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        key: const Key('partido_ver_bajas_tardias'),
+        icon: const Icon(LucideIcons.triangleAlert, size: 18),
+        label: Text('Ver bajas tardías (${bajas.length})'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 48),
+          foregroundColor: TemaApp.rojoAlerta,
+        ),
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Bajas tardías (${bajas.length})'),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 250,
+              child: ListView.builder(
+                itemCount: bajas.length,
+                itemBuilder: (_, indice) => ListTile(
+                  leading: const Icon(
+                    LucideIcons.triangleAlert,
+                    color: TemaApp.rojoAlerta,
+                  ),
+                  title: Text(bajas[indice].jugadorNombre),
+                  subtitle: Text(fecha(bajas[indice].fecha)),
                 ),
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:unisport/modelos/baja_tardia.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
 
@@ -402,5 +403,31 @@ void main() {
       expect(find.text('Editar'), findsOneWidget);
       expect(find.text('Eliminar'), findsOneWidget);
     });
+  });
+
+  testWidgets('el organizador puede consultar las bajas tardías', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      envolver(
+        TarjetaPartido(
+          partido: crearPartido(),
+          bajasTardias: [
+            BajaTardia(
+              partidoId: 'p-1',
+              jugadorNombre: 'Ana',
+              fecha: DateTime(2026, 11, 12, 16, 30),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.text('Ver bajas tardías (1)'), findsOneWidget);
+    await tester.tap(find.text('Ver bajas tardías (1)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bajas tardías (1)'), findsOneWidget);
+    expect(find.text('Ana'), findsOneWidget);
+    expect(find.text('12/11/2026 · 16:30'), findsOneWidget);
   });
 }

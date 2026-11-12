@@ -49,6 +49,19 @@ create table if not exists public.lista_espera (
   unique (partido_id, jugador_id)
 );
 
+-- Salidas realizadas dentro de las dos horas previas. No se expone la tabla:
+-- cada organizador las consulta únicamente mediante una función protegida.
+create table if not exists public.bajas_tardias (
+  id             bigint generated always as identity primary key,
+  partido_id     uuid not null references public.partidos (id) on delete cascade,
+  jugador_id     uuid not null references public.perfiles (id) on delete cascade,
+  jugador_nombre text not null,
+  fecha          timestamptz not null default now()
+);
+
+alter table public.bajas_tardias enable row level security;
+revoke all on public.bajas_tardias from public, anon, authenticated;
+
 -- Analitica: acceso mediante funciones; consulta con sesion.
 create table if not exists public.eventos (
   id         bigint generated always as identity primary key,
@@ -216,6 +229,8 @@ create index if not exists partidos_fecha_idx on public.partidos (fecha_inicio);
 create index if not exists partidos_organizador_idx on public.partidos (organizador_id);
 create index if not exists inscripciones_jugador_idx on public.inscripciones (jugador_id);
 create index if not exists lista_espera_partido_idx on public.lista_espera (partido_id, id);
+create index if not exists bajas_tardias_partido_fecha_idx
+  on public.bajas_tardias (partido_id, fecha desc);
 
 -- Al registrarse, se crea su perfil con los datos enviados desde la app
 create or replace function public.crear_perfil_nuevo_usuario()
@@ -572,6 +587,8 @@ declare
   v_partido public.partidos;
   v_suplente public.lista_espera;
   v_estaba_pendiente boolean;
+  v_nombre text;
+  v_ahora timestamptz := now();
 begin
   if v_jugador is null then
     raise exception 'Debes iniciar sesión para salir del partido.';
@@ -588,8 +605,20 @@ begin
                  where partido_id = p_partido and jugador_id = v_jugador) then
     raise exception 'No formas parte de este equipo.';
   end if;
-  if v_partido.fecha_inicio < now() then
+  if v_partido.fecha_inicio <= v_ahora then
     raise exception 'El partido ya se jugó: su fecha ya pasó.';
+  end if;
+
+  if v_partido.fecha_inicio - v_ahora < interval '2 hours' then
+    select nombre into v_nombre from public.perfiles where id = v_jugador;
+    insert into public.bajas_tardias
+      (partido_id, jugador_id, jugador_nombre, fecha)
+    values (
+      p_partido,
+      v_jugador,
+      coalesce(v_nombre, 'Jugador'),
+      v_ahora
+    );
   end if;
 
   select reconfirmacion_pendiente into v_estaba_pendiente
@@ -635,6 +664,26 @@ begin
     returning * into v_partido;
   end if;
   return v_partido;
+end;
+$$;
+
+create or replace function public.obtener_bajas_tardias_organizador()
+returns table(partido_id uuid, jugador_nombre text, fecha timestamptz)
+language plpgsql
+stable
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Debes iniciar sesión para consultar las bajas tardías.';
+  end if;
+
+  return query
+  select b.partido_id, b.jugador_nombre, b.fecha
+    from public.bajas_tardias b
+    join public.partidos p on p.id = b.partido_id
+   where p.organizador_id = auth.uid()
+   order by b.fecha desc, b.id desc;
 end;
 $$;
 
@@ -713,6 +762,10 @@ grant execute on function public.unirse_a_partido(uuid),
   public.salir_lista_espera(uuid),
   public.editar_partido(uuid, text, text, text, timestamptz, int),
   public.completar_equipo(uuid) to authenticated;
+revoke all on function public.obtener_bajas_tardias_organizador()
+  from public, anon;
+grant execute on function public.obtener_bajas_tardias_organizador()
+  to authenticated;
 revoke all on function public.reprogramar_partido(uuid, timestamptz, text, text),
   public.responder_reprogramacion(uuid, boolean) from public, anon;
 grant execute on function public.reprogramar_partido(uuid, timestamptz, text, text),

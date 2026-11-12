@@ -1,3 +1,4 @@
+import '../../modelos/baja_tardia.dart';
 import '../../modelos/evento_historial.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
@@ -42,6 +43,10 @@ abstract class RepositorioPartidos {
 
   /// Nombres en orden de espera para los partidos organizados por el usuario.
   Future<Map<String, List<String>>> obtenerSuplentes();
+
+  /// Bajas realizadas dentro de las dos horas previas, visibles únicamente
+  /// para quien organiza cada partido.
+  Future<Map<String, List<BajaTardia>>> obtenerBajasTardias();
 
   /// Partidos de otros estudiantes que cumplen [filtro] (requisito #6).
   /// [ahora] es la referencia para "hoy", "próximos 7 días" y fechas pasadas.

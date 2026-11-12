@@ -64,6 +64,7 @@ void main() {
       expect(await repo.obtenerSuplentes(), {
         'partido-1': ['Carla'],
       });
+      expect(await repo.obtenerBajasTardias(), isEmpty);
       expect(
         (await repo.obtenerParticipantes('partido-1'))
             .where((p) => !p.esOrganizador)
@@ -72,6 +73,48 @@ void main() {
       );
     },
   );
+
+  test('una salida dentro de dos horas queda como baja tardía', () async {
+    final repo = RepositorioEnMemoria(
+      usuarioId: 'org',
+      usuarioNombre: 'Organizador',
+    );
+    final inicio = DateTime.now().add(const Duration(hours: 1));
+    repo.sembrar(
+      'org',
+      partidoDePrueba().copyWith(
+        fechaHora: ModeloPartido.formatearFechaHora(inicio),
+      ),
+    );
+
+    repo.usarSesionDe('ana', 'Ana');
+    await repo.unirseAPartido('partido-1');
+    await repo.salirDelPartido('partido-1');
+    expect(await repo.obtenerBajasTardias(), isEmpty);
+
+    repo.usarSesionDe('org', 'Organizador');
+    final bajas = await repo.obtenerBajasTardias();
+    expect(bajas['partido-1'], hasLength(1));
+    expect(bajas['partido-1']!.single.jugadorNombre, 'Ana');
+  });
+
+  test('el límite exacto de dos horas no es baja tardía', () {
+    final ahora = DateTime(2099, 11, 10, 17);
+    final partido = partidoDePrueba();
+    expect(partido.esBajaTardia(ahora: ahora), isFalse);
+    expect(
+      partido
+          .copyWith(fechaHora: '10/11/2099 · 18:59')
+          .esBajaTardia(ahora: ahora),
+      isTrue,
+    );
+    expect(
+      partido
+          .copyWith(fechaHora: '10/11/2099 · 19:01')
+          .esBajaTardia(ahora: ahora),
+      isFalse,
+    );
+  });
 
   test('cancelar espera respeta el orden y no ocupa un cupo', () async {
     final repo = RepositorioEnMemoria(

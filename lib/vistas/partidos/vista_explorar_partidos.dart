@@ -239,12 +239,15 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     final analitica = widget.servicioAnalitica;
     final props = {'intento_id': crearIntentoId()};
     registrarEvento(analitica, EventosAnalitica.salidaIniciada, props);
+    final ahora = widget.referenciaTemporal ?? DateTime.now();
+    final bajaTardia = partido.esBajaTardia(ahora: ahora);
     final confirmar = await confirmarAccion(
       context,
-      titulo: '¿Salir del partido?',
-      mensaje:
-          'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
-      textoConfirmar: 'Sí, salir',
+      titulo: bajaTardia ? '¿Registrar baja tardía?' : '¿Salir del partido?',
+      mensaje: bajaTardia
+          ? 'Faltan menos de 2 horas para "${partido.titulo}". Saldrás del equipo y la baja tardía será visible para el organizador.'
+          : 'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
+      textoConfirmar: bajaTardia ? 'Registrar baja tardía' : 'Sí, salir',
       estiloConfirmar: ElevatedButton.styleFrom(
         visualDensity: VisualDensity.standard,
         backgroundColor: TemaApp.rojoAlerta,
@@ -260,10 +263,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     try {
       final salido = await _repositorio.salirDelPartido(partido.id);
       final resultado = {...props};
-      final anticipacion = anticipacionSalida(
-        partido.fechaInicio,
-        widget.referenciaTemporal ?? DateTime.now(),
-      );
+      final anticipacion = anticipacionSalida(partido.fechaInicio, ahora);
       if (anticipacion != null) resultado['anticipacion'] = anticipacion;
       registrarEvento(analitica, EventosAnalitica.salidaCompletada, resultado);
       if (!mounted) return;
@@ -273,7 +273,9 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
         ];
       });
       _avisar(
-        salido.estaLleno
+        bajaTardia
+            ? 'Baja tardía registrada en "${salido.titulo}".'
+            : salido.estaLleno
             ? 'Saliste de "${salido.titulo}". Entró el primer suplente.'
             : 'Saliste de "${salido.titulo}". Tu cupo quedó libre.',
       );

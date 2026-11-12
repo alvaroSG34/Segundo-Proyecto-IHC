@@ -1,9 +1,12 @@
-# Tarea 9 · Analítica de los flujos de UniSport
+# Tarea 9 · Analítica y baja con plazo en UniSport
 
 **Proyecto:** UniSport.  
 **Fecha:** 11 de noviembre de 2026.
 
-## Objetivo
+**Modalidad:** con IA.
+**Integrantes:** Alvaro Sonco Guzman y Juan Carlos Laura Cespedes.
+
+## Parte A · Analítica de los flujos
 
 Registrar acciones para conocer qué tareas se completan y dónde aparecen dificultades, recopilando únicamente los datos necesarios. Los 11 flujos acordados se presentan como 14 acciones, con 47 nombres de eventos permitidos. La pantalla Analítica conserva su tabla y añade un selector con un embudo Inicio → Finalización, dos barras y errores.
 
@@ -117,23 +120,23 @@ Esta instantánea es independiente del supuesto de aprobación de las E2E descri
 
 ## Capturas de la evidencia
 
-Las capturas serán añadidas por el autor en los siguientes lugares. Deben mostrar el estado real del panel al momento de tomarlas; sus valores pueden diferir de la instantánea anterior si se generan nuevos eventos.
+Las siguientes capturas muestran el estado real del panel el 12 de noviembre de 2026. Sus valores difieren de la instantánea anterior porque se generaron nuevos eventos durante la verificación.
 
 ### 1. Panel de Crear partido
 
-> Añadir aquí la captura de Analítica con «Crear partido» seleccionado, sus dos barras, contadores, errores y tabla filtrada.
+![Panel de Analítica con la acción Crear partido](tarea-9-analitica-crear-partido.jpeg)
 
-La captura permite comprobar que el resumen distingue intentos, finalizaciones y errores, y que la tabla contiene únicamente eventos de creación.
+La captura permite comprobar que el resumen distingue **6 inicios**, **4 finalizaciones**, **2 intentos sin finalizar** y **1 intento con error de validación**. La tasa observada es de **66,7 %** y la tabla contiene únicamente eventos `creacion_iniciada` y `partido_creado`.
 
 ### 2. Cambio de acción y tabla filtrada
 
-> Añadir aquí la captura con «Buscar» seleccionado, incluyendo filas de `busqueda_iniciada`, `busqueda_realizada` y, si existen, `busqueda_sin_resultados`.
+![Panel de Analítica con la acción Buscar](tarea-9-analitica-buscar.jpeg)
 
-La captura permite comprobar que cambiar la acción actualiza las métricas y las filas, sin mostrar eventos de creación. Una búsqueda vacía completada sigue contando como finalización.
+La captura permite comprobar que cambiar la acción actualiza las métricas y las filas sin mostrar eventos de creación. Se observan **9 inicios**, **7 finalizaciones**, **2 intentos sin finalizar**, **0 errores** y una tasa de **77,8 %**. La tabla incluye `busqueda_iniciada`, `busqueda_realizada` y `busqueda_sin_resultados`; una búsqueda vacía completada sigue contando como finalización.
 
 ## Verificación realizada
 
-La última suite local completa terminó con **238 pruebas aprobadas y 1 integración opcional omitida**. Las **10 pruebas de analítica** también pasaron después de retirar el párrafo inferior y filtrar la tabla por la acción seleccionada. `flutter analyze` terminó sin problemas. Se validó además la sintaxis del esquema y de los 20 cuerpos de funciones PL/pgSQL.
+La última suite local completa terminó con **241 pruebas aprobadas y 1 integración opcional omitida**. Las pruebas de analítica también pasaron después de retirar el párrafo inferior y filtrar la tabla por la acción seleccionada. `flutter analyze` terminó sin problemas.
 
 Las pruebas cubren confirmación del servidor, errores, cancelaciones, reintentos, respuestas pendientes, propiedades sin datos privados y fallos de analítica que no impiden completar acciones. Las pruebas locales de recuperación no envían correos reales.
 
@@ -156,7 +159,7 @@ Las 12 E2E que recorren estas acciones consultan los eventos reales mediante un 
 | [registro_test.dart](../integration_test/registro_test.dart) | Registrarse. |
 | [login_test.dart](../integration_test/login_test.dart) | Iniciar sesión. |
 | [salir_partido_test.dart](../integration_test/salir_partido_test.dart) | Salir. |
-| [flujo_suplentes_test.dart](../integration_test/flujo_suplentes_test.dart) | Entrar en espera y comportamiento del suplente promovido. |
+| [flujo_suplentes_test.dart](../integration_test/flujo_suplentes_test.dart) | Entrar en espera, promoción del suplente y baja tardía visible para el organizador. |
 | [reprogramar_partido_test.dart](../integration_test/reprogramar_partido_test.dart) | Reprogramar y reconfirmar; comprueba también la promoción del suplente. |
 | [resultado_partido_flujo_test.dart](../integration_test/resultado_partido_flujo_test.dart) | Responder propuesta y validar resultado. |
 | [editar_partido_test.dart](../integration_test/editar_partido_test.dart) | Editar. |
@@ -187,8 +190,66 @@ Después de actualizar el esquema en Supabase, la E2E se ejecutó en el emulador
 
 ## Activación en Supabase
 
-Toda la configuración está centralizada en [supabase/esquema.sql](../supabase/esquema.sql). El esquema actualizado fue ejecutado en la base remota mediante el SQL Editor; se comprobó que `track` reconoce los eventos nuevos y valida sus propiedades.
+Toda la configuración está centralizada en [supabase/esquema.sql](../supabase/esquema.sql). La versión anterior de la Parte A fue ejecutada en la base remota. La versión actual añade `bajas_tardias` y `obtener_bajas_tardias_organizador`, por lo que debe ejecutarse nuevamente antes de probar la Parte B contra Supabase.
 
 Para instalar o actualizar la base, abrir el SQL Editor del proyecto de Supabase, pegar el contenido completo de ese archivo y ejecutarlo. El esquema incluye las tablas, permisos, validaciones y funciones actuales, además de los ajustes de compatibilidad para bases existentes.
 
 Después de aplicar el SQL, completar acciones y cancelar otras desde la aplicación; comprobar en Analítica que solo aparezcan los eventos acordados y las propiedades permitidas.
+
+## Parte B · Darse de baja con plazo
+
+### Regla seleccionada
+
+UniSport permite que un jugador abandone un partido. Si faltan **2 horas o más**, la salida es normal; si faltan **menos de 2 horas**, la persona sale, pero la acción queda registrada como **baja tardía** y es visible para el organizador. El organizador no puede darse de baja de su propio partido. Cuando existe una lista de espera, el primer suplente ocupa automáticamente la plaza liberada.
+
+### Implementación
+
+- [ModeloPartido](../lib/modelos/modelo_partido.dart) determina la frontera de dos horas mediante `esBajaTardia`. Exactamente dos horas todavía cuenta como salida a tiempo.
+- [salir_del_partido](../supabase/esquema.sql) bloquea la fila del partido, valida la sesión y registra la baja tardía dentro de la misma transacción que elimina la inscripción. Así no puede existir una baja registrada sin salida ni una salida tardía sin registro.
+- La tabla `bajas_tardias` conserva partido, jugador, nombre y momento de la salida. No permite acceso directo desde el cliente.
+- `obtener_bajas_tardias_organizador` devuelve únicamente registros de partidos organizados por la sesión actual.
+- En Explorar y Mis partidos, el diálogo avisa antes de confirmar cuando faltan menos de dos horas y usa la acción **Registrar baja tardía**.
+- En Mis partidos, el organizador dispone del botón **Ver bajas tardías (n)**, con el nombre y la fecha de cada registro.
+- La promoción del primer suplente se mantiene tanto para una salida a tiempo como para una baja tardía. Si no hay suplentes, el cupo queda libre.
+
+### Decisiones de interacción
+
+La salida tardía no se bloquea porque impedir retirarse dejaría información incorrecta sobre quién asistirá. En cambio, el diálogo explica la consecuencia antes de confirmar y el organizador recibe un registro visible. No se muestra la lista a otros jugadores ni se expone directamente la tabla de la base de datos.
+
+### Pruebas
+
+Las pruebas locales verifican:
+
+1. Salida a tiempo con promoción del primer suplente.
+2. Registro de una salida dentro de las dos horas.
+3. Frontera exacta: `2:00` no es tardía y `1:59` sí.
+4. Privacidad: el jugador no consulta el registro y el organizador sí.
+5. Visualización del botón, diálogo, nombre y fecha para el organizador.
+6. El organizador no puede salir de su propio partido.
+7. Los flujos de salida, espera, filtros y analítica existentes continúan funcionando.
+
+La suite completa local terminó con **241 pruebas aprobadas y 1 integración opcional omitida**. El análisis estático terminó con **No issues found**.
+
+```sh
+flutter analyze
+flutter test
+```
+
+### E2E de la funcionalidad
+
+La prueba [flujo_suplentes_test.dart](../integration_test/flujo_suplentes_test.dart) contiene las dos demostraciones solicitadas:
+
+1. Crea un partido, llena el último cupo, agrega un suplente, realiza una salida a tiempo y comprueba que el primer suplente asciende.
+2. Crea un segundo partido a 90 minutos del inicio, une al titular, confirma **Registrar baja tardía**, vuelve con la cuenta organizadora y comprueba **Ver bajas tardías (1)**.
+
+La E2E requiere aplicar primero el esquema actualizado y proporcionar tres cuentas reales mediante `E2E_ORGANIZADOR_*`, `E2E_TITULAR_*` y `E2E_SUPLENTE_*`. No se ejecutó en esta sesión porque esas variables no están disponibles; el archivo sí fue analizado y la lógica equivalente quedó cubierta por las pruebas locales.
+
+```powershell
+flutter test integration_test/flujo_suplentes_test.dart -d <dispositivo> `
+  --dart-define=E2E_ORGANIZADOR_CORREO=<correo> `
+  --dart-define=E2E_ORGANIZADOR_CLAVE=<clave> `
+  --dart-define=E2E_TITULAR_CORREO=<correo> `
+  --dart-define=E2E_TITULAR_CLAVE=<clave> `
+  --dart-define=E2E_SUPLENTE_CORREO=<correo> `
+  --dart-define=E2E_SUPLENTE_CLAVE=<clave>
+```

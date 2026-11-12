@@ -1,3 +1,4 @@
+import 'package:unisport/modelos/baja_tardia.dart';
 import 'package:unisport/modelos/evento_historial.dart';
 import 'package:unisport/modelos/filtro_partidos.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
@@ -250,6 +251,7 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   _inscripciones = [];
   final List<({String partidoId, String jugadorId, String nombre})> _suplentes =
       [];
+  final List<BajaTardia> _bajasTardias = [];
   final Set<(String, String)> _reconfirmacionesPendientes = {};
   final Set<(String, String)> _reconfirmacionesAceptadas = {};
   int _siguienteId = 1;
@@ -372,6 +374,16 @@ class RepositorioEnMemoria implements RepositorioPartidos {
             .putIfAbsent(suplente.partidoId, () => [])
             .add(suplente.nombre);
       }
+    }
+    return resultado;
+  }
+
+  @override
+  Future<Map<String, List<BajaTardia>>> obtenerBajasTardias() async {
+    final resultado = <String, List<BajaTardia>>{};
+    for (final baja in _bajasTardias) {
+      if (_partidos[baja.partidoId]?.organizadorId != usuarioId) continue;
+      resultado.putIfAbsent(baja.partidoId, () => []).add(baja);
     }
     return resultado;
   }
@@ -592,7 +604,17 @@ class RepositorioEnMemoria implements RepositorioPartidos {
   @override
   Future<ModeloPartido> salirDelPartido(String partidoId) async {
     final fila = _buscar(partidoId);
-    final salido = _visto(fila).salir(); // lanza StateError con el motivo
+    final visto = _visto(fila);
+    final salido = visto.salir(); // lanza StateError con el motivo
+    if (visto.esBajaTardia()) {
+      _bajasTardias.add(
+        BajaTardia(
+          partidoId: partidoId,
+          jugadorNombre: usuarioNombre,
+          fecha: DateTime.now(),
+        ),
+      );
+    }
     final estabaPendiente = _reconfirmacionesPendientes.remove((
       partidoId,
       usuarioId,

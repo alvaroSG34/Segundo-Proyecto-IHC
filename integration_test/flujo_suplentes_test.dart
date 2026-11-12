@@ -6,12 +6,15 @@ import 'package:integration_test/integration_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:unisport/main.dart' as app;
+import 'package:unisport/modelos/modelo_partido.dart';
+import 'package:unisport/servicios/partidos/repositorio_partidos_supabase.dart';
 import 'package:unisport/tema/caja_mensaje.dart';
 import 'package:unisport/vistas/autenticacion/vista_login.dart';
 import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/vistas/partidos/vista_crear_partido.dart';
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
+import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
 
 // Tres cuentas diferentes, registradas previamente en el mismo Supabase.
@@ -44,6 +47,8 @@ void main() {
     );
 
     final titulo = 'E2E Suplentes ${DateTime.now().microsecondsSinceEpoch}';
+    final tituloTardio =
+        'E2E Baja tardía ${DateTime.now().microsecondsSinceEpoch}';
     const ubicacion = 'Cancha E2E Suplentes';
 
     app.main();
@@ -68,6 +73,11 @@ void main() {
           .delete()
           .eq('organizador_id', organizadorId)
           .eq('titulo', titulo);
+      await cliente
+          .from('partidos')
+          .delete()
+          .eq('organizador_id', organizadorId)
+          .eq('titulo', tituloTardio);
     });
 
     // Organizador: crea por la interfaz un partido de dos cupos.
@@ -173,6 +183,66 @@ void main() {
       find.descendant(of: tarjeta, matching: find.text('Cancelar espera')),
       findsNothing,
     );
+
+    // Segunda demostración: dentro de las dos horas la salida se registra como
+    // baja tardía y queda visible únicamente para el organizador.
+    await _volverAlMenu(tester);
+    await _iniciarSesion(tester, _organizadorCorreo, _organizadorClave);
+    final repositorio = RepositorioPartidosSupabase(cliente);
+    final partidoTardio = await repositorio.crearPartido(
+      ModeloPartido(
+        id: '',
+        titulo: tituloTardio,
+        disciplina: 'Futsal',
+        icono: 'Futsal',
+        ubicacion: ubicacion,
+        fechaHora: ModeloPartido.formatearFechaHora(
+          DateTime.now().add(const Duration(minutes: 90)),
+        ),
+        cuposTotales: 2,
+        cuposOcupados: 1,
+        organizadorNombre: 'Organizador E2E',
+      ),
+    );
+
+    await _iniciarSesion(tester, _titularCorreo, _titularClave);
+    tarjeta = await _buscarPartido(tester, tituloTardio);
+    await _tocar(
+      tester,
+      find.descendant(of: tarjeta, matching: find.text('Unirme al equipo')),
+    );
+    await _tocar(tester, find.text('Sí, unirme'));
+    tarjeta = await _esperarPartido(
+      tester,
+      tituloTardio,
+      (partido) => partido.partido.estoyUnido,
+    );
+    await _tocar(
+      tester,
+      find.descendant(of: tarjeta, matching: find.text('Salir del partido')),
+    );
+    await _esperar(tester, find.text('¿Registrar baja tardía?'));
+    await _tocar(tester, find.text('Registrar baja tardía'));
+    await _esperar(
+      tester,
+      find.text('Baja tardía registrada en "$tituloTardio".').first,
+    );
+
+    await _volverAlMenu(tester);
+    await _iniciarSesion(tester, _organizadorCorreo, _organizadorClave);
+    await _tocar(tester, find.widgetWithText(ElevatedButton, 'Mis\nPartidos'));
+    await _esperar(tester, find.byType(VistaMisPartidos));
+    final tarjetaOrganizador = find.byWidgetPredicate(
+      (widget) =>
+          widget is TarjetaPartido && widget.partido.id == partidoTardio.id,
+    );
+    await _esperar(tester, tarjetaOrganizador);
+    final verBajas = find.descendant(
+      of: tarjetaOrganizador,
+      matching: find.text('Ver bajas tardías (1)'),
+    );
+    await _tocar(tester, verBajas);
+    await _esperar(tester, find.text('Bajas tardías (1)'));
   });
 }
 

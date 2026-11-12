@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../modelos/baja_tardia.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/propuesta_equipos.dart';
@@ -56,6 +57,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   List<ModeloPartido> _partidos = [];
   Map<String, PropuestaEquipos?> _propuestas = {};
   Map<String, List<String>> _suplentes = {};
+  Map<String, List<BajaTardia>> _bajasTardias = {};
   bool _cargando = true;
   String? _errorCarga;
   int _consulta = 0;
@@ -131,6 +133,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       final propios = await _repositorio.obtenerMisPartidos();
       final unidos = await _repositorio.obtenerPartidosUnidos();
       final suplentes = await _repositorio.obtenerSuplentes();
+      final bajasTardias = await _repositorio.obtenerBajasTardias();
       final propuestas = await Future.wait([
         for (final p in [...propios, ...unidos])
           _repositorio.obtenerPropuesta(p.id),
@@ -140,6 +143,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       setState(() {
         _partidos = [...propios, ...unidos];
         _suplentes = suplentes;
+        _bajasTardias = bajasTardias;
         _propuestas = {
           for (var i = 0; i < ids.length; i++) ids[i]: propuestas[i],
         };
@@ -358,12 +362,15 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
   Future<void> _salirDelPartido(ModeloPartido partido) async {
     final props = {'intento_id': crearIntentoId()};
     registrarEvento(_analitica, EventosAnalitica.salidaIniciada, props);
+    final ahora = widget.referenciaTemporal ?? DateTime.now();
+    final bajaTardia = partido.esBajaTardia(ahora: ahora);
     final confirmar = await confirmarAccion(
       context,
-      titulo: '¿Salir del partido?',
-      mensaje:
-          'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
-      textoConfirmar: 'Sí, salir',
+      titulo: bajaTardia ? '¿Registrar baja tardía?' : '¿Salir del partido?',
+      mensaje: bajaTardia
+          ? 'Faltan menos de 2 horas para "${partido.titulo}". Saldrás del equipo y la baja tardía será visible para el organizador.'
+          : 'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
+      textoConfirmar: bajaTardia ? 'Registrar baja tardía' : 'Sí, salir',
       estiloConfirmar: ElevatedButton.styleFrom(
         backgroundColor: TemaApp.rojoAlerta,
         minimumSize: const Size(120, 44),
@@ -374,10 +381,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     try {
       final salido = await _repositorio.salirDelPartido(partido.id);
       final resultado = {...props};
-      final anticipacion = anticipacionSalida(
-        partido.fechaInicio,
-        widget.referenciaTemporal ?? DateTime.now(),
-      );
+      final anticipacion = anticipacionSalida(partido.fechaInicio, ahora);
       if (anticipacion != null) resultado['anticipacion'] = anticipacion;
       registrarEvento(_analitica, EventosAnalitica.salidaCompletada, resultado);
       if (!mounted) return;
@@ -387,7 +391,9 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            salido.estaLleno
+            bajaTardia
+                ? 'Baja tardía registrada en "${partido.titulo}".'
+                : salido.estaLleno
                 ? 'Saliste de "${partido.titulo}". Entró el primer suplente.'
                 : 'Saliste de "${partido.titulo}". Tu cupo quedó libre.',
           ),
@@ -662,6 +668,9 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                           : null,
                       suplentes: p.soyOrganizador
                           ? _suplentes[p.id] ?? const []
+                          : null,
+                      bajasTardias: p.soyOrganizador
+                          ? _bajasTardias[p.id] ?? const []
                           : null,
                       onEliminar: () => _eliminarPartido(p),
                       onSalir: () => _salirDelPartido(p),

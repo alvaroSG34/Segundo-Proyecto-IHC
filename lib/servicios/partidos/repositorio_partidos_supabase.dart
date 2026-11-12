@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../modelos/baja_tardia.dart';
 import '../../modelos/evento_historial.dart';
 import '../../modelos/filtro_partidos.dart';
 import '../../modelos/modelo_partido.dart';
@@ -422,6 +423,20 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
     }
     return resultado;
   });
+
+  @override
+  Future<Map<String, List<BajaTardia>>> obtenerBajasTardias() =>
+      _ejecutar(() async {
+        final filas = await _cliente.rpc('obtener_bajas_tardias_organizador');
+        final resultado = <String, List<BajaTardia>>{};
+        for (final fila in filas as List) {
+          final baja = BajaTardia.desdeJson(
+            Map<String, dynamic>.from(fila as Map),
+          );
+          resultado.putIfAbsent(baja.partidoId, () => []).add(baja);
+        }
+        return resultado;
+      });
 
   // Interfaz -> consulta -> base de datos (requisito #6): los filtros se
   // traducen a condiciones y las resuelve PostgreSQL en el servidor.
