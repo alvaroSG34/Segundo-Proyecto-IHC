@@ -64,7 +64,7 @@ Los nuevos registros tampoco guardan `usuario_id`. La columna histórica sigue e
 
 ## Funcionamiento y protección de datos
 
-- Se reutilizan `crearIntentoId` y `registrarEvento` del [servicio de analítica](../lib/servicios/analitica/servicio_analitica.dart). Los envíos son independientes, en segundo plano y con una espera máxima de tres segundos. Los fallos de analítica no bloquean la tarea.
+- Se reutilizan `crearIntentoId` y `registrarEvento` del [servicio de analítica](../lib/servicios/analitica/servicio_analitica.dart). Los envíos son independientes, en segundo plano y toleran hasta 15 segundos de respuesta para conexiones lentas. Los fallos de analítica no bloquean la tarea.
 - La búsqueda espera 500 ms sin cambios antes de consultar y registrar el inicio. No registra cada pulsación, la carga inicial ni las recargas automáticas; descarta respuestas antiguas. Una búsqueda ya iniciada que sea sustituida puede quedar sin finalización observada.
 - Supabase valida los nombres de eventos y las propiedades de los flujos nuevos mediante listas cerradas. La tabla `eventos` no permite acceso directo al cliente.
 - Sin sesión se permiten los nueve eventos de registro, login y recuperación: inicio, finalización y error de cada acción. Los demás eventos y la consulta de analítica requieren autenticación.
@@ -190,7 +190,7 @@ Después de actualizar el esquema en Supabase, la E2E se ejecutó en el emulador
 
 ## Activación en Supabase
 
-Toda la configuración está centralizada en [supabase/esquema.sql](../supabase/esquema.sql). La versión anterior de la Parte A fue ejecutada en la base remota. La versión actual añade `bajas_tardias` y `obtener_bajas_tardias_organizador`, por lo que debe ejecutarse nuevamente antes de probar la Parte B contra Supabase.
+Toda la configuración está centralizada en [supabase/esquema.sql](../supabase/esquema.sql). El esquema actualizado, incluida la tabla `bajas_tardias` y la función `obtener_bajas_tardias_organizador`, fue aplicado en la base remota antes de ejecutar la E2E de la Parte B.
 
 Para instalar o actualizar la base, abrir el SQL Editor del proyecto de Supabase, pegar el contenido completo de ese archivo y ejecutarlo. El esquema incluye las tablas, permisos, validaciones y funciones actuales, además de los ajustes de compatibilidad para bases existentes.
 
@@ -242,7 +242,7 @@ La prueba [flujo_suplentes_test.dart](../integration_test/flujo_suplentes_test.d
 1. Crea un partido, llena el último cupo, agrega un suplente, realiza una salida a tiempo y comprueba que el primer suplente asciende.
 2. Crea un segundo partido a 90 minutos del inicio, une al titular, confirma **Registrar baja tardía**, vuelve con la cuenta organizadora y comprueba **Ver bajas tardías (1)**.
 
-La E2E requiere aplicar primero el esquema actualizado y proporcionar tres cuentas reales mediante `E2E_ORGANIZADOR_*`, `E2E_TITULAR_*` y `E2E_SUPLENTE_*`. No se ejecutó en esta sesión porque esas variables no están disponibles; el archivo sí fue analizado y la lógica equivalente quedó cubierta por las pruebas locales.
+La E2E se ejecutó el **12 de noviembre de 2026** en el emulador Android con tres cuentas reales y el esquema actualizado. Terminó con **1 prueba aprobada** (`All tests passed`) en **2 min 23 s**. Verificó la promoción del primer suplente tras una salida a tiempo, el registro de una baja dentro de las dos horas, su visualización para el organizador y el par de eventos de entrada en espera con el mismo `intento_id`. Los partidos temporales fueron eliminados al finalizar y las credenciales no se guardaron en el repositorio.
 
 ```powershell
 flutter test integration_test/flujo_suplentes_test.dart -d <dispositivo> `

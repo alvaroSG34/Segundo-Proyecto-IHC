@@ -97,7 +97,7 @@ void main() {
     await _tocar(tester, find.text('Guardar partido'));
     await _esperar(
       tester,
-      find.text('Partido creado y guardado correctamente.'),
+      find.text('Partido creado y guardado correctamente.').first,
       motivo: 'El organizador debe poder guardar el partido.',
     );
 
@@ -318,7 +318,22 @@ Future<void> _escribir(WidgetTester tester, Finder campo, String texto) async {
 Future<void> _tocar(WidgetTester tester, Finder objetivo) async {
   await tester.ensureVisible(objetivo);
   await tester.pump(const Duration(milliseconds: 300));
-  await tester.tap(objetivo);
+  final esperaPulsable = Stopwatch()..start();
+  while (objetivo.hitTestable().evaluate().isEmpty &&
+      esperaPulsable.elapsed < const Duration(seconds: 6)) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  if (objetivo.hitTestable().evaluate().isEmpty) {
+    final desplazable = find.ancestor(
+      of: objetivo,
+      matching: find.byType(Scrollable),
+    );
+    if (desplazable.evaluate().isNotEmpty) {
+      await tester.drag(desplazable.first, const Offset(0, -160));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+  }
+  await tester.tap(objetivo.hitTestable());
   await tester.pump(const Duration(milliseconds: 500));
 }
 

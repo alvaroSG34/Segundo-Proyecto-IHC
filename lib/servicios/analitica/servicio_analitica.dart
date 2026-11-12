@@ -105,9 +105,9 @@ Future<void> registrarEvento(
   Map<String, dynamic> props,
 ) async {
   try {
-    await servicio.track(evento, props).timeout(const Duration(seconds: 3));
-  } catch (_) {
-    debugPrint('No se pudo registrar $evento.');
+    await servicio.track(evento, props).timeout(const Duration(seconds: 15));
+  } catch (error) {
+    debugPrint('No se pudo registrar $evento: $error');
   }
 }
 
