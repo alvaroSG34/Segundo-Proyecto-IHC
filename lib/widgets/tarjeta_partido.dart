@@ -452,6 +452,16 @@ class TarjetaPartido extends StatelessWidget {
             ] else if (partido.puedeEntrarEnEspera &&
                 onEntrarEnEspera != null) ...[
               const SizedBox(height: 12),
+              _avisoUnion(
+                'Entrarás en la lista de suplentes. Cuando llegue tu turno y se libere '
+                'un cupo, te unirás automáticamente al partido. Puedes cancelar la '
+                'espera antes de entrar al equipo.',
+                icono: LucideIcons.info,
+                fondo: TemaApp.azulSuave,
+                borde: const Color(0xFFBAE6FD),
+                color: const Color(0xFF075985),
+              ),
+              const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: onEntrarEnEspera,
                 icon: const Icon(LucideIcons.userPlus, size: 18),

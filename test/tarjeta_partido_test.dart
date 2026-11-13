@@ -257,6 +257,84 @@ void main() {
   });
 
   group('Lista de suplentes', () {
+    const avisoPrevio =
+        'Entrarás en la lista de suplentes. Cuando llegue tu turno y se libere '
+        'un cupo, te unirás automáticamente al partido. Puedes cancelar la '
+        'espera antes de entrar al equipo.';
+
+    for (final ancho in [320.0, 1280.0]) {
+      testWidgets('informa antes de entrar como suplente a $ancho px', (
+        tester,
+      ) async {
+        await tester.binding.setSurfaceSize(Size(ancho, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        var entradas = 0;
+        await tester.pumpWidget(
+          envolver(
+            TarjetaPartido(
+              partido: crearPartido(
+                estado: EstadoPartido.equipoCompleto,
+                soyOrganizador: false,
+                estoyUnido: false,
+              ),
+              onEntrarEnEspera: () => entradas++,
+            ),
+          ),
+        );
+        final aviso = find.text(avisoPrevio);
+        final boton = find.widgetWithText(
+          OutlinedButton,
+          'Entrar como suplente',
+        );
+        expect(aviso, findsOneWidget);
+        expect(entradas, 0);
+        expect(
+          tester.getBottomLeft(aviso).dy,
+          lessThan(tester.getTopLeft(boton).dy),
+        );
+        expect(aviso.hitTestable(), findsOneWidget);
+        expect(boton.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tap(boton);
+        expect(entradas, 1);
+        expect(find.byType(AlertDialog), findsNothing);
+      });
+    }
+
+    testWidgets('el aviso previo solo acompaña la oferta de suplente', (
+      tester,
+    ) async {
+      final completo = crearPartido(
+        estado: EstadoPartido.equipoCompleto,
+        soyOrganizador: false,
+        estoyUnido: false,
+      );
+      for (final partido in [
+        completo.copyWith(soyOrganizador: true),
+        completo.copyWith(estoyUnido: true),
+        completo.copyWith(posicionEspera: 2),
+        completo.copyWith(
+          cuposOcupados: 3,
+          estado: EstadoPartido.cuposAbiertos,
+        ),
+      ]) {
+        await tester.pumpWidget(
+          envolver(
+            TarjetaPartido(
+              partido: partido,
+              onEntrarEnEspera: () {},
+              onSalirDeEspera: () {},
+              onSalir: () {},
+            ),
+          ),
+        );
+        expect(find.text(avisoPrevio), findsNothing);
+        expect(find.text('Entrar como suplente'), findsNothing);
+      }
+      await tester.pumpWidget(envolver(TarjetaPartido(partido: completo)));
+      expect(find.text(avisoPrevio), findsNothing);
+    });
+
     testWidgets('un equipo completo ofrece entrar como suplente', (
       tester,
     ) async {
