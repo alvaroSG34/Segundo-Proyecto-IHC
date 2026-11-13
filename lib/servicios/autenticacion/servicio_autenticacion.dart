@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,6 +13,7 @@ abstract class ServicioAutenticacion extends ChangeNotifier {
   ModeloUsuario? get usuarioActual;
   bool get estaAutenticado => usuarioActual != null;
   bool get estaCargando;
+  bool get estaRecuperandoContrasena => false;
 
   /// Recupera la sesión guardada (si el usuario no la cerró).
   Future<void> inicializar();
@@ -30,6 +33,25 @@ abstract class ServicioAutenticacion extends ChangeNotifier {
   /// Devuelve null si se envió el correo de recuperación, o el error.
   Future<String?> recuperarContrasena(String correo);
 
+  /// Actualiza los datos públicos de la cuenta con sesión iniciada.
+  Future<String?> actualizarPerfil({
+    required String nombre,
+    required String carrera,
+    required String deporteFavorito,
+  });
+
+  /// Cambia la contraseña después de verificar la contraseña actual.
+  Future<String?> cambiarContrasena({
+    required String contrasenaActual,
+    required String contrasenaNueva,
+  });
+
+  /// Guarda una contraseña cuando la sesión proviene del enlace de recuperación.
+  Future<String?> guardarContrasenaRecuperada(String contrasenaNueva);
+
+  /// Cierra el modo de recuperación después de guardar la nueva contraseña.
+  void finalizarRecuperacionContrasena();
+
   Future<void> cerrarSesion();
 }
 
@@ -41,14 +63,33 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
 
   ModeloUsuario? _usuarioActual;
   bool _estaCargando = true;
+  bool _estaRecuperandoContrasena = false;
+  late final StreamSubscription<AuthState> _cambiosAutenticacion;
 
-  ServicioAutenticacionSupabase(this._cliente);
+  ServicioAutenticacionSupabase(this._cliente) {
+    _cambiosAutenticacion = _cliente.auth.onAuthStateChange.listen(
+      (estado) async {
+        if (estado.event != AuthChangeEvent.passwordRecovery) return;
+        _estaRecuperandoContrasena = true;
+        final usuario = estado.session?.user ?? _cliente.auth.currentUser;
+        if (usuario != null) _usuarioActual = await _cargarPerfil(usuario);
+        _estaCargando = false;
+        notifyListeners();
+      },
+      onError: (Object error) {
+        debugPrint('No se pudo procesar el enlace de recuperación: $error');
+      },
+    );
+  }
 
   @override
   ModeloUsuario? get usuarioActual => _usuarioActual;
 
   @override
   bool get estaCargando => _estaCargando;
+
+  @override
+  bool get estaRecuperandoContrasena => _estaRecuperandoContrasena;
 
   /// Lee el perfil del usuario con sesión desde la tabla `perfiles`.
   /// Si no se puede leer (por ejemplo, sin internet), usa los datos de la cuenta.
@@ -163,11 +204,101 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
   @override
   Future<String?> recuperarContrasena(String correo) async {
     try {
-      await _cliente.auth.resetPasswordForEmail(correo.trim().toLowerCase());
+      await _cliente.auth.resetPasswordForEmail(
+        correo.trim().toLowerCase(),
+        redirectTo: kIsWeb ? Uri.base.origin : null,
+      );
       return null;
     } catch (e) {
       return _mensajeDe(e);
     }
+  }
+
+  @override
+  Future<String?> actualizarPerfil({
+    required String nombre,
+    required String carrera,
+    required String deporteFavorito,
+  }) async {
+    final usuario = _cliente.auth.currentUser;
+    if (usuario == null) return 'Debes iniciar sesión para editar tu perfil.';
+    final nombreLimpio = nombre.trim();
+    final carreraLimpia = carrera.trim();
+    if (nombreLimpio.isEmpty || carreraLimpia.isEmpty) {
+      return 'Completa tu nombre y carrera.';
+    }
+    try {
+      await _cliente
+          .from('perfiles')
+          .update({
+            'nombre': nombreLimpio,
+            'carrera': carreraLimpia,
+            'deporte_favorito': deporteFavorito,
+          })
+          .eq('id', usuario.id);
+      await _cliente.auth.updateUser(
+        UserAttributes(
+          data: {
+            'nombre': nombreLimpio,
+            'carrera': carreraLimpia,
+            'deporte_favorito': deporteFavorito,
+          },
+        ),
+      );
+      _usuarioActual = await _cargarPerfil(
+        _cliente.auth.currentUser ?? usuario,
+      );
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return _mensajeDe(e);
+    }
+  }
+
+  @override
+  Future<String?> cambiarContrasena({
+    required String contrasenaActual,
+    required String contrasenaNueva,
+  }) async {
+    final usuario = _cliente.auth.currentUser;
+    final correo = usuario?.email;
+    if (usuario == null || correo == null) {
+      return 'Debes iniciar sesión para cambiar tu contraseña.';
+    }
+    try {
+      await _cliente.auth.signInWithPassword(
+        email: correo,
+        password: contrasenaActual,
+      );
+      await _cliente.auth.updateUser(UserAttributes(password: contrasenaNueva));
+      return null;
+    } on AuthException catch (e) {
+      if (e.message.toLowerCase().contains('invalid login credentials')) {
+        return 'La contraseña actual es incorrecta.';
+      }
+      return _mensajeDe(e);
+    } catch (e) {
+      return _mensajeDe(e);
+    }
+  }
+
+  @override
+  Future<String?> guardarContrasenaRecuperada(String contrasenaNueva) async {
+    if (!_estaRecuperandoContrasena || _cliente.auth.currentUser == null) {
+      return 'El enlace de recuperación no es válido o ya venció.';
+    }
+    try {
+      await _cliente.auth.updateUser(UserAttributes(password: contrasenaNueva));
+      return null;
+    } catch (e) {
+      return _mensajeDe(e);
+    }
+  }
+
+  @override
+  void finalizarRecuperacionContrasena() {
+    _estaRecuperandoContrasena = false;
+    notifyListeners();
   }
 
   @override
@@ -178,6 +309,13 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
       debugPrint('Error al cerrar sesión: $e');
     }
     _usuarioActual = null;
+    _estaRecuperandoContrasena = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _cambiosAutenticacion.cancel();
+    super.dispose();
   }
 }

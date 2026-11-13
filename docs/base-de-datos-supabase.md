@@ -17,6 +17,31 @@ UniSport guarda las cuentas, los partidos y las inscripciones en **Supabase**, u
 
 La clave pública puede estar en el código: lo que protege los datos son las reglas por fila (RLS) del esquema.
 
+### Recuperar y cambiar la contraseña
+
+La recuperación necesita una cuenta registrada con un correo real al que el
+estudiante tenga acceso. Las cuentas terminadas en `@unisport.edu` son útiles
+para otras pruebas, pero no pueden recibir el enlace.
+
+Para probar el recorrido en Chrome con una dirección estable:
+
+1. Ejecutar `flutter run -d chrome --web-port 3000`.
+2. En Supabase abrir *Authentication* → *URL Configuration*.
+3. Agregar `http://localhost:3000` en **Redirect URLs**. Si Flutter abre con
+   `127.0.0.1`, agregar también `http://127.0.0.1:3000`.
+4. En la app pulsar **¿Olvidaste tu contraseña?**, escribir el correo real y
+   abrir el enlace recibido en el mismo navegador.
+5. UniSport detecta la sesión temporal del enlace y muestra **Nueva contraseña**
+   y **Confirmar nueva contraseña**. En este recorrido no solicita la clave
+   anterior.
+
+El envío de correos debe estar habilitado en Supabase. Para destinatarios que
+no sean integrantes del proyecto puede ser necesario configurar un proveedor
+SMTP en *Project Settings* → *Authentication* → *SMTP Settings*.
+
+Con una sesión normal, el ícono de perfil de la cabecera permite editar nombre,
+carrera y deporte o cambiar la contraseña verificando primero la clave actual.
+
 ## 2. Cómo está organizado
 
 ```

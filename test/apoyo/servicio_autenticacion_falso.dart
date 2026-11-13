@@ -79,6 +79,60 @@ class ServicioAutenticacionFalso extends ServicioAutenticacion {
   Future<String?> recuperarContrasena(String correo) async => null;
 
   @override
+  Future<String?> actualizarPerfil({
+    required String nombre,
+    required String carrera,
+    required String deporteFavorito,
+  }) async {
+    final actual = _usuarioActual;
+    if (actual == null) return 'Debes iniciar sesión para editar tu perfil.';
+    final actualizado = actual.copiarCon(
+      nombre: nombre.trim(),
+      carrera: carrera.trim(),
+      deporteFavorito: deporteFavorito,
+    );
+    final clave = actual.correo.toLowerCase();
+    final cuenta = _cuentas[clave]!;
+    _cuentas[clave] = (contrasena: cuenta.contrasena, usuario: actualizado);
+    _usuarioActual = actualizado;
+    notifyListeners();
+    return null;
+  }
+
+  @override
+  Future<String?> cambiarContrasena({
+    required String contrasenaActual,
+    required String contrasenaNueva,
+  }) async {
+    final actual = _usuarioActual;
+    if (actual == null)
+      return 'Debes iniciar sesión para cambiar tu contraseña.';
+    final clave = actual.correo.toLowerCase();
+    final cuenta = _cuentas[clave]!;
+    if (cuenta.contrasena != contrasenaActual) {
+      return 'La contraseña actual es incorrecta.';
+    }
+    _cuentas[clave] = (contrasena: contrasenaNueva, usuario: cuenta.usuario);
+    return null;
+  }
+
+  @override
+  Future<String?> guardarContrasenaRecuperada(String contrasenaNueva) async {
+    final actual = _usuarioActual;
+    if (actual == null)
+      return 'El enlace de recuperación no es válido o ya venció.';
+    final clave = actual.correo.toLowerCase();
+    _cuentas[clave] = (
+      contrasena: contrasenaNueva,
+      usuario: _cuentas[clave]!.usuario,
+    );
+    return null;
+  }
+
+  @override
+  void finalizarRecuperacionContrasena() {}
+
+  @override
   Future<void> cerrarSesion() async {
     _usuarioActual = null;
     notifyListeners();

@@ -27,4 +27,18 @@ class ModeloUsuario {
       deporteFavorito: fila['deporte_favorito'] as String? ?? 'Futsal',
     );
   }
+
+  ModeloUsuario copiarCon({
+    String? nombre,
+    String? carrera,
+    String? deporteFavorito,
+  }) {
+    return ModeloUsuario(
+      id: id,
+      nombre: nombre ?? this.nombre,
+      correo: correo,
+      carrera: carrera ?? this.carrera,
+      deporteFavorito: deporteFavorito ?? this.deporteFavorito,
+    );
+  }
 }

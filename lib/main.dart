@@ -6,6 +6,7 @@ import 'servicios/autenticacion/servicio_autenticacion.dart';
 import 'tema/tema_app.dart';
 import 'vistas/inicio/vista_inicio_publico.dart';
 import 'vistas/inicio/vista_principal.dart';
+import 'vistas/autenticacion/vista_nueva_clave.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,8 @@ class UniSportApp extends StatelessWidget {
           // Si el servicio está cargando la sesión, mostrar pantalla de carga
           home: servicioAuth.estaCargando
               ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+              : servicioAuth.estaRecuperandoContrasena
+              ? VistaNuevaClave(servicioAuth: servicioAuth)
               // Si había una sesión guardada, mostrar el menú principal
               : (servicioAuth.estaAutenticado
                     ? VistaPrincipal(servicioAuth: servicioAuth)

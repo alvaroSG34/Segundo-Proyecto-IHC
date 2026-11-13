@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
@@ -13,6 +14,7 @@ import '../partidos/vista_historial.dart';
 import 'vista_inicio_publico.dart';
 import '../partidos/vista_mis_partidos.dart';
 import '../analitica/vista_analitica.dart';
+import '../autenticacion/vista_perfil.dart';
 
 class VistaPrincipal extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
@@ -71,6 +73,17 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
         const SnackBar(content: Text('No se pudo cerrar la sesión.')),
       );
     }
+  }
+
+  Future<void> _abrirPerfil(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        settings: const RouteSettings(name: '/perfil'),
+        builder: (_) => VistaPerfil(servicioAuth: widget.servicioAuth),
+      ),
+    );
+    if (mounted) setState(() {});
   }
 
   Widget _boton(
@@ -172,21 +185,23 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            '● Activo',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
+                        Semantics(
+                          label: 'Abrir mi perfil',
+                          button: true,
+                          child: IconButton(
+                            key: const Key('abrir_perfil'),
+                            tooltip: 'Mi perfil',
+                            onPressed: () => _abrirPerfil(context),
+                            style: IconButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.18,
+                              ),
+                              minimumSize: const Size(48, 48),
+                            ),
+                            icon: const Icon(
+                              LucideIcons.userRoundPen,
+                              size: 22,
                             ),
                           ),
                         ),
