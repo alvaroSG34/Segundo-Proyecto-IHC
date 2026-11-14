@@ -90,7 +90,7 @@ void main() {
       // 3. Semántica, contraseña y áreas táctiles de las acciones del flujo.
       debugPrint('Login E2E · 3/10: Accesibilidad y áreas táctiles');
       for (final campo in <(String, Pattern)>[
-        ('login_correo', RegExp(r'^Correo institucional(?:\n|$)')),
+        ('login_correo', RegExp(r'^Correo electrónico(?:\n|$)')),
         ('login_clave', 'Contraseña'),
       ]) {
         await _visible(tester, find.byKey(Key(campo.$1)));

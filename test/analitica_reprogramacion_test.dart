@@ -155,6 +155,11 @@ void main() {
       final analitica = _Analitica();
       await _mostrar(tester, repo, analitica, organizador: true);
       await _tocar(tester, find.byKey(const Key('partido_reprogramar')));
+      expect(find.text('Guardar reprogramación'), findsOneWidget);
+      expect(
+        find.textContaining('no se enviará una notificación'),
+        findsOneWidget,
+      );
       await _tocar(tester, find.byKey(const Key('reprogramar_guardar')));
       expect(repo.cambios, 0);
       expect(

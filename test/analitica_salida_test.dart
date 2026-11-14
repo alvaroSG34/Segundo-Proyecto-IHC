@@ -99,7 +99,7 @@ Future<void> _abrirSalida(WidgetTester tester) async {
 }
 
 Future<void> _confirmar(WidgetTester tester) async {
-  await tester.tap(find.text('Registrar baja tardía'));
+  await tester.tap(find.text('Sí, salir'));
   await tester.pumpAndSettle();
 }
 
@@ -144,6 +144,15 @@ void main() {
         await _mostrar(tester, explorar, repositorio, analitica);
         expect(analitica.eventos, isEmpty);
         await _abrirSalida(tester);
+        // La consecuencia se explica antes de confirmar la salida.
+        expect(find.text('¿Salir del partido?'), findsOneWidget);
+        expect(
+          find.textContaining(
+            'Saldrás del equipo y la baja tardía será visible para el organizador.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Sí, salir'), findsOneWidget);
         expect(analitica.eventos.single.$1, EventosAnalitica.salidaIniciada);
         final id = analitica.eventos.single.$2['intento_id'];
         expect(id, matches(RegExp(r'^[0-9a-f]{32}$')));

@@ -173,7 +173,8 @@ class _VistaReprogramarPartidoState extends State<VistaReprogramarPartido> {
                   const SizedBox(height: 8),
                   const Text(
                     'Los titulares conservarán su plaza hasta que acepten '
-                    'la nueva fecha o se retiren.',
+                    'la nueva fecha o se retiren. El cambio se mostrará en '
+                    'UniSport; no se enviará una notificación.',
                   ),
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
@@ -227,9 +228,7 @@ class _VistaReprogramarPartidoState extends State<VistaReprogramarPartido> {
                     key: const Key('reprogramar_guardar'),
                     onPressed: _guardando ? null : _guardar,
                     child: Text(
-                      _guardando
-                          ? 'Guardando...'
-                          : 'Guardar y avisar al equipo',
+                      _guardando ? 'Guardando...' : 'Guardar reprogramación',
                     ),
                   ),
                 ],

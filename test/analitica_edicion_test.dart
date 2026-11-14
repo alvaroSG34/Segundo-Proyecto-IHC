@@ -108,7 +108,7 @@ Future<void> _enviar(
           of: find.byKey(const Key('partido_guardar')),
           matching: find.byType(ElevatedButton),
         )
-      : find.widgetWithText(ElevatedButton, 'Eliminar');
+      : find.widgetWithText(OutlinedButton, 'Eliminar');
   await tester.ensureVisible(boton);
   await tester.pump();
   await tester.tap(boton);

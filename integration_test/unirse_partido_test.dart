@@ -218,7 +218,7 @@ void main() {
 
         debugPrint('Unirse E2E · 2/5: cancelar sin ocupar cupo');
         await _abrirConfirmacion(tester, partido.id, titulo);
-        final cancelar = _dialogo(find.widgetWithText(TextButton, 'Cancelar'));
+        final cancelar = _dialogo(find.widgetWithText(OutlinedButton, 'Cancelar'));
         await _visible(tester, cancelar);
         _accesible(
           tester,
@@ -264,7 +264,7 @@ void main() {
         debugPrint('Unirse E2E · 3/5: confirmar unión real');
         await _abrirConfirmacion(tester, partido.id, titulo);
         final confirmar = _dialogo(
-          find.widgetWithText(ElevatedButton, 'Sí, unirme'),
+          find.widgetWithText(OutlinedButton, 'Sí, unirme'),
         );
         await _visible(tester, confirmar);
         _accesible(

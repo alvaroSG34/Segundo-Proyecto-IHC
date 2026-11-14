@@ -11,9 +11,6 @@ Future<bool> confirmarAccion(
   required String titulo,
   required String mensaje,
   required String textoConfirmar,
-  ButtonStyle? estiloConfirmar,
-  TextStyle? estiloCancelar,
-  ButtonStyle? estiloBotonCancelar,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -21,17 +18,25 @@ Future<bool> confirmarAccion(
         title: Text(titulo, style: TemaApp.titulo(tamano: 20)),
         content: Text(mensaje),
         actions: [
-          TextButton(
-            style: estiloBotonCancelar,
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancelar', style: estiloCancelar),
-          ),
-          ElevatedButton(
-            style:
-                estiloConfirmar ??
-                ElevatedButton.styleFrom(minimumSize: const Size(120, 44)),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(textoConfirmar),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(textoConfirmar, textAlign: TextAlign.center),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

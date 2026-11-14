@@ -240,7 +240,7 @@ void main() {
         );
         final cancelar = _dialogo(find.bySemanticsLabel('Cancelar'));
         final cancelarVisual = _dialogo(
-          find.widgetWithText(TextButton, 'Cancelar'),
+          find.widgetWithText(OutlinedButton, 'Cancelar'),
         );
         await _visible(tester, cancelarVisual);
         _accesible(tester, cancelar, cancelarVisual, 'Cancelar');
@@ -258,7 +258,7 @@ void main() {
         await _esperar(tester, find.byType(AlertDialog));
         final confirmar = _dialogo(find.bySemanticsLabel('Sí, salir'));
         final confirmarVisual = _dialogo(
-          find.widgetWithText(ElevatedButton, 'Sí, salir'),
+          find.widgetWithText(OutlinedButton, 'Sí, salir'),
         );
         await _visible(tester, confirmarVisual);
         _accesible(tester, confirmar, confirmarVisual, 'Sí, salir');

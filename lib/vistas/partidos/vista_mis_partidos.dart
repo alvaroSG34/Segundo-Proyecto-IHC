@@ -318,22 +318,8 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       context,
       titulo: '¿Eliminar partido?',
       mensaje:
-          '¿Estás seguro de que deseas eliminar "${partido.titulo}"? Esta acción no se puede deshacer.',
+          'Se eliminará "${partido.titulo}", sus inscripciones, suplentes y resultados. Esta acción no se puede deshacer.',
       textoConfirmar: 'Eliminar',
-      estiloBotonCancelar: TextButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        minimumSize: const Size(48, 48),
-      ),
-      estiloCancelar: const TextStyle(
-        color: TemaApp.textoSecundario,
-        fontWeight: FontWeight.w600,
-      ),
-      estiloConfirmar: ElevatedButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        minimumSize: const Size(48, 48),
-        backgroundColor: TemaApp.rojoAlerta,
-        foregroundColor: Colors.white,
-      ),
     );
 
     if (confirmar != true || !mounted) return;
@@ -366,15 +352,11 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     final bajaTardia = partido.esBajaTardia(ahora: ahora);
     final confirmar = await confirmarAccion(
       context,
-      titulo: bajaTardia ? '¿Registrar baja tardía?' : '¿Salir del partido?',
+      titulo: '¿Salir del partido?',
       mensaje: bajaTardia
           ? 'Faltan menos de 2 horas para "${partido.titulo}". Saldrás del equipo y la baja tardía será visible para el organizador.'
           : 'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
-      textoConfirmar: bajaTardia ? 'Registrar baja tardía' : 'Sí, salir',
-      estiloConfirmar: ElevatedButton.styleFrom(
-        backgroundColor: TemaApp.rojoAlerta,
-        minimumSize: const Size(120, 44),
-      ),
+      textoConfirmar: 'Sí, salir',
     );
     if (confirmar != true || !mounted) return;
 
@@ -424,19 +406,6 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
       titulo: '¿Cerrar sesión?',
       mensaje: 'Volverás a la pantalla pública de UniSport.',
       textoConfirmar: 'Salir',
-      estiloBotonCancelar: TextButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        minimumSize: const Size(48, 48),
-      ),
-      estiloCancelar: const TextStyle(
-        color: TemaApp.textoSecundario,
-        fontWeight: FontWeight.w600,
-      ),
-      estiloConfirmar: ElevatedButton.styleFrom(
-        backgroundColor: TemaApp.rojoAlerta,
-        visualDensity: VisualDensity.standard,
-        minimumSize: const Size(110, 48),
-      ),
     );
 
     if (confirmar != true || !mounted || _cerrandoSesion) return;

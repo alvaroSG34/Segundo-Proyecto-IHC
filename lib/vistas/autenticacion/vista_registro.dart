@@ -201,7 +201,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
                         controller: _controladorCorreo,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          labelText: 'Correo institucional (@uagrm.edu / @unisport.edu)',
+                          labelText: 'Correo electrónico',
                           prefixIcon: const Icon(LucideIcons.mail),
                           suffixIcon: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
@@ -251,7 +251,7 @@ class _VistaRegistroState extends State<VistaRegistro> {
                       child: CampoClave(
                         key: const Key('registro_clave'),
                         controller: _controladorContrasena,
-                        etiqueta: 'Contraseña (mínimo 6 caracteres)',
+                        etiqueta: 'Contraseña (mínimo 6)',
                         onSubmitted: _ejecutarRegistro,
                         validator: (valor) {
                           if (valor == null || valor.isEmpty) {

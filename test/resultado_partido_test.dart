@@ -155,9 +155,7 @@ void main() {
       find.byKey(const ValueKey('marcador_equipo_b')),
       '1',
     );
-    await tester.tap(
-      find.widgetWithText(ElevatedButton, 'Registrar marcador'),
-    );
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Registrar marcador'));
     await tester.pumpAndSettle();
     expect(find.text('Este resultado aún no es definitivo.'), findsOneWidget);
 
@@ -189,6 +187,12 @@ void main() {
     await abrirComo('capitan', 'Capitán rival');
     await tester.ensureVisible(find.text('Confirmar resultado'));
     await tester.pumpAndSettle();
+    // Se informa de la consecuencia antes de confirmar el marcador.
+    expect(
+      find.text('Al confirmar, el resultado será definitivo.'),
+      findsOneWidget,
+    );
+    expect(find.text('Disputar resultado'), findsOneWidget);
     await tester.tap(find.text('Confirmar resultado'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Resultado definitivo'), findsOneWidget);

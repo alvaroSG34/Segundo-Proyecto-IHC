@@ -149,7 +149,7 @@ void main() {
 
       debugPrint('Eliminar E2E · 2/5: cancelar conserva tarjeta y fila');
       await _abrirConfirmacion(tester, partido.id, titulo);
-      final cancelar = _dialogo(find.widgetWithText(TextButton, 'Cancelar'));
+      final cancelar = _dialogo(find.widgetWithText(OutlinedButton, 'Cancelar'));
       await _visible(tester, cancelar);
       _accesible(
         tester,
@@ -189,7 +189,7 @@ void main() {
       await _abrirConfirmacion(tester, partido.id, titulo);
       toques++;
       final confirmar = _dialogo(
-        find.widgetWithText(ElevatedButton, 'Eliminar'),
+        find.widgetWithText(OutlinedButton, 'Eliminar'),
       );
       await _visible(tester, confirmar);
       _accesible(
@@ -291,7 +291,7 @@ Future<void> _abrirConfirmacion(
   );
   final advertencia = _dialogo(
     find.text(
-      '¿Estás seguro de que deseas eliminar "$titulo"? Esta acción no se puede deshacer.',
+      'Se eliminará "$titulo", sus inscripciones, suplentes y resultados. Esta acción no se puede deshacer.',
     ),
   );
   await _visible(tester, advertencia);

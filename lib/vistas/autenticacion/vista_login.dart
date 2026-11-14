@@ -182,7 +182,7 @@ class _VistaLoginState extends State<VistaLogin> {
                         controller: _controladorCorreo,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          labelText: 'Correo institucional',
+                          labelText: 'Correo electrónico',
                           hintText: 'ejemplo@unisport.edu',
                           prefixIcon: const Icon(LucideIcons.mail),
                           suffixIcon: AnimatedSwitcher(

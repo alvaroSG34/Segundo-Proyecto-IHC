@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
+import 'package:unisport/modelos/filtro_partidos.dart';
+
+import 'apoyo/repositorio_en_memoria.dart';
+
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
 
 import 'package:unisport/servicios/partidos/controlador_explorar.dart';
@@ -27,7 +31,47 @@ ModeloPartido partido(String id, String titulo, String disciplina) {
   );
 }
 
+class RepositorioConError extends RepositorioEnMemoria {
+  bool fallar = true;
+
+  @override
+  Future<List<ModeloPartido>> buscarPartidos(
+    FiltroPartidos filtro, {
+    DateTime? ahora,
+  }) {
+    if (fallar) throw StateError('No se pudieron cargar los partidos.');
+    return super.buscarPartidos(filtro, ahora: ahora);
+  }
+}
+
 void main() {
+  testWidgets('el error de carga no se muestra como una búsqueda vacía', (
+    tester,
+  ) async {
+    final repo = RepositorioConError();
+    final auth = ServicioAutenticacionFalso(repo);
+    await auth.iniciarSesion('diego@unisport.edu', '123456');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: VistaExplorarPartidos(
+          servicioAuth: auth,
+          repositorioPartidos: repo,
+          controladorExplorar: ControladorExplorar(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No se pudieron cargar los partidos.'), findsOneWidget);
+    expect(find.byKey(const Key('explorar_cantidad')), findsNothing);
+    expect(find.byKey(const Key('explorar_reintentar')), findsOneWidget);
+    repo.fallar = false;
+    await tester.ensureVisible(find.byKey(const Key('explorar_reintentar')));
+    await tester.tap(find.byKey(const Key('explorar_reintentar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('explorar_reintentar')), findsNothing);
+    expect(find.byKey(const Key('explorar_cantidad')), findsOneWidget);
+  });
+
   late ControladorExplorar controladorExplorar;
   setUp(() {
     controladorExplorar = ControladorExplorar();

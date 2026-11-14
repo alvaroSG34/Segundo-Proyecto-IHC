@@ -371,7 +371,8 @@ class _VistaEquiposState extends State<VistaEquipos> {
         if (resultado?.estado == EstadoResultadoPartido.pendiente &&
             esCapitan) ...[
           const SizedBox(height: 16),
-          ElevatedButton(
+          const Text('Al confirmar, el resultado será definitivo.'),
+          OutlinedButton(
             onPressed: _guardando ? null : _confirmarResultado,
             child: const Text('Confirmar resultado'),
           ),

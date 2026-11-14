@@ -47,6 +47,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
   List<String> _lugares = FiltroPartidos.lugaresSugeridos;
   FiltroPartidos get _filtro => widget.controladorExplorar.filtro;
   bool _cargando = true;
+  String? _errorCarga;
 
   // Evita que una consulta lenta pise el resultado de una más reciente
   int _consulta = 0;
@@ -99,7 +100,10 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       _registrarBusqueda(EventosAnalitica.busquedaIniciada, filtro, intentoId);
     }
     _analiticaBusqueda?.cancel();
-    setState(() => _cargando = true);
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
+    });
     final List<ModeloPartido> partidos;
     final List<String> lugares;
     var codigoError = 'consulta_fallida';
@@ -112,11 +116,12 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       lugares = await _repositorio.obtenerLugares();
     } catch (e) {
       if (!mounted || numero != _consulta) return;
-      setState(() => _cargando = false);
-      _avisar(
-        e is StateError ? e.message : 'No se pudieron cargar los partidos.',
-        error: true,
-      );
+      setState(() {
+        _cargando = false;
+        _errorCarga = e is StateError
+            ? e.message
+            : 'No se pudieron cargar los partidos.';
+      });
       if (registrarBusqueda) {
         _registrarBusqueda(
           EventosAnalitica.busquedaFallida,
@@ -194,14 +199,6 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
           'Ocuparás un cupo en "${partido.titulo}" '
           '(${partido.cuposOcupados}/${partido.cuposTotales}).',
       textoConfirmar: 'Sí, unirme',
-      estiloBotonCancelar: TextButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        minimumSize: const Size(48, 48),
-      ),
-      estiloConfirmar: ElevatedButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        minimumSize: const Size(48, 48),
-      ),
     );
     if (confirmar != true || !mounted) return;
 
@@ -243,20 +240,11 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     final bajaTardia = partido.esBajaTardia(ahora: ahora);
     final confirmar = await confirmarAccion(
       context,
-      titulo: bajaTardia ? '¿Registrar baja tardía?' : '¿Salir del partido?',
+      titulo: '¿Salir del partido?',
       mensaje: bajaTardia
           ? 'Faltan menos de 2 horas para "${partido.titulo}". Saldrás del equipo y la baja tardía será visible para el organizador.'
           : 'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
-      textoConfirmar: bajaTardia ? 'Registrar baja tardía' : 'Sí, salir',
-      estiloConfirmar: ElevatedButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        backgroundColor: TemaApp.rojoAlerta,
-        minimumSize: const Size(120, 48),
-      ),
-      estiloBotonCancelar: TextButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        minimumSize: const Size(120, 48),
-      ),
+      textoConfirmar: 'Sí, salir',
     );
     if (confirmar != true || !mounted) return;
 
@@ -443,7 +431,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                if (!_cargando)
+                if (!_cargando && _errorCarga == null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
@@ -468,7 +456,15 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                       child: Center(child: CircularProgressIndicator()),
                     ),
                   )
-                else if (_partidos.isEmpty && _filtro.estaActivo)
+                else if (_errorCarga != null) ...[
+                  CajaMensaje(texto: _errorCarga!),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    key: const Key('explorar_reintentar'),
+                    onPressed: _cargar,
+                    child: const Text('Reintentar'),
+                  ),
+                ] else if (_partidos.isEmpty && _filtro.estaActivo)
                   MensajeSinResultados(
                     alQuitarFiltros: () => _cambiarFiltro(_filtro.limpiar()),
                   )

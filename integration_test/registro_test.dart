@@ -16,7 +16,7 @@ import 'package:unisport/widgets/boton_accion.dart';
 
 const _correoExistente = String.fromEnvironment('E2E_CORREO_EXISTENTE');
 const _enviar = 'Crear cuenta e ingresar';
-const _etiquetaClave = 'Contraseña (mínimo 6 caracteres)';
+const _etiquetaClave = 'Contraseña (mínimo 6)';
 const _errorDuplicado = 'Este correo ya se encuentra registrado.';
 
 void main() {
@@ -116,10 +116,7 @@ void main() {
       debugPrint('Registro E2E · 3/9: Accesibilidad y áreas táctiles');
       for (final campo in const [
         ('registro_nombre', 'Nombre y apellido'),
-        (
-          'registro_correo',
-          'Correo institucional (@uagrm.edu / @unisport.edu)',
-        ),
+        ('registro_correo', 'Correo electrónico'),
         ('registro_carrera', 'Carrera o facultad'),
         ('registro_clave', _etiquetaClave),
       ]) {
