@@ -5,6 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Nombres estables de los eventos de los flujos principales.
 abstract final class EventosAnalitica {
+  static const cuentaEliminacionIniciada = 'cuenta_eliminacion_iniciada';
+  static const cuentaEliminacionCompletada = 'cuenta_eliminacion_completada';
+  static const cuentaEliminacionFallida = 'cuenta_eliminacion_fallida';
   static const unionFallida = 'union_fallida';
   static const busquedaIniciada = 'busqueda_iniciada';
   static const loginIniciado = 'login_iniciado';

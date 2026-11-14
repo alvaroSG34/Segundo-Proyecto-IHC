@@ -31,6 +31,11 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
       'registro_completado',
     ],
     'Iniciar sesión': ['login_iniciado', 'login_fallido', 'login_exitoso'],
+    'Eliminar cuenta': [
+      'cuenta_eliminacion_iniciada',
+      'cuenta_eliminacion_fallida',
+      'cuenta_eliminacion_completada',
+    ],
     'Salir': ['salida_iniciada', 'salida_fallida', 'salida_completada'],
     'Entrar en espera': [
       'espera_iniciada',

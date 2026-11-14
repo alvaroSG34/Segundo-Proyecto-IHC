@@ -33,7 +33,7 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
         return [
           for (final f in filas as List)
             ParticipantePartido(
-              id: f['id'] as String,
+              id: f['id'] as String? ?? '',
               nombre: f['nombre'] as String,
               esOrganizador: f['es_organizador'] as bool,
             ),
@@ -297,19 +297,12 @@ class RepositorioPartidosSupabase implements RepositorioPartidos {
     return {for (final f in filas) f['partido_id'] as String};
   }
 
-  /// Lee la cola completa en orden y calcula el turno del usuario actual.
+  /// El servidor devuelve únicamente los turnos del usuario actual.
   Future<Map<String, int>> _posicionesEnEspera() async {
-    final filas = await _cliente
-        .from('lista_espera')
-        .select('partido_id, jugador_id')
-        .order('id', ascending: true);
-    final cantidades = <String, int>{};
+    final filas = await _cliente.rpc('obtener_mis_turnos');
     final posiciones = <String, int>{};
     for (final fila in filas) {
-      final partidoId = fila['partido_id'] as String;
-      final posicion = (cantidades[partidoId] ?? 0) + 1;
-      cantidades[partidoId] = posicion;
-      if (fila['jugador_id'] == _usuarioId) posiciones[partidoId] = posicion;
+      posiciones[fila['partido_id'] as String] = fila['posicion'] as int;
     }
     return posiciones;
   }

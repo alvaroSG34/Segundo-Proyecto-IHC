@@ -79,6 +79,26 @@ class ServicioAutenticacionFalso extends ServicioAutenticacion {
   Future<String?> recuperarContrasena(String correo) async => null;
 
   @override
+  Future<Map<String, dynamic>> obtenerMisDatos() async {
+    final usuario = _usuarioActual;
+    if (usuario == null) throw StateError('Debes iniciar sesión.');
+    return {
+      'perfil': {
+        'id': usuario.id,
+        'nombre': usuario.nombre,
+        'correo': usuario.correo,
+        'carrera': usuario.carrera,
+        'deporte_favorito': usuario.deporteFavorito,
+      },
+      'partidos_organizados': [],
+      'inscripciones': [],
+      'lista_de_espera': [],
+      'bajas_tardias': [],
+      'acciones_en_resultados': [],
+    };
+  }
+
+  @override
   Future<String?> actualizarPerfil({
     required String nombre,
     required String carrera,
@@ -105,8 +125,9 @@ class ServicioAutenticacionFalso extends ServicioAutenticacion {
     required String contrasenaNueva,
   }) async {
     final actual = _usuarioActual;
-    if (actual == null)
+    if (actual == null) {
       return 'Debes iniciar sesión para cambiar tu contraseña.';
+    }
     final clave = actual.correo.toLowerCase();
     final cuenta = _cuentas[clave]!;
     if (cuenta.contrasena != contrasenaActual) {
@@ -119,8 +140,9 @@ class ServicioAutenticacionFalso extends ServicioAutenticacion {
   @override
   Future<String?> guardarContrasenaRecuperada(String contrasenaNueva) async {
     final actual = _usuarioActual;
-    if (actual == null)
+    if (actual == null) {
       return 'El enlace de recuperación no es válido o ya venció.';
+    }
     final clave = actual.correo.toLowerCase();
     _cuentas[clave] = (
       contrasena: contrasenaNueva,
@@ -131,6 +153,15 @@ class ServicioAutenticacionFalso extends ServicioAutenticacion {
 
   @override
   void finalizarRecuperacionContrasena() {}
+
+  @override
+  Future<String?> eliminarCuenta({String? intentoId}) async {
+    final usuario = _usuarioActual;
+    if (usuario == null) return 'Debes iniciar sesión.';
+    _cuentas.remove(usuario.correo.toLowerCase());
+    await cerrarSesion();
+    return null;
+  }
 
   @override
   Future<void> cerrarSesion() async {

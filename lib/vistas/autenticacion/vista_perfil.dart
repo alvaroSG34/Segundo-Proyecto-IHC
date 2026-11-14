@@ -1,17 +1,31 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
+import '../../servicios/analitica/servicio_analitica.dart';
 import '../../tema/caja_mensaje.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/boton_accion.dart';
 import '../../widgets/campo_clave.dart';
+import '../inicio/vista_inicio_publico.dart';
 
 class VistaPerfil extends StatefulWidget {
   final ServicioAutenticacion servicioAuth;
+  final Future<String?> Function(Uint8List)? guardarArchivo;
+  final ServicioAnalitica? servicioAnalitica;
 
-  const VistaPerfil({super.key, required this.servicioAuth});
+  const VistaPerfil({
+    super.key,
+    required this.servicioAuth,
+    this.guardarArchivo,
+    this.servicioAnalitica,
+  });
 
   @override
   State<VistaPerfil> createState() => _VistaPerfilState();
@@ -28,6 +42,12 @@ class _VistaPerfilState extends State<VistaPerfil> {
   late String _deporte;
   bool _guardandoPerfil = false;
   bool _guardandoClave = false;
+  bool _cargandoDatos = false;
+  bool _guardandoArchivo = false;
+  bool _eliminandoCuenta = false;
+  late final _analitica =
+      widget.servicioAnalitica ??
+      crearAnalitica(widget.servicioAuth is ServicioAutenticacionSupabase);
   String? _mensajePerfil;
   String? _errorPerfil;
   String? _mensajeClave;
@@ -103,6 +123,157 @@ class _VistaPerfilState extends State<VistaPerfil> {
     });
   }
 
+  Future<void> _verMisDatos() async {
+    if (_cargandoDatos) return;
+    setState(() => _cargandoDatos = true);
+    try {
+      final datos = await widget.servicioAuth.obtenerMisDatos();
+      final json = const JsonEncoder.withIndent('  ').convert(datos);
+      if (!mounted) return;
+      setState(() => _cargandoDatos = false);
+      await showDialog<void>(
+        context: context,
+        builder: (dialogo) => AlertDialog(
+          title: const Text('Mis datos'),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(child: SelectableText(json)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogo),
+              child: const Text('Cerrar'),
+            ),
+            ElevatedButton(
+              key: const Key('descargar_mis_datos'),
+              onPressed: () => _descargarDatos(json, dialogo),
+              child: const Text('Descargar JSON'),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudieron cargar tus datos. Inténtalo de nuevo.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _cargandoDatos = false);
+    }
+  }
+
+  Future<void> _descargarDatos(String json, BuildContext dialogo) async {
+    if (_guardandoArchivo) return;
+    _guardandoArchivo = true;
+    try {
+      final bytes = Uint8List.fromList(utf8.encode(json));
+      final ruta = widget.guardarArchivo != null
+          ? await widget.guardarArchivo!(bytes)
+          : await FileSaver.instance.saveAs(
+              name: 'unisport-mis-datos',
+              bytes: bytes,
+              fileExtension: 'json',
+              mimeType: MimeType.json,
+            );
+      if (!mounted || ruta == null) return;
+      if (dialogo.mounted) Navigator.pop(dialogo);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Datos guardados correctamente.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      if (dialogo.mounted) Navigator.pop(dialogo);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se pudieron guardar tus datos. Inténtalo de nuevo.',
+          ),
+        ),
+      );
+    } finally {
+      _guardandoArchivo = false;
+    }
+  }
+
+  Future<void> _eliminarCuenta() async {
+    final intentoId = crearIntentoId();
+    unawaited(
+      registrarEvento(_analitica, EventosAnalitica.cuentaEliminacionIniciada, {
+        'intento_id': intentoId,
+      }),
+    );
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (dialogo) => AlertDialog(
+        title: const Text('Eliminar cuenta'),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Se eliminarán tu cuenta y tu perfil. Ya no podrás iniciar sesión.\n\n'
+            'Se cancelarán los partidos futuros que organizas. En los partidos '
+            'en los que participas, el primer suplente ocupará tu lugar o '
+            'quedará un cupo libre.\n\n'
+            'Los resultados confirmados se conservarán sin identificarte. '
+            'Esta acción no se puede deshacer.',
+          ),
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(dialogo, false),
+                  child: const Text('Cancelar'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  key: const Key('confirmar_eliminar_cuenta'),
+                  onPressed: () => Navigator.pop(dialogo, true),
+                  child: const Text(
+                    'Eliminar cuenta',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+    setState(() => _eliminandoCuenta = true);
+    final error = await widget.servicioAuth.eliminarCuenta(
+      intentoId: intentoId,
+    );
+    if (error != null) {
+      unawaited(
+        registrarEvento(_analitica, EventosAnalitica.cuentaEliminacionFallida, {
+          'intento_id': intentoId,
+          'codigo_error':
+              error.contains('resultado confirmado en un partido futuro')
+              ? 'bloqueo'
+              : 'error',
+        }),
+      );
+    }
+    if (!mounted) return;
+    setState(() => _eliminandoCuenta = false);
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => VistaInicioPublico(servicioAuth: widget.servicioAuth),
+      ),
+      (ruta) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final usuario = widget.servicioAuth.usuarioActual;
@@ -123,7 +294,28 @@ class _VistaPerfilState extends State<VistaPerfil> {
                 const SizedBox(height: 20),
                 _seccionPerfil(usuario.correo),
                 const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  key: const Key('ver_mis_datos'),
+                  onPressed: _cargandoDatos ? null : _verMisDatos,
+                  icon: const Icon(LucideIcons.fileJson),
+                  label: Text(
+                    _cargandoDatos
+                        ? 'Cargando datos...'
+                        : 'Ver y descargar mis datos',
+                  ),
+                ),
+                const SizedBox(height: 20),
                 _seccionClave(),
+                const SizedBox(height: 20),
+                OutlinedButton(
+                  key: const Key('eliminar_cuenta'),
+                  onPressed: _eliminandoCuenta ? null : _eliminarCuenta,
+                  child: Text(
+                    _eliminandoCuenta
+                        ? 'Eliminando cuenta...'
+                        : 'Eliminar cuenta',
+                  ),
+                ),
               ],
             ),
           ),

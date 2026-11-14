@@ -16,7 +16,7 @@ import 'package:unisport/servicios/partidos/repositorio_partidos_supabase.dart';
 ///
 ///   flutter test test/supabase_integracion_test.dart --dart-define=PRUEBAS_SUPABASE=true
 ///
-/// Crea dos cuentas de prueba nuevas en cada ejecución (prueba-...@unisport.edu).
+/// Crea cuatro cuentas de prueba nuevas en cada ejecución (prueba-...@unisport.edu).
 const bool activada = bool.fromEnvironment('PRUEBAS_SUPABASE');
 
 void main() {
@@ -65,6 +65,10 @@ void main() {
       final jugador = ServicioAutenticacionSupabase(clienteJugador);
       final partidosJugador = RepositorioPartidosSupabase(clienteJugador);
       final analiticaJugador = ServicioAnaliticaSupabase(clienteJugador);
+      final clienteSuplente1 = nuevoCliente();
+      final clienteSuplente2 = nuevoCliente();
+      final suplente1 = ServicioAutenticacionSupabase(clienteSuplente1);
+      final suplente2 = ServicioAutenticacionSupabase(clienteSuplente2);
       expect(
         await jugador.registrarUsuario(
           nombre: 'Jugador $marca',
@@ -75,6 +79,18 @@ void main() {
         ),
         isNull,
       );
+
+      // Un usuario puede consultar su perfil, pero no el de otra persona.
+      final perfilPropio = await clienteJugador
+          .from('perfiles')
+          .select('id')
+          .eq('id', clienteJugador.auth.currentUser!.id);
+      final perfilAjeno = await clienteJugador
+          .from('perfiles')
+          .select('id')
+          .eq('id', clienteOrganizador.auth.currentUser!.id);
+      expect(perfilPropio, hasLength(1));
+      expect(perfilAjeno, isEmpty);
 
       final titulo = 'Prueba integración $marca';
       final creado = await partidosOrganizador.crearPartido(
@@ -113,6 +129,64 @@ void main() {
         });
         expect(unido.cuposOcupados, 2);
         expect(unido.estado, EstadoPartido.equipoCompleto);
+
+        // Cada suplente conoce su turno y solo el organizador ve toda la lista.
+        for (final (numero, suplente) in [(1, suplente1), (2, suplente2)]) {
+          expect(
+            await suplente.registrarUsuario(
+              nombre: 'Suplente $numero',
+              correo: 'prueba-$marca-sup$numero@unisport.edu',
+              contrasena: '123456',
+              carrera: 'Sistemas',
+              deporteFavorito: 'Futsal',
+            ),
+            isNull,
+          );
+        }
+        final repoSuplente1 = RepositorioPartidosSupabase(clienteSuplente1);
+        final repoSuplente2 = RepositorioPartidosSupabase(clienteSuplente2);
+        expect(
+          (await repoSuplente1.entrarEnEspera(creado.id)).posicionEspera,
+          1,
+        );
+        expect(
+          (await repoSuplente2.entrarEnEspera(creado.id)).posicionEspera,
+          2,
+        );
+        expect((await partidosOrganizador.obtenerSuplentes())[creado.id], [
+          'Suplente 1',
+          'Suplente 2',
+        ]);
+        final listaPropia = await clienteSuplente2
+            .from('lista_espera')
+            .select();
+        expect(listaPropia, hasLength(1));
+        expect(
+          listaPropia.single['jugador_id'],
+          clienteSuplente2.auth.currentUser!.id,
+        );
+        final datosSuplente = await suplente2.obtenerMisDatos();
+        expect(
+          (datosSuplente['lista_de_espera'] as List).single['partido_id'],
+          creado.id,
+        );
+        expect(
+          datosSuplente.toString(),
+          isNot(contains('prueba-$marca-sup1@unisport.edu')),
+        );
+
+        final misDatos = await jugador.obtenerMisDatos();
+        expect(
+          (misDatos['perfil'] as Map)['id'],
+          clienteJugador.auth.currentUser!.id,
+        );
+        expect(misDatos['partidos_organizados'], isEmpty);
+        final inscripciones = misDatos['inscripciones'] as List;
+        expect(inscripciones.single['partido_id'], creado.id);
+        expect(
+          misDatos.toString(),
+          isNot(contains('prueba-$marca-org@unisport.edu')),
+        );
 
         final eventos = await analiticaJugador.obtenerEventos();
         final eventosDelPartido = eventos
@@ -205,9 +279,11 @@ void main() {
         await partidosOrganizador.eliminarPartido(creado.id);
         await organizador.cerrarSesion();
         await jugador.cerrarSesion();
+        await suplente1.cerrarSesion();
+        await suplente2.cerrarSesion();
       }
     },
     skip: motivoOmitida,
-    timeout: const Timeout(Duration(minutes: 1)),
+    timeout: const Timeout(Duration(minutes: 2)),
   );
 }

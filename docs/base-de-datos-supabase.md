@@ -111,6 +111,10 @@ La segunda ejecuta una prueba contra la base **real**: crea dos estudiantes en d
 
 Si el proyecto Supabase ya existía, vuelve a ejecutar el archivo completo [`supabase/esquema.sql`](../supabase/esquema.sql) desde el SQL Editor antes de usar la app actualizada. El script agrega columnas sin borrar partidos ni inscripciones existentes.
 
+La actualización también limita la lectura de perfiles, inscripciones y listas de espera. Aplica el esquema antes de actualizar la aplicación: la nueva función `obtener_mis_turnos` calcula el turno de cada usuario sin mostrarle la lista completa.
+
+En «Mi perfil», la opción «Ver y descargar mis datos» consulta el perfil, los partidos organizados, las inscripciones, las esperas, las bajas tardías y las acciones sobre resultados de la cuenta iniciada, y permite guardar un archivo JSON. Requiere aplicar el esquema actualizado para disponer de las funciones que consultan los registros propios.
+
 Para probarlo con tres cuentas, crea un partido futuro de dos cupos como organizador, une a un titular y anota a la tercera cuenta como suplente. Como organizador, usa **Reprogramar partido** y escribe un motivo. El titular verá la fecha nueva y **Confirmar mi asistencia** o **No puedo asistir: retirarme**. Si se retira, el suplente pasa a titular y debe reconfirmar. El organizador verá cuántas respuestas faltan.
 
 Las demás pruebas usan un repositorio en memoria (`test/apoyo/`) con el mismo contrato, para correr sin internet.

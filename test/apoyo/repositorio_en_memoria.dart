@@ -449,7 +449,7 @@ class RepositorioEnMemoria implements RepositorioPartidos {
         (_inscripciones.any((i) => i.partidoId == editado.id) ||
             fila.partido.respuestasPendientes > 0)) {
       throw StateError(
-        'Usa Reprogramar para cambiar fecha o lugar y avisar al equipo.',
+        'Usa Reprogramar para cambiar fecha o lugar y pedir confirmación al equipo en UniSport.',
       );
     }
     final conCupos = fila.partido.conCuposTotales(editado.cuposTotales);

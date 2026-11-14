@@ -80,7 +80,10 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
       context,
       MaterialPageRoute(
         settings: const RouteSettings(name: '/perfil'),
-        builder: (_) => VistaPerfil(servicioAuth: widget.servicioAuth),
+        builder: (_) => VistaPerfil(
+          servicioAuth: widget.servicioAuth,
+          servicioAnalitica: _analitica,
+        ),
       ),
     );
     if (mounted) setState(() {});

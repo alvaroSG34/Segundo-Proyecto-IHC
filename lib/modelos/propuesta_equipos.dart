@@ -41,7 +41,7 @@ class PropuestaEquipos {
         revision: fila['revision'] as String,
         equipoA: List<String>.from(fila['equipo_a'] as List),
         equipoB: List<String>.from(fila['equipo_b'] as List),
-        capitanRivalId: fila['capitan_rival_id'] as String,
+        capitanRivalId: fila['capitan_rival_id'] as String? ?? '',
         estado: EstadoPropuesta.values.byName(fila['estado'] as String),
       );
 

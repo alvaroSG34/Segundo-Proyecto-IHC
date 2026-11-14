@@ -78,7 +78,8 @@ create index if not exists eventos_evento_fecha_idx
 alter table public.eventos alter column usuario_id drop not null;
 alter table public.eventos drop constraint if exists eventos_evento_check;
 alter table public.eventos add constraint eventos_evento_check check (
-  evento in ('union_fallida', 'busqueda_iniciada', 'login_iniciado',
+  evento in ('cuenta_eliminacion_iniciada', 'cuenta_eliminacion_completada', 'cuenta_eliminacion_fallida',
+             'union_fallida', 'busqueda_iniciada', 'login_iniciado',
              'espera_iniciada', 'reprogramacion_iniciada', 'reprogramacion_fallida',
              'reconfirmacion_iniciada', 'reconfirmacion_fallida', 'respuesta_propuesta_iniciada',
              'respuesta_propuesta_fallida', 'validacion_resultado_iniciada', 'validacion_resultado_fallida',
@@ -114,8 +115,8 @@ begin
   )) then
     raise exception 'Debes iniciar sesion para registrar este evento.';
   end if;
-  if p_evento = 'suplente_promovido' then
-    raise exception 'La promocion solo se registra en el servidor.';
+  if p_evento in ('suplente_promovido', 'cuenta_eliminacion_completada') then
+    raise exception 'Este evento solo se registra en el servidor.';
   end if;
   if p_props is null or jsonb_typeof(p_props) <> 'object' then
     raise exception 'Las propiedades del evento deben ser un objeto.';
@@ -183,6 +184,13 @@ begin
       raise exception 'Anticipacion no permitida.';
     end if;
     v_props := v_props - 'anticipacion';
+  end if;
+  if p_evento = 'cuenta_eliminacion_fallida' then
+    if jsonb_typeof(p_props->'codigo_error') is distinct from 'string'
+       or p_props->>'codigo_error' not in ('bloqueo', 'error') then
+      raise exception 'Codigo de eliminacion de cuenta no valido.';
+    end if;
+    v_props := v_props - 'codigo_error';
   end if;
   if v_props <> '{}'::jsonb then
     raise exception 'Propiedades del evento no permitidas.';
@@ -265,7 +273,7 @@ alter table public.lista_espera enable row level security;
 
 drop policy if exists "perfiles: leer (con sesión)" on public.perfiles;
 create policy "perfiles: leer (con sesión)" on public.perfiles
-  for select to authenticated using (true);
+  for select to authenticated using (id = auth.uid());
 
 drop policy if exists "perfiles: editar el propio" on public.perfiles;
 create policy "perfiles: editar el propio" on public.perfiles
@@ -291,11 +299,36 @@ create policy "partidos: eliminar el propio" on public.partidos
 
 drop policy if exists "inscripciones: leer (con sesión)" on public.inscripciones;
 create policy "inscripciones: leer (con sesión)" on public.inscripciones
-  for select to authenticated using (true);
+  for select to authenticated using (
+    jugador_id = auth.uid() or exists (
+      select 1 from public.partidos
+      where id = inscripciones.partido_id and organizador_id = auth.uid()
+    )
+  );
 
 drop policy if exists "lista de espera: leer (con sesión)" on public.lista_espera;
 create policy "lista de espera: leer (con sesión)" on public.lista_espera
-  for select to authenticated using (true);
+  for select to authenticated using (
+    jugador_id = auth.uid() or exists (
+      select 1 from public.partidos
+      where id = lista_espera.partido_id and organizador_id = auth.uid()
+    )
+  );
+
+-- Calcula el turno sin mostrar los datos de los demás suplentes.
+create or replace function public.obtener_mis_turnos()
+returns table(partido_id uuid, posicion bigint)
+language sql stable security definer set search_path = public as $$
+  select turnos.partido_id, turnos.posicion
+  from (
+    select e.partido_id, e.jugador_id,
+      row_number() over (partition by e.partido_id order by e.id) as posicion
+    from public.lista_espera e
+  ) as turnos
+  where turnos.jugador_id = auth.uid();
+$$;
+revoke all on function public.obtener_mis_turnos() from public, anon;
+grant execute on function public.obtener_mis_turnos() to authenticated;
 
 -- Funciones con las reglas de negocio (se llaman desde la app con rpc)
 -- "for update" bloquea la fila del partido mientras dura la operación, así dos
@@ -379,7 +412,7 @@ begin
   if not found then
     raise exception 'Este partido ya no existe.';
   end if;
-  if v_partido.organizador_id <> v_jugador then
+  if v_partido.organizador_id is distinct from v_jugador then
     raise exception 'Solo el organizador puede cerrar la convocatoria.';
   end if;
   if v_partido.fecha_inicio < now() then
@@ -419,7 +452,7 @@ declare
   v_partido public.partidos;
 begin
   select * into v_partido from public.partidos where id = p_partido for update;
-  if not found or v_partido.organizador_id <> auth.uid() then
+  if not found or v_partido.organizador_id is distinct from auth.uid() then
     raise exception 'Solo el organizador puede editar el partido.';
   end if;
 
@@ -428,7 +461,7 @@ begin
      and (v_partido.reconfirmaciones_pendientes > 0 or exists (
        select 1 from public.inscripciones where partido_id = p_partido
      )) then
-    raise exception 'Usa Reprogramar para cambiar fecha o lugar y avisar al equipo.';
+    raise exception 'Usa Reprogramar para cambiar fecha o lugar y pedir confirmación al equipo en UniSport.';
   end if;
 
   if p_cupos_totales <> v_partido.cupos_totales then
@@ -469,7 +502,7 @@ declare
   v_pendientes int;
 begin
   select * into v_partido from public.partidos where id = p_partido for update;
-  if not found or v_partido.organizador_id <> auth.uid() then
+  if not found or v_partido.organizador_id is distinct from auth.uid() then
     raise exception 'Solo el organizador puede reprogramar el partido.';
   end if;
   if v_partido.fecha_inicio <= now() then
@@ -875,7 +908,7 @@ declare
 begin
   select * into v_partido from public.partidos where id = p_partido for update;
   if not found then raise exception 'Este partido ya no existe.'; end if;
-  if auth.uid() is null or v_partido.organizador_id <> auth.uid() then
+  if auth.uid() is null or v_partido.organizador_id is distinct from auth.uid() then
     raise exception 'Solo el organizador puede proponer equipos.';
   end if;
   if v_partido.fecha_inicio <= now() then
@@ -923,7 +956,7 @@ begin
   if not found or p_revision is distinct from v_propuesta.revision then
     raise exception 'La propuesta cambió. Vuelve a abrir los equipos.';
   end if;
-  if auth.uid() is null or auth.uid() <> v_propuesta.capitan_rival_id then
+  if auth.uid() is null or auth.uid() is distinct from v_propuesta.capitan_rival_id then
     raise exception 'Solo el capitán rival puede responder.';
   end if;
   if v_propuesta.estado <> 'pendiente' then
@@ -945,7 +978,10 @@ begin
   if TG_OP = 'DELETE' then v_id := old.partido_id;
   else v_id := new.partido_id; end if;
   perform 1 from public.partidos where id = v_id for update;
-  delete from public.propuestas_equipos where partido_id = v_id;
+  if not exists (select 1 from public.resultados_partido
+                 where partido_id = v_id and estado = 'confirmado') then
+    delete from public.propuestas_equipos where partido_id = v_id;
+  end if;
   return null;
 end;
 $$;
@@ -1052,7 +1088,7 @@ begin
   end if;
   select * into v_partido from public.partidos where id = p_partido for update;
   if not found then raise exception 'Este partido ya no existe.'; end if;
-  if auth.uid() is null or v_partido.organizador_id <> auth.uid() then
+  if auth.uid() is null or v_partido.organizador_id is distinct from auth.uid() then
     raise exception 'Solo el organizador puede registrar o corregir el marcador.';
   end if;
   if v_partido.fecha_inicio > now() then
@@ -1109,7 +1145,7 @@ begin
   if not found then raise exception 'Este partido ya no existe.'; end if;
   select * into v_propuesta from public.propuestas_equipos
     where partido_id = p_partido;
-  if not found or auth.uid() is null or auth.uid() <> v_propuesta.capitan_rival_id then
+  if not found or auth.uid() is null or auth.uid() is distinct from v_propuesta.capitan_rival_id then
     raise exception 'Solo el capitán rival puede confirmar o disputar el resultado.';
   end if;
   select * into v_resultado from public.resultados_partido
@@ -1149,7 +1185,7 @@ begin
   if not found then raise exception 'Este partido ya no existe.'; end if;
   select * into v_propuesta from public.propuestas_equipos
     where partido_id = p_partido;
-  if not found or auth.uid() is null or auth.uid() <> v_propuesta.capitan_rival_id then
+  if not found or auth.uid() is null or auth.uid() is distinct from v_propuesta.capitan_rival_id then
     raise exception 'Solo el capitán rival puede confirmar o disputar el resultado.';
   end if;
   select * into v_resultado from public.resultados_partido
@@ -1179,3 +1215,118 @@ revoke all on function public.registrar_resultado_partido(uuid, int, int),
 grant execute on function public.registrar_resultado_partido(uuid, int, int),
   public.disputar_resultado_partido(uuid, uuid, text),
   public.confirmar_resultado_partido(uuid, uuid) to authenticated;
+
+-- Cada persona puede consultar sus propias bajas para descargar sus datos.
+create or replace function public.obtener_mis_bajas()
+returns table(partido_id uuid, fecha timestamptz)
+language sql stable security definer set search_path = public as $$
+  select b.partido_id, b.fecha
+  from public.bajas_tardias b
+  where b.jugador_id = auth.uid();
+$$;
+revoke all on function public.obtener_mis_bajas() from public, anon;
+grant execute on function public.obtener_mis_bajas() to authenticated;
+
+create or replace function public.obtener_mis_acciones_resultados()
+returns table(partido_id uuid, accion text, marcador_equipo_a int,
+  marcador_equipo_b int, motivo text, creado_en timestamptz)
+language sql stable security definer set search_path = public as $$
+  select h.partido_id, h.accion, h.marcador_equipo_a, h.marcador_equipo_b,
+    h.motivo, h.creado_en
+  from public.historial_resultados h
+  where h.actor_id = auth.uid();
+$$;
+revoke all on function public.obtener_mis_acciones_resultados() from public, anon;
+grant execute on function public.obtener_mis_acciones_resultados() to authenticated;
+
+
+-- Eliminación de cuenta: conservar partidos y resultados anteriores.
+alter table public.partidos alter column organizador_id drop not null;
+alter table public.partidos drop constraint if exists partidos_organizador_id_fkey;
+alter table public.partidos add constraint partidos_organizador_id_fkey
+  foreign key (organizador_id) references public.perfiles(id) on delete set null;
+
+alter table public.propuestas_equipos alter column capitan_rival_id drop not null;
+alter table public.propuestas_equipos drop constraint if exists propuestas_equipos_capitan_rival_id_fkey;
+alter table public.propuestas_equipos add constraint propuestas_equipos_capitan_rival_id_fkey
+  foreign key (capitan_rival_id) references public.perfiles(id) on delete set null;
+
+drop function if exists public.eliminar_mi_cuenta();
+create or replace function public.eliminar_mi_cuenta(p_intento_id text default null)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_usuario uuid := auth.uid();
+  v_partido record;
+begin
+  if p_intento_id is not null and p_intento_id !~ '^[0-9a-f]{32}$' then
+    raise exception 'Identificador de intento no valido.';
+  end if;
+  if v_usuario is null then
+    raise exception 'Debes iniciar sesión para eliminar tu cuenta.';
+  end if;
+  perform 1 from public.perfiles where id = v_usuario for update;
+  if not found then
+    raise exception 'No se encontró el perfil de la cuenta.';
+  end if;
+  perform p.id from public.partidos p
+    where p.organizador_id = v_usuario or exists (
+      select 1 from public.inscripciones i
+      where i.partido_id = p.id and i.jugador_id = v_usuario
+    )
+    order by p.id for update of p;
+
+  -- Un resultado confirmado de un partido futuro es inconsistente. Se bloquea
+  -- la operación para no borrar ese resultado por accidente.
+  if exists (
+    select 1 from public.partidos p
+    join public.resultados_partido r on r.partido_id = p.id
+    where p.organizador_id = v_usuario and p.fecha_inicio > now()
+      and r.estado = 'confirmado'
+  ) then
+    raise exception 'No se puede eliminar la cuenta: hay un resultado confirmado en un partido futuro.';
+  end if;
+
+  -- Cancelar los partidos futuros organizados elimina sus inscripciones y espera.
+  delete from public.partidos
+    where organizador_id = v_usuario and fecha_inicio > now();
+
+  -- La función existente libera el cupo o incorpora al primer suplente.
+  for v_partido in
+    select p.id from public.partidos p
+    join public.inscripciones i on i.partido_id = p.id
+    where i.jugador_id = v_usuario and p.fecha_inicio > now()
+    order by p.id
+  loop
+    perform public.salir_del_partido(v_partido.id);
+  end loop;
+
+  update public.partidos set organizador_nombre = 'Usuario eliminado'
+    where organizador_id = v_usuario;
+  update public.historial_resultados set actor_nombre = 'Usuario eliminado', motivo = null
+    where actor_id = v_usuario;
+  update public.resultados_partido r set motivo_disputa = null
+    from public.propuestas_equipos e
+    where e.partido_id = r.partido_id and e.capitan_rival_id = v_usuario;
+  update public.propuestas_equipos set
+    equipo_a = array_remove(equipo_a, v_usuario),
+    equipo_b = array_remove(equipo_b, v_usuario),
+    capitan_rival_id = case when capitan_rival_id = v_usuario then null else capitan_rival_id end
+    where v_usuario = any(equipo_a) or v_usuario = any(equipo_b)
+       or capitan_rival_id = v_usuario;
+
+  -- El borrado de Auth elimina el perfil y las inscripciones restantes.
+  delete from auth.users where id = v_usuario;
+  if not found then raise exception 'No se encontró la cuenta.'; end if;
+  if p_intento_id is not null then
+    begin
+      insert into public.eventos(evento, props)
+      values ('cuenta_eliminacion_completada', jsonb_build_object('intento_id', p_intento_id));
+    exception when others then
+      null; -- La analítica no debe impedir la eliminación.
+    end;
+  end if;
+end;
+$$;
+revoke all on function public.eliminar_mi_cuenta(text) from public, anon;
+grant execute on function public.eliminar_mi_cuenta(text) to authenticated;

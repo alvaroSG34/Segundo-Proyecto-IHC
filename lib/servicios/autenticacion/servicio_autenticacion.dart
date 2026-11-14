@@ -33,6 +33,9 @@ abstract class ServicioAutenticacion extends ChangeNotifier {
   /// Devuelve null si se envió el correo de recuperación, o el error.
   Future<String?> recuperarContrasena(String correo);
 
+  /// Consulta la información de la cuenta que tiene la sesión iniciada.
+  Future<Map<String, dynamic>> obtenerMisDatos();
+
   /// Actualiza los datos públicos de la cuenta con sesión iniciada.
   Future<String?> actualizarPerfil({
     required String nombre,
@@ -51,6 +54,8 @@ abstract class ServicioAutenticacion extends ChangeNotifier {
 
   /// Cierra el modo de recuperación después de guardar la nueva contraseña.
   void finalizarRecuperacionContrasena();
+
+  Future<String?> eliminarCuenta({String? intentoId});
 
   Future<void> cerrarSesion();
 }
@@ -90,6 +95,47 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
 
   @override
   bool get estaRecuperandoContrasena => _estaRecuperandoContrasena;
+
+  @override
+  Future<Map<String, dynamic>> obtenerMisDatos() async {
+    final usuario = _cliente.auth.currentUser;
+    if (usuario == null) throw StateError('Debes iniciar sesión.');
+
+    final perfil = await _cliente
+        .from('perfiles')
+        .select('id, nombre, correo, carrera, deporte_favorito, creado_en')
+        .eq('id', usuario.id)
+        .single();
+    final partidos = await _cliente
+        .from('partidos')
+        .select(
+          'id, titulo, disciplina, ubicacion, fecha_inicio, cupos_totales, cupos_ocupados, estado',
+        )
+        .eq('organizador_id', usuario.id);
+    final inscripciones = await _cliente
+        .from('inscripciones')
+        .select(
+          'partido_id, creado_en, reconfirmacion_pendiente, reconfirmacion_aceptada, partidos(titulo, disciplina, ubicacion, fecha_inicio)',
+        )
+        .eq('jugador_id', usuario.id);
+    final espera = await _cliente
+        .from('lista_espera')
+        .select(
+          'partido_id, creado_en, partidos(titulo, disciplina, ubicacion, fecha_inicio)',
+        )
+        .eq('jugador_id', usuario.id);
+    final bajas = await _cliente.rpc('obtener_mis_bajas');
+    final resultados = await _cliente.rpc('obtener_mis_acciones_resultados');
+
+    return {
+      'perfil': perfil,
+      'partidos_organizados': partidos,
+      'inscripciones': inscripciones,
+      'lista_de_espera': espera,
+      'bajas_tardias': bajas,
+      'acciones_en_resultados': resultados,
+    };
+  }
 
   /// Lee el perfil del usuario con sesión desde la tabla `perfiles`.
   /// Si no se puede leer (por ejemplo, sin internet), usa los datos de la cuenta.
@@ -299,6 +345,22 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
   void finalizarRecuperacionContrasena() {
     _estaRecuperandoContrasena = false;
     notifyListeners();
+  }
+
+  @override
+  Future<String?> eliminarCuenta({String? intentoId}) async {
+    try {
+      await _cliente.rpc(
+        'eliminar_mi_cuenta',
+        params: intentoId == null ? {} : {'p_intento_id': intentoId},
+      );
+    } on PostgrestException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'No se pudo confirmar la eliminación. Intenta iniciar sesión para comprobar tu cuenta.';
+    }
+    await cerrarSesion();
+    return null;
   }
 
   @override
