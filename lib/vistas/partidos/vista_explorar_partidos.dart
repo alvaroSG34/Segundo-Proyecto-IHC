@@ -384,7 +384,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
       appBar: AppBar(title: const Text('Explorar partidos')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
+          constraints: const BoxConstraints(maxWidth: 480),
           child: RefreshIndicator(
             onRefresh: _cargar,
             color: TemaApp.verdeDeportivo,

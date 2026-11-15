@@ -96,9 +96,14 @@ class _VistaRecuperarClaveState extends State<VistaRecuperarClave> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Recuperar Contraseña')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: _enviado ? _construirVistaExito() : _construirFormulario(),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: _enviado ? _construirVistaExito() : _construirFormulario(),
+          ),
+        ),
       ),
     );
   }

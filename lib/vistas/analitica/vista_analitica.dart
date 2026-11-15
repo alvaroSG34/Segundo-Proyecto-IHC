@@ -128,35 +128,40 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _cargar,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Text(
-              'Eventos de los flujos principales',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: RefreshIndicator(
+            onRefresh: _cargar,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: [
+                const Text(
+                  'Eventos de los flujos principales',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 16),
+                if (_cargando)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 80),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_error != null)
+                  _estadoError()
+                else if (_eventos.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: Text('No hay eventos registrados.')),
+                  )
+                else ...[
+                  _embudo(),
+                  const SizedBox(height: 24),
+                  _tabla(),
+                ],
+              ],
             ),
-            const SizedBox(height: 16),
-            if (_cargando)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 80),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_error != null)
-              _estadoError()
-            else if (_eventos.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 48),
-                child: Center(child: Text('No hay eventos registrados.')),
-              )
-            else ...[
-              _embudo(),
-              const SizedBox(height: 24),
-              _tabla(),
-            ],
-          ],
+          ),
         ),
       ),
     );

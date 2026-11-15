@@ -136,7 +136,7 @@ class _VistaPerfilState extends State<VistaPerfil> {
         builder: (dialogo) => AlertDialog(
           title: const Text('Mis datos'),
           content: SizedBox(
-            width: 500,
+            width: 480,
             child: SingleChildScrollView(child: SelectableText(json)),
           ),
           actions: [
@@ -284,7 +284,7 @@ class _VistaPerfilState extends State<VistaPerfil> {
       appBar: AppBar(title: const Text('Mi perfil')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+          constraints: const BoxConstraints(maxWidth: 480),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
             child: Column(

@@ -427,129 +427,142 @@ class _VistaEquiposState extends State<VistaEquipos> {
     final rivales = _participantes.where((p) => _equipos[p.id] == 'B').toList();
     return Scaffold(
       appBar: AppBar(title: const Text('Equipos del partido')),
-      body: _cargando
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _guardando ? () async {} : _cargar,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    _partido.titulo,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  if (_error != null) ...[
-                    CajaMensaje(texto: _error!),
-                    TextButton(
-                      onPressed: _guardando ? null : _cargar,
-                      child: const Text('Volver a cargar'),
-                    ),
-                  ],
-                  if (_editando) ...[
-                    const Text(
-                      'Reparte los jugadores y elige al capitán del Equipo B. Tú eres el capitán del Equipo A.',
-                    ),
-                    for (final p in _participantes)
-                      ListTile(
-                        title: Text(p.nombre),
-                        subtitle: p.esOrganizador
-                            ? const Text('Capitán del Equipo A')
-                            : null,
-                        trailing: DropdownButton<String>(
-                          key: ValueKey('equipo_${p.id}'),
-                          value: _equipos[p.id],
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'A',
-                              child: Text('Equipo A'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'B',
-                              child: Text('Equipo B'),
-                            ),
-                          ],
-                          onChanged: p.esOrganizador || _guardando
-                              ? null
-                              : (valor) {
-                                  setState(() {
-                                    _equipos[p.id] = valor!;
-                                    if (_capitanId == p.id && valor != 'B') {
-                                      _capitanId = null;
-                                    }
-                                  });
-                                },
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: _cargando
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _guardando ? () async {} : _cargar,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Text(
+                        _partido.titulo,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 16),
+                      if (_error != null) ...[
+                        CajaMensaje(texto: _error!),
+                        TextButton(
+                          onPressed: _guardando ? null : _cargar,
+                          child: const Text('Volver a cargar'),
                         ),
-                      ),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey(
-                        'capitan_${_capitanId ?? "ninguno"}_${rivales.length}',
-                      ),
-                      initialValue: _capitanId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Capitán rival',
-                      ),
-                      items: [
-                        for (final p in rivales)
-                          DropdownMenuItem(value: p.id, child: Text(p.nombre)),
                       ],
-                      onChanged: _guardando
-                          ? null
-                          : (valor) => setState(() => _capitanId = valor),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _guardando ? null : _guardar,
-                      child: Text(
-                        _guardando ? 'Enviando…' : 'Enviar propuesta',
-                      ),
-                    ),
-                    if (_propuesta != null)
-                      TextButton(
-                        onPressed: _guardando
-                            ? null
-                            : () => setState(() => _editando = false),
-                        child: const Text('Cancelar'),
-                      ),
-                  ] else if (_propuesta != null) ...[
-                    Text('Propuesta: ${_propuesta!.estado.etiqueta}'),
-                    const SizedBox(height: 16),
-                    _listaEquipo('A', _propuesta!.equipoA),
-                    _listaEquipo('B', _propuesta!.equipoB),
-                    if (_puedeEditar)
-                      OutlinedButton(
-                        onPressed: _guardando
-                            ? null
-                            : () => setState(() => _editando = true),
-                        child: const Text('Editar propuesta'),
-                      ),
-                    if (_propuesta!.estado == EstadoPropuesta.pendiente &&
-                        _propuesta!.capitanRivalId == widget.usuarioId &&
-                        !_partido.fechaPasada) ...[
-                      ElevatedButton(
-                        onPressed: _guardando ? null : () => _responder(true),
-                        child: const Text('Aceptar'),
-                      ),
-                      OutlinedButton(
-                        onPressed: _guardando ? null : () => _responder(false),
-                        child: const Text('Rechazar'),
-                      ),
+                      if (_editando) ...[
+                        const Text(
+                          'Reparte los jugadores y elige al capitán del Equipo B. Tú eres el capitán del Equipo A.',
+                        ),
+                        for (final p in _participantes)
+                          ListTile(
+                            title: Text(p.nombre),
+                            subtitle: p.esOrganizador
+                                ? const Text('Capitán del Equipo A')
+                                : null,
+                            trailing: DropdownButton<String>(
+                              key: ValueKey('equipo_${p.id}'),
+                              value: _equipos[p.id],
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'A',
+                                  child: Text('Equipo A'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'B',
+                                  child: Text('Equipo B'),
+                                ),
+                              ],
+                              onChanged: p.esOrganizador || _guardando
+                                  ? null
+                                  : (valor) {
+                                      setState(() {
+                                        _equipos[p.id] = valor!;
+                                        if (_capitanId == p.id &&
+                                            valor != 'B') {
+                                          _capitanId = null;
+                                        }
+                                      });
+                                    },
+                            ),
+                          ),
+                        DropdownButtonFormField<String>(
+                          key: ValueKey(
+                            'capitan_${_capitanId ?? "ninguno"}_${rivales.length}',
+                          ),
+                          initialValue: _capitanId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Capitán rival',
+                          ),
+                          items: [
+                            for (final p in rivales)
+                              DropdownMenuItem(
+                                value: p.id,
+                                child: Text(p.nombre),
+                              ),
+                          ],
+                          onChanged: _guardando
+                              ? null
+                              : (valor) => setState(() => _capitanId = valor),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _guardando ? null : _guardar,
+                          child: Text(
+                            _guardando ? 'Enviando…' : 'Enviar propuesta',
+                          ),
+                        ),
+                        if (_propuesta != null)
+                          TextButton(
+                            onPressed: _guardando
+                                ? null
+                                : () => setState(() => _editando = false),
+                            child: const Text('Cancelar'),
+                          ),
+                      ] else if (_propuesta != null) ...[
+                        Text('Propuesta: ${_propuesta!.estado.etiqueta}'),
+                        const SizedBox(height: 16),
+                        _listaEquipo('A', _propuesta!.equipoA),
+                        _listaEquipo('B', _propuesta!.equipoB),
+                        if (_puedeEditar)
+                          OutlinedButton(
+                            onPressed: _guardando
+                                ? null
+                                : () => setState(() => _editando = true),
+                            child: const Text('Editar propuesta'),
+                          ),
+                        if (_propuesta!.estado == EstadoPropuesta.pendiente &&
+                            _propuesta!.capitanRivalId == widget.usuarioId &&
+                            !_partido.fechaPasada) ...[
+                          ElevatedButton(
+                            onPressed: _guardando
+                                ? null
+                                : () => _responder(true),
+                            child: const Text('Aceptar'),
+                          ),
+                          OutlinedButton(
+                            onPressed: _guardando
+                                ? null
+                                : () => _responder(false),
+                            child: const Text('Rechazar'),
+                          ),
+                        ],
+                        if (_propuesta!.estado == EstadoPropuesta.aceptada &&
+                            _partido.fechaPasada)
+                          _seccionResultado(),
+                      ] else ...[
+                        const Text('Equipos por proponer'),
+                        if (!_partido.fechaPasada && _partido.soyOrganizador)
+                          const Text(
+                            'Cierra la convocatoria para proponer los equipos.',
+                          ),
+                      ],
                     ],
-                    if (_propuesta!.estado == EstadoPropuesta.aceptada &&
-                        _partido.fechaPasada)
-                      _seccionResultado(),
-                  ] else ...[
-                    const Text('Equipos por proponer'),
-                    if (!_partido.fechaPasada && _partido.soyOrganizador)
-                      const Text(
-                        'Cierra la convocatoria para proponer los equipos.',
-                      ),
-                  ],
-                ],
-              ),
-            ),
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }
