@@ -46,3 +46,23 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Firmas y certificados de Android
+key.properties
+*.jks
+*.keystore
+
+# Registros de pruebas generados localmente
+/build/registro-e2e-cuentas.txt
+
+# Generated plugin registrants (Desktop)
+linux/flutter/generated_plugin_registrant.*
+linux/flutter/generated_plugins.cmake
+windows/flutter/generated_plugin_registrant.*
+windows/flutter/generated_plugins.cmake
+macos/Flutter/GeneratedPluginRegistrant.swift

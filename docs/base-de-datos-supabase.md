@@ -10,12 +10,16 @@ UniSport guarda las cuentas, los partidos y las inscripciones en **Supabase**, u
 4. **Copiar los datos de conexión:** *Project Settings* → *API Keys* (o *Data API*):
    - **Project URL** (por ejemplo `https://abcd1234.supabase.co`)
    - **Publishable key** (o *anon public key*). **No** usar la *Secret key* / *service_role*.
-5. Pegarlos en [`lib/config/configuracion_supabase.dart`](../lib/config/configuracion_supabase.dart), en los `defaultValue` de `url` y `clavePublica`.
-6. Ejecutar la app (`flutter run`) y **registrar las cuentas de prueba** desde la pantalla de registro:
-   - `diego@unisport.edu` / `123456`
-   - `lorgio@unisport.edu` / `123456`
+5. **Configurar los datos de conexión:** Se recomienda pasarlos por línea de comando al ejecutar:
+   ```bash
+   flutter run --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-define=SUPABASE_KEY=tu_clave_publica
+   ```
+   O bien definirlos localmente en [`lib/config/configuracion_supabase.dart`](../lib/config/configuracion_supabase.dart) (cuidando de no subir credenciales al repositorio).
+6. Ejecutar la app y **registrar las cuentas de prueba** desde la pantalla de registro con una contraseña propia:
+   - `diego@unisport.edu`
+   - `lorgio@unisport.edu`
 
-La clave pública puede estar en el código: lo que protege los datos son las reglas por fila (RLS) del esquema.
+La clave pública es consumida por el cliente: lo que protege los datos son las reglas por fila (RLS) del esquema. Nunca compartas la `service_role` key.
 
 ### Recuperar y cambiar la contraseña
 

@@ -33,14 +33,18 @@ Los datos (cuentas, partidos e inscripciones) se guardan en **Supabase**, una ba
 1. Crear un proyecto gratuito en <https://supabase.com>.
 2. *SQL Editor* → pegar y ejecutar [`supabase/esquema.sql`](supabase/esquema.sql) (tablas, seguridad y reglas).
 3. *Authentication* → *Sign In / Providers* → *Email* → desactivar **Confirm email**.
-4. Copiar la **Project URL** y la **Publishable key** en [`lib/config/configuracion_supabase.dart`](lib/config/configuracion_supabase.dart).
+4. Obtener la **Project URL** y la **Publishable key** de tu proyecto. Se pueden pasar de forma segura al ejecutar:
+   ```bash
+   flutter run --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-define=SUPABASE_KEY=tu_clave_publica
+   ```
+   O configurarlas localmente en [`lib/config/configuracion_supabase.dart`](lib/config/configuracion_supabase.dart) (sin comitear credenciales al repositorio).
 
 Guía completa, arquitectura y cómo comprobarlo con dos teléfonos: [`docs/base-de-datos-supabase.md`](docs/base-de-datos-supabase.md).
 
 ### 4. Ejecutar la aplicación
-Ejecutar el comando estándar (Flutter detectará automáticamente el dispositivo o emulador disponible):
+Ejecutar pasando las variables de Supabase (o habiéndolas definido localmente):
 ```bash
-flutter run
+flutter run --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-define=SUPABASE_KEY=tu_clave_publica
 ```
 
 *Si se desea especificar una plataforma concreta:*
@@ -97,10 +101,10 @@ flutter test test/supabase_integracion_test.dart --dart-define=PRUEBAS_SUPABASE=
 Con Android iniciado y visible en `flutter devices`, ejecutar desde la raíz:
 
 ```powershell
-flutter test integration_test/crear_partido_test.dart -d emulator-5554 --dart-define=E2E_CORREO=diego@unisport.edu --dart-define=E2E_CLAVE=123456
+flutter test integration_test/crear_partido_test.dart -d emulator-5554 --dart-define=E2E_CORREO=diego@unisport.edu --dart-define=E2E_CLAVE=tu_clave_registrada
 ```
 
-Reemplazar el identificador del dispositivo y las credenciales si corresponde.
+Reemplazar el identificador del dispositivo y las credenciales por las de una cuenta registrada en tu entorno de pruebas.
 La cuenta debe estar registrada previamente y Supabase debe estar configurado
 con el esquema aplicado; esta prueba requiere internet. También se puede usar
 `-d windows`. No necesita ejecutar `flutter run` antes.
@@ -141,12 +145,12 @@ credenciales al APK de depuración generado para la prueba.
 
 ## ⚡ Cuentas Semilla para Pruebas (Seeds)
 
-Las cuentas viven en Supabase. Después de configurar el proyecto, regístrenlas **una vez** desde la pantalla de registro de la app:
+Las cuentas viven en Supabase. Después de configurar el proyecto, regístrenlas **una vez** desde la pantalla de registro de la app con una contraseña propia:
 
-| Estudiante | Correo | Contraseña | Carrera | Deporte |
+| Estudiante | Correo sugerido | Contraseña | Carrera | Deporte |
 | :--- | :--- | :--- | :--- | :--- |
-| **Diego Astete** | `diego@unisport.edu` | `123456` | Ingeniería en Sistemas | Futsal |
-| **Lorgio Choque** | `lorgio@unisport.edu` | `123456` | Ingeniería en Sistemas | Básquetbol |
+| **Diego Astete** | `diego@unisport.edu` | *(Definida por el evaluador al registrarse)* | Ingeniería en Sistemas | Futsal |
+| **Lorgio Choque** | `lorgio@unisport.edu` | *(Definida por el evaluador al registrarse)* | Ingeniería en Sistemas | Básquetbol |
 
 *Cualquier estudiante puede crear su cuenta en el formulario de **Registro**; la cuenta sirve en todos los dispositivos.*
 
