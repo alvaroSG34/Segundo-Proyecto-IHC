@@ -10,6 +10,7 @@ import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/tarjeta_historial.dart';
+import '../../widgets/barra_navegacion_partidos.dart';
 import 'vista_crear_partido.dart';
 import 'vista_explorar_partidos.dart';
 import '../autenticacion/vista_login.dart';
@@ -160,6 +161,14 @@ class _VistaHistorialState extends State<VistaHistorial> {
           padding: const EdgeInsets.all(12),
           onPressed: () => Navigator.pop(context),
         ),
+      ),
+      bottomNavigationBar: BarraNavegacionPartidos(
+        selectedIndex: 2,
+        servicioAuth: widget.servicioAuth,
+        repositorioPartidos: _repositorio,
+        servicioAnalitica: _analitica,
+        controladorExplorar: widget.controladorExplorar,
+        referenciaTemporal: widget.referenciaTemporal,
       ),
       body: Center(
         child: ConstrainedBox(

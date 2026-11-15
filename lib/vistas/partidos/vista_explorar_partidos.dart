@@ -14,6 +14,7 @@ import '../../servicios/partidos/repositorio_partidos_supabase.dart';
 import '../../tema/caja_mensaje.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/panel_filtros.dart';
+import '../../widgets/barra_navegacion_partidos.dart';
 import '../../widgets/tarjeta_partido.dart';
 
 /// Explorar partidos organizados por otros estudiantes, buscarlos, filtrarlos
@@ -382,6 +383,14 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Explorar partidos')),
+      bottomNavigationBar: BarraNavegacionPartidos(
+        selectedIndex: 0,
+        servicioAuth: widget.servicioAuth,
+        repositorioPartidos: _repositorio,
+        servicioAnalitica: widget.servicioAnalitica,
+        controladorExplorar: widget.controladorExplorar,
+        referenciaTemporal: widget.referenciaTemporal,
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),

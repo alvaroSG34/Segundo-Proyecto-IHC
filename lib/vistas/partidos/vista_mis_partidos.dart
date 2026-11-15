@@ -15,8 +15,8 @@ import '../../servicios/partidos/controlador_explorar.dart';
 import '../../tema/caja_mensaje.dart';
 import '../../tema/tema_app.dart';
 import '../../widgets/tarjeta_partido.dart';
+import '../../widgets/barra_navegacion_partidos.dart';
 import 'vista_crear_partido.dart';
-import 'vista_explorar_partidos.dart';
 import 'vista_historial.dart';
 import 'vista_reprogramar_partido.dart';
 import '../autenticacion/vista_login.dart';
@@ -158,22 +158,6 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
             : 'No se pudieron cargar tus partidos. Intenta nuevamente.';
       });
     }
-  }
-
-  // Abre "Explorar partidos" y, al volver, recarga para mostrar las uniones nuevas
-  Future<void> _explorarPartidos() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => VistaExplorarPartidos(
-          repositorioPartidos: _repositorio,
-          servicioAnalitica: _analitica,
-          controladorExplorar: widget.controladorExplorar,
-          servicioAuth: widget.servicioAuth,
-        ),
-      ),
-    );
-    if (mounted) await _cargarPartidos();
   }
 
   // Abre "Historial de participación" (Clase 16 · Tarea 4)
@@ -494,21 +478,13 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
         ],
       ),
       // Misma navegación principal que la portada (Clase 15, hallazgo #1 · H6)
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: BarraNavegacionPartidos(
         selectedIndex: 1,
-        onDestinationSelected: (indice) {
-          if (indice == 0) _explorarPartidos();
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(LucideIcons.compass),
-            label: 'Explorar',
-          ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.calendarDays),
-            label: 'Mis partidos',
-          ),
-        ],
+        servicioAuth: widget.servicioAuth,
+        repositorioPartidos: _repositorio,
+        servicioAnalitica: _analitica,
+        controladorExplorar: widget.controladorExplorar,
+        referenciaTemporal: widget.referenciaTemporal,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _crearPartido,

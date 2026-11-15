@@ -244,46 +244,67 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
     );
   }
 
-  Widget _tabla() => Container(
-    decoration: BoxDecoration(
-      color: TemaApp.superficie,
-      border: Border.all(color: TemaApp.borde),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowColor: WidgetStateProperty.all(TemaApp.superficieSuave),
-        columns: const [
-          DataColumn(label: Text('evento')),
-          DataColumn(label: Text('props')),
-          DataColumn(label: Text('fecha')),
-        ],
-        rows: [
-          for (final evento in _eventos.where(
-            (e) =>
-                _flujos[_flujo]!.contains(e.evento) ||
-                (_flujo == 'Buscar' &&
-                    e.evento == EventosAnalitica.busquedaSinResultados) ||
-                (_flujo == 'Entrar en espera' &&
-                    e.evento == EventosAnalitica.suplentePromovido),
-          ))
-            DataRow(
-              cells: [
-                DataCell(Text(evento.evento)),
-                DataCell(
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 280),
-                    child: Text(jsonEncode(evento.props)),
+  Widget _tabla() {
+    final eventos = _eventos.where(
+      (e) =>
+          _flujos[_flujo]!.contains(e.evento) ||
+          (_flujo == 'Buscar' &&
+              e.evento == EventosAnalitica.busquedaSinResultados) ||
+          (_flujo == 'Entrar en espera' &&
+              e.evento == EventosAnalitica.suplentePromovido),
+    );
+
+    if (eventos.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: Text('No hay eventos para este flujo.')),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final evento in eventos)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: TemaApp.superficie,
+              border: Border.all(color: TemaApp.borde),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  evento.evento,
+                  softWrap: true,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatearFecha(evento.fecha),
+                  style: const TextStyle(
+                    color: TemaApp.textoSecundario,
+                    fontSize: 12,
                   ),
                 ),
-                DataCell(Text(_formatearFecha(evento.fecha))),
+                const Divider(height: 20),
+                const Text(
+                  'Propiedades',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                SelectableText(
+                  const JsonEncoder.withIndent('  ').convert(evento.props),
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                ),
               ],
             ),
-        ],
-      ),
-    ),
-  );
+          ),
+      ],
+    );
+  }
 
   String _formatearFecha(DateTime fecha) {
     String dos(int valor) => valor.toString().padLeft(2, '0');
