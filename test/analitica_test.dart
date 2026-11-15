@@ -57,6 +57,8 @@ Future<ServicioAutenticacionFalso> _mostrarExplorar(
   ServicioAnalitica analitica, {
   ModeloPartido? partido,
 }) async {
+  await tester.binding.setSurfaceSize(const Size(800, 900));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
   final auth = ServicioAutenticacionFalso();
   auth.repositorio.sembrar('u-lorgio', partido ?? _partido());
   await auth.iniciarSesion('diego@unisport.edu', '123456');
@@ -161,7 +163,9 @@ void main() {
   });
 
   group('panel de analitica', () {
-    testWidgets('muestra evento, props y fecha en una tabla', (tester) async {
+    testWidgets('muestra tarjetas de evento, propiedades y fecha', (
+      tester,
+    ) async {
       final analitica = _AnaliticaFalsa(
         eventosConsulta: [
           EventoAnalitica(
@@ -181,18 +185,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await _seleccionarFlujo(tester, 'Unirse');
+      await _seleccionarFlujo(tester, 'Unirse a un partido');
       await tester.scrollUntilVisible(
-        find.byType(DataTable),
+        find.byKey(const Key('analitica_evento_0')),
         400,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _scrollableAnalitica(),
       );
-      expect(find.text('evento'), findsOneWidget);
-      expect(find.text('props'), findsOneWidget);
-      expect(find.text('fecha'), findsOneWidget);
       expect(find.text(EventosAnalitica.unionIniciada), findsOneWidget);
       expect(find.text(EventosAnalitica.partidoUnido), findsOneWidget);
-      expect(find.text('{"partido_id":"partido-1"}'), findsNWidgets(2));
+      expect(find.text('Propiedades'), findsNWidgets(2));
+      expect(find.textContaining('partido-1'), findsNWidgets(2));
       expect(find.text('2026-11-10 16:05'), findsOneWidget);
       expect(find.text('2026-11-10 16:09'), findsOneWidget);
     });
@@ -204,6 +206,169 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No hay eventos registrados.'), findsOneWidget);
+    });
+
+    testWidgets('adapta el resumen al ancho de movil y escritorio', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(800, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VistaAnalitica(
+            servicioAnalitica: _AnaliticaFalsa(
+              eventosConsulta: [
+                EventoAnalitica(
+                  evento: EventosAnalitica.creacionIniciada,
+                  props: const {'intento_id': 'intento-1'},
+                  fecha: DateTime(2026, 11, 10, 16, 5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final anchoEscritorio = tester
+          .getSize(find.byKey(const Key('analitica_resumen')))
+          .width;
+      expect(anchoEscritorio, lessThanOrEqualTo(480));
+
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      await tester.pumpAndSettle();
+      final anchoMovil = tester
+          .getSize(find.byKey(const Key('analitica_resumen')))
+          .width;
+      expect(anchoMovil, lessThan(anchoEscritorio));
+      expect(anchoMovil, lessThanOrEqualTo(480));
+    });
+
+    testWidgets(
+      'muestra hasta diez eventos sin controles si caben en una página',
+      (tester) async {
+        final eventos = [
+          for (var indice = 0; indice < 10; indice++)
+            EventoAnalitica(
+              evento: EventosAnalitica.creacionIniciada,
+              props: {'intento_id': 'intento-$indice'},
+              fecha: DateTime(2026, 11, 10, 16, indice),
+            ),
+        ];
+        await tester.pumpWidget(
+          MaterialApp(
+            home: VistaAnalitica(
+              servicioAnalitica: _AnaliticaFalsa(eventosConsulta: eventos),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('analitica_evento_0')), findsOneWidget);
+        expect(find.byKey(const Key('analitica_evento_9')), findsOneWidget);
+        expect(
+          find.byKey(const Key('analitica_paginacion_siguiente')),
+          findsNothing,
+        );
+        expect(find.text('Mostrando 1–10 de 10'), findsOneWidget);
+      },
+    );
+
+    testWidgets('permite avanzar y volver entre páginas de eventos', (
+      tester,
+    ) async {
+      await _usarViewportAnaliticaAlto(tester);
+      final eventos = [
+        for (var indice = 0; indice < 10; indice++)
+          EventoAnalitica(
+            evento: EventosAnalitica.creacionIniciada,
+            props: {'intento_id': 'intento-$indice'},
+            fecha: DateTime(2026, 11, 10, 16, indice),
+          ),
+        EventoAnalitica(
+          evento: EventosAnalitica.partidoCreado,
+          props: const {'intento_id': 'intento-0'},
+          fecha: DateTime(2026, 11, 10, 17),
+        ),
+      ];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VistaAnalitica(
+            servicioAnalitica: _AnaliticaFalsa(eventosConsulta: eventos),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mostrando 1–10 de 11'), findsOneWidget);
+      expect(find.text('Página 1 de 2'), findsOneWidget);
+      expect(find.byKey(const Key('analitica_evento_0')), findsOneWidget);
+      expect(find.byKey(const Key('analitica_evento_10')), findsNothing);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('analitica_Inicios'))).data,
+        '10',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('analitica_Finalizados')))
+            .data,
+        '1',
+      );
+
+      await tester.tap(find.byKey(const Key('analitica_paginacion_siguiente')));
+      await tester.pumpAndSettle();
+      expect(find.text('Mostrando 11–11 de 11'), findsOneWidget);
+      expect(find.text('Página 2 de 2'), findsOneWidget);
+      expect(find.byKey(const Key('analitica_evento_0')), findsNothing);
+      expect(find.byKey(const Key('analitica_evento_10')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('analitica_paginacion_anterior')));
+      await tester.pumpAndSettle();
+      expect(find.text('Mostrando 1–10 de 11'), findsOneWidget);
+      expect(find.text('Página 1 de 2'), findsOneWidget);
+      expect(find.byKey(const Key('analitica_evento_0')), findsOneWidget);
+    });
+
+    testWidgets('cambiar de flujo y actualizar reinician la página', (
+      tester,
+    ) async {
+      await _usarViewportAnaliticaAlto(tester);
+      final eventos = [
+        for (var indice = 0; indice < 11; indice++) ...[
+          EventoAnalitica(
+            evento: EventosAnalitica.creacionIniciada,
+            props: {'intento_id': 'crear-$indice'},
+            fecha: DateTime(2026, 11, 10, 16, indice),
+          ),
+          EventoAnalitica(
+            evento: EventosAnalitica.unionIniciada,
+            props: {'intento_id': 'unir-$indice'},
+            fecha: DateTime(2026, 11, 10, 15, indice),
+          ),
+        ],
+      ];
+      final analitica = _AnaliticaFalsa(eventosConsulta: eventos);
+      await tester.pumpWidget(
+        MaterialApp(home: VistaAnalitica(servicioAnalitica: analitica)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('analitica_paginacion_siguiente')));
+      await tester.pumpAndSettle();
+      expect(find.text('Página 2 de 2'), findsOneWidget);
+
+      await _seleccionarFlujo(tester, 'Unirse a un partido');
+      expect(find.text('Página 1 de 2'), findsOneWidget);
+      expect(find.text('Mostrando 1–10 de 11'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('analitica_paginacion_siguiente')));
+      await tester.pumpAndSettle();
+      expect(find.text('Página 2 de 2'), findsOneWidget);
+
+      analitica.eventosConsulta = eventos;
+      await tester.tap(find.byTooltip('Actualizar analítica'));
+      await tester.pumpAndSettle();
+      expect(find.text('Página 1 de 2'), findsOneWidget);
+      expect(find.text('Mostrando 1–10 de 11'), findsOneWidget);
     });
 
     testWidgets('permite reintentar despues de un error', (tester) async {
@@ -226,11 +391,11 @@ void main() {
       await tester.tap(find.text('Reintentar'));
       await tester.pumpAndSettle();
 
-      await _seleccionarFlujo(tester, 'Unirse');
+      await _seleccionarFlujo(tester, 'Unirse a un partido');
       await tester.scrollUntilVisible(
-        find.byType(DataTable),
+        find.byKey(const Key('analitica_evento_0')),
         400,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _scrollableAnalitica(),
       );
       expect(find.text(EventosAnalitica.unionIniciada), findsOneWidget);
     });
@@ -276,12 +441,49 @@ void _pruebasEmbudo() {
         evento('creacion_fallida', 'b', 'regla_negocio'),
         evento('creacion_fallida', 'b', 'regla_negocio'),
       ]);
-      expect(find.text('Inicios: 3'), findsOneWidget);
-      expect(find.text('Finalizados: 1'), findsOneWidget);
-      expect(find.text('Finalización: 33.3%'), findsOneWidget);
-      expect(find.text('Sin finalizar: 2'), findsOneWidget);
-      expect(find.text('Intentos con error: 2'), findsOneWidget);
-      expect(find.text('regla_negocio: 2'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('analitica_Inicios'))).data,
+        '3',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('analitica_Finalizados')))
+            .data,
+        '1',
+      );
+      expect(
+        tester.widget<Text>(find.byKey(const Key('analitica_porcentaje'))).data,
+        '33.3%',
+      );
+      expect(
+        find.byKey(const Key('analitica_detalle_Sin finalizar')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const Key('analitica_detalle_Sin finalizar')),
+            )
+            .data,
+        '2',
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const Key('analitica_detalle_Intentos con error')),
+            )
+            .data,
+        '2',
+      );
+      expect(find.text('regla_negocio'), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const Key('analitica_detalle_regla_negocio')),
+            )
+            .data,
+        '2',
+      );
       expect(
         tester
             .widgetList<LinearProgressIndicator>(
@@ -304,9 +506,20 @@ void _pruebasEmbudo() {
           fecha: DateTime(2026),
         ),
       ]);
-      expect(find.text('Sin datos'), findsOneWidget);
-      expect(find.text('Inicios: 0'), findsOneWidget);
-      expect(find.text('Finalizados: 0'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('analitica_porcentaje'))).data,
+        'Sin datos',
+      );
+      expect(
+        tester.widget<Text>(find.byKey(const Key('analitica_Inicios'))).data,
+        '0',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('analitica_Finalizados')))
+            .data,
+        '0',
+      );
     },
   );
 
@@ -314,35 +527,38 @@ void _pruebasEmbudo() {
     'selector cubre las 14 acciones y cuenta decisiones como finalizaciones',
     (tester) async {
       const acciones = {
-        'Unirse': ['union_iniciada', 'partido_unido'],
+        'Unirse a un partido': ['union_iniciada', 'partido_unido'],
         'Crear partido': ['creacion_iniciada', 'partido_creado'],
-        'Buscar': [
+        'Buscar partidos': [
           'busqueda_iniciada',
           'busqueda_realizada',
           'busqueda_sin_resultados',
         ],
-        'Registrarse': ['registro_iniciado', 'registro_completado'],
+        'Crear cuenta': ['registro_iniciado', 'registro_completado'],
         'Iniciar sesión': ['login_iniciado', 'login_exitoso'],
-        'Salir': ['salida_iniciada', 'salida_completada'],
-        'Entrar en espera': ['espera_iniciada', 'espera_confirmada'],
-        'Reprogramar': ['reprogramacion_iniciada', 'partido_reprogramado'],
-        'Reconfirmar': [
+        'Salir de un partido': ['salida_iniciada', 'salida_completada'],
+        'Entrar en lista de espera': ['espera_iniciada', 'espera_confirmada'],
+        'Reprogramar partido': [
+          'reprogramacion_iniciada',
+          'partido_reprogramado',
+        ],
+        'Responder reprogramación': [
           'reconfirmacion_iniciada',
           'reprogramacion_rechazada',
           'reprogramacion_aceptada',
         ],
-        'Responder propuesta': [
+        'Responder propuesta de equipos': [
           'respuesta_propuesta_iniciada',
           'propuesta_rechazada',
           'propuesta_aceptada',
         ],
-        'Validar resultado': [
+        'Validar resultado del partido': [
           'validacion_resultado_iniciada',
           'resultado_disputado',
           'resultado_confirmado',
         ],
-        'Editar': ['edicion_iniciada', 'partido_editado'],
-        'Eliminar': ['eliminacion_iniciada', 'partido_eliminado'],
+        'Editar partido': ['edicion_iniciada', 'partido_editado'],
+        'Eliminar partido': ['eliminacion_iniciada', 'partido_eliminado'],
         'Recuperar contraseña': [
           'recuperacion_iniciada',
           'recuperacion_solicitada',
@@ -355,27 +571,64 @@ void _pruebasEmbudo() {
       ]);
       for (final accion in acciones.keys) {
         await _seleccionarFlujo(tester, accion);
-        final tabla = tester.widget<DataTable>(find.byType(DataTable));
+        final eventosEsperados = [
+          ...acciones[accion]!,
+          if (accion == 'Entrar en lista de espera') 'suplente_promovido',
+        ];
+        for (final nombre in eventosEsperados) {
+          expect(find.text(nombre), findsOneWidget);
+        }
         expect(
-          tabla.rows.map((fila) => (fila.cells.first.child as Text).data),
-          [
-            ...acciones[accion]!,
-            if (accion == 'Entrar en espera') 'suplente_promovido',
-          ],
+          tester.widget<Text>(find.byKey(const Key('analitica_Inicios'))).data,
+          '1',
         );
-        expect(find.text('Inicios: 1'), findsOneWidget);
-        expect(find.text('Finalizados: 1'), findsOneWidget);
-        expect(find.text('Finalización: 100.0%'), findsOneWidget);
+        expect(
+          tester
+              .widget<Text>(find.byKey(const Key('analitica_Finalizados')))
+              .data,
+          '1',
+        );
+        expect(
+          tester
+              .widget<Text>(find.byKey(const Key('analitica_porcentaje')))
+              .data,
+          '100.0%',
+        );
       }
-      await _seleccionarFlujo(tester, 'Entrar en espera');
-      expect(find.text('Suplentes promovidos: 1'), findsOneWidget);
+      await _seleccionarFlujo(tester, 'Entrar en lista de espera');
+      expect(find.text('Suplentes promovidos'), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const Key('analitica_detalle_Suplentes promovidos')),
+            )
+            .data,
+        '1',
+      );
     },
   );
 }
 
 Future<void> _seleccionarFlujo(WidgetTester tester, String accion) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('analitica_flujo')),
+    300,
+    scrollable: _scrollableAnalitica(),
+  );
   await tester.tap(find.byKey(const Key('analitica_flujo')));
   await tester.pumpAndSettle();
   await tester.tap(find.text(accion).last);
   await tester.pumpAndSettle();
+}
+
+Finder _scrollableAnalitica() => find
+    .descendant(
+      of: find.byKey(const Key('analitica_lista')),
+      matching: find.byType(Scrollable),
+    )
+    .first;
+
+Future<void> _usarViewportAnaliticaAlto(WidgetTester tester) async {
+  await tester.binding.setSurfaceSize(const Size(800, 3000));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
 }

@@ -16,16 +16,23 @@ class VistaAnalitica extends StatefulWidget {
 }
 
 class _VistaAnaliticaState extends State<VistaAnalitica> {
+  static const _eventosPorPagina = 10;
+  final _eventosRecientesKey = GlobalKey();
+
   // Cada fila contiene inicio, error y las posibles finalizaciones.
   static const _flujos = {
-    'Unirse': ['union_iniciada', 'union_fallida', 'partido_unido'],
+    'Unirse a un partido': ['union_iniciada', 'union_fallida', 'partido_unido'],
     'Crear partido': [
       'creacion_iniciada',
       'creacion_fallida',
       'partido_creado',
     ],
-    'Buscar': ['busqueda_iniciada', 'busqueda_fallida', 'busqueda_realizada'],
-    'Registrarse': [
+    'Buscar partidos': [
+      'busqueda_iniciada',
+      'busqueda_fallida',
+      'busqueda_realizada',
+    ],
+    'Crear cuenta': [
       'registro_iniciado',
       'registro_fallido',
       'registro_completado',
@@ -36,37 +43,45 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
       'cuenta_eliminacion_fallida',
       'cuenta_eliminacion_completada',
     ],
-    'Salir': ['salida_iniciada', 'salida_fallida', 'salida_completada'],
-    'Entrar en espera': [
+    'Salir de un partido': [
+      'salida_iniciada',
+      'salida_fallida',
+      'salida_completada',
+    ],
+    'Entrar en lista de espera': [
       'espera_iniciada',
       'espera_fallida',
       'espera_confirmada',
     ],
-    'Reprogramar': [
+    'Reprogramar partido': [
       'reprogramacion_iniciada',
       'reprogramacion_fallida',
       'partido_reprogramado',
     ],
-    'Reconfirmar': [
+    'Responder reprogramación': [
       'reconfirmacion_iniciada',
       'reconfirmacion_fallida',
       'reprogramacion_aceptada',
       'reprogramacion_rechazada',
     ],
-    'Responder propuesta': [
+    'Responder propuesta de equipos': [
       'respuesta_propuesta_iniciada',
       'respuesta_propuesta_fallida',
       'propuesta_aceptada',
       'propuesta_rechazada',
     ],
-    'Validar resultado': [
+    'Validar resultado del partido': [
       'validacion_resultado_iniciada',
       'validacion_resultado_fallida',
       'resultado_confirmado',
       'resultado_disputado',
     ],
-    'Editar': ['edicion_iniciada', 'edicion_fallida', 'partido_editado'],
-    'Eliminar': [
+    'Editar partido': [
+      'edicion_iniciada',
+      'edicion_fallida',
+      'partido_editado',
+    ],
+    'Eliminar partido': [
       'eliminacion_iniciada',
       'eliminacion_fallida',
       'partido_eliminado',
@@ -79,6 +94,7 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
   };
   String _flujo = 'Crear partido';
   List<EventoAnalitica> _eventos = const [];
+  int _paginaActual = 0;
   String? _error;
   bool _cargando = true;
 
@@ -88,8 +104,11 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
     _cargar();
   }
 
-  Future<void> _cargar() async {
+  Future<void> _actualizar() => _cargar(desplazarAEventos: true);
+
+  Future<void> _cargar({bool desplazarAEventos = false}) async {
     setState(() {
+      _paginaActual = 0;
       _cargando = true;
       _error = null;
     });
@@ -100,6 +119,7 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
         _eventos = eventos;
         _cargando = false;
       });
+      if (desplazarAEventos) _desplazarAEventosRecientes();
     } on StateError catch (e) {
       if (!mounted) return;
       setState(() {
@@ -118,30 +138,39 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analítica'),
-        actions: [
-          IconButton(
-            tooltip: 'Actualizar analítica',
-            onPressed: _cargando ? null : _cargar,
-            icon: const Icon(LucideIcons.refreshCw),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: AppBar(
+              title: const Text('Analítica'),
+              actions: [
+                IconButton(
+                  tooltip: 'Actualizar analítica',
+                  onPressed: _cargando ? null : _actualizar,
+                  icon: const Icon(LucideIcons.refreshCw),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: RefreshIndicator(
-            onRefresh: _cargar,
+            onRefresh: _actualizar,
             child: ListView(
+              key: const Key('analitica_lista'),
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
                 const Text(
                   'Eventos de los flujos principales',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 if (_cargando)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 80),
@@ -155,9 +184,11 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
                     child: Center(child: Text('No hay eventos registrados.')),
                   )
                 else ...[
-                  _embudo(),
+                  _selectorFlujo(),
+                  const SizedBox(height: 18),
+                  _tarjetaResumen(),
                   const SizedBox(height: 24),
-                  _tabla(),
+                  _eventosRecientes(),
                 ],
               ],
             ),
@@ -187,7 +218,26 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
     };
   }
 
-  Widget _embudo() {
+  Widget _selectorFlujo() => DropdownButtonFormField<String>(
+    key: const Key('analitica_flujo'),
+    initialValue: _flujo,
+    isExpanded: true,
+    decoration: const InputDecoration(labelText: 'Acción'),
+    items: [
+      for (final flujo in _flujos.keys)
+        DropdownMenuItem(value: flujo, child: Text(flujo)),
+    ],
+    onChanged: (valor) {
+      if (valor != null) {
+        setState(() {
+          _flujo = valor;
+          _paginaActual = 0;
+        });
+      }
+    },
+  );
+
+  Widget _tarjetaResumen() {
     final datos = _resumen(_flujo);
     final inicios = datos['inicios']!;
     final finales = datos['finalizados']!;
@@ -204,55 +254,185 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
         errores.putIfAbsent(codigo, () => <String>{}).add(id);
       }
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DropdownButtonFormField<String>(
-          key: const Key('analitica_flujo'),
-          initialValue: _flujo,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Acción'),
-          items: [
-            for (final flujo in _flujos.keys)
-              DropdownMenuItem(value: flujo, child: Text(flujo)),
-          ],
-          onChanged: (valor) {
-            if (valor != null) setState(() => _flujo = valor);
-          },
-        ),
-        const SizedBox(height: 16),
-        Text('Inicios: $inicios'),
-        LinearProgressIndicator(value: inicios == 0 ? 0 : 1),
-        const SizedBox(height: 12),
-        Text('Finalizados: $finales'),
-        LinearProgressIndicator(value: tasa),
-        const SizedBox(height: 12),
-        Text(
-          inicios == 0
-              ? 'Sin datos'
-              : 'Finalización: ${(tasa * 100).toStringAsFixed(1)}%',
-        ),
-        Text('Sin finalizar: ${datos['pendientes']}'),
-        Text('Intentos con error: ${datos['errores']}'),
-        for (final error in errores.entries)
-          Text('${error.key}: ${error.value.length}'),
-        if (_flujo == 'Entrar en espera')
-          Text(
-            'Suplentes promovidos: ${_eventos.where((e) => e.evento == EventosAnalitica.suplentePromovido).length}',
+    final porcentaje = inicios == 0
+        ? 'Sin datos'
+        : '${(tasa * 100).toStringAsFixed(1)}%';
+
+    return Container(
+      key: const Key('analitica_resumen'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: TemaApp.superficie,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Resumen del flujo',
+                style: TemaApp.titulo(tamano: 17, peso: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Rendimiento del flujo: $_flujo',
+                style: const TextStyle(
+                  color: TemaApp.textoSecundario,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
-      ],
+          const SizedBox(height: 18),
+          _filaProgreso('Inicios', inicios, inicios == 0 ? 0 : 1),
+          const SizedBox(height: 16),
+          _filaProgreso('Finalizados', finales, tasa),
+          const SizedBox(height: 18),
+          _filaFinalizacion(porcentaje),
+          const SizedBox(height: 14),
+          _detallesResumen(datos, errores),
+          if (_flujo == 'Entrar en lista de espera') ...[
+            const SizedBox(height: 14),
+            _filaDetalle(
+              LucideIcons.users,
+              'Suplentes promovidos',
+              '${_eventos.where((e) => e.evento == EventosAnalitica.suplentePromovido).length}',
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _tabla() {
-    final eventos = _eventos.where(
-      (e) =>
-          _flujos[_flujo]!.contains(e.evento) ||
-          (_flujo == 'Buscar' &&
-              e.evento == EventosAnalitica.busquedaSinResultados) ||
-          (_flujo == 'Entrar en espera' &&
-              e.evento == EventosAnalitica.suplentePromovido),
-    );
+  void _cambiarPagina(int pagina) {
+    setState(() => _paginaActual = pagina);
+    _desplazarAEventosRecientes();
+  }
+
+  void _desplazarAEventosRecientes() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final contexto = _eventosRecientesKey.currentContext;
+      if (contexto != null) {
+        Scrollable.ensureVisible(
+          contexto,
+          alignment: 0,
+          duration: const Duration(milliseconds: 180),
+        );
+      }
+    });
+  }
+
+  Widget _filaProgreso(String titulo, int cantidad, double progreso) => Column(
+    children: [
+      Row(
+        children: [
+          Text(titulo, style: const TextStyle(fontWeight: FontWeight.w700)),
+          const Spacer(),
+          Text(
+            '$cantidad',
+            key: Key('analitica_$titulo'),
+            style: TemaApp.titulo(tamano: 16, peso: FontWeight.w700),
+          ),
+        ],
+      ),
+      const SizedBox(height: 7),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: LinearProgressIndicator(
+          value: progreso,
+          minHeight: 6,
+          backgroundColor: TemaApp.verdeSuave,
+          color: TemaApp.verdeDeportivo,
+        ),
+      ),
+    ],
+  );
+
+  Widget _filaFinalizacion(String porcentaje) => Row(
+    children: [
+      const Text('Finalización', style: TextStyle(fontWeight: FontWeight.w600)),
+      const Spacer(),
+      Text(
+        porcentaje,
+        key: const Key('analitica_porcentaje'),
+        style: const TextStyle(
+          color: TemaApp.verdeOscuro,
+          fontWeight: FontWeight.w700,
+          fontSize: 16,
+        ),
+      ),
+    ],
+  );
+
+  Widget _detallesResumen(
+    Map<String, int> datos,
+    Map<String, Set<String>> errores,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _filaDetalle(
+        LucideIcons.circleDashed,
+        'Sin finalizar',
+        '${datos['pendientes']}',
+      ),
+      const SizedBox(height: 10),
+      _filaDetalle(
+        LucideIcons.triangleAlert,
+        'Intentos con error',
+        '${datos['errores']}',
+      ),
+      for (final error in errores.entries) ...[
+        const SizedBox(height: 8),
+        _filaDetalle(
+          LucideIcons.list,
+          error.key,
+          '${error.value.length}',
+          compactar: true,
+        ),
+      ],
+    ],
+  );
+
+  Widget _filaDetalle(
+    IconData icono,
+    String etiqueta,
+    String valor, {
+    bool compactar = false,
+  }) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(icono, size: 20, color: TemaApp.textoSecundario),
+      const SizedBox(width: 9),
+      Expanded(
+        child: Text(
+          etiqueta,
+          maxLines: compactar ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13),
+        ),
+      ),
+      const SizedBox(width: 6),
+      Text(
+        valor,
+        key: Key('analitica_detalle_$etiqueta'),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+    ],
+  );
+
+  Widget _eventosRecientes() {
+    final eventos = _eventos
+        .where(
+          (e) =>
+              _flujos[_flujo]!.contains(e.evento) ||
+              (_flujo == 'Buscar partidos' &&
+                  e.evento == EventosAnalitica.busquedaSinResultados) ||
+              (_flujo == 'Entrar en lista de espera' &&
+                  e.evento == EventosAnalitica.suplentePromovido),
+        )
+        .toList(growable: false);
 
     if (eventos.isEmpty) {
       return const Padding(
@@ -261,17 +441,31 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
       );
     }
 
+    final totalPaginas = (eventos.length / _eventosPorPagina).ceil();
+    final pagina = _paginaActual.clamp(0, totalPaginas - 1).toInt();
+    final inicio = pagina * _eventosPorPagina;
+    final fin = (inicio + _eventosPorPagina).clamp(0, eventos.length).toInt();
+    final eventosPagina = eventos.sublist(inicio, fin);
+
     return Column(
+      key: _eventosRecientesKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final evento in eventos)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Eventos recientes',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+        ),
+        for (final (indice, evento) in eventosPagina.indexed)
           Container(
-            margin: const EdgeInsets.only(bottom: 10),
+            key: Key('analitica_evento_${inicio + indice}'),
+            margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: TemaApp.superficie,
-              border: Border.all(color: TemaApp.borde),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,29 +473,83 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
                 Text(
                   evento.evento,
                   softWrap: true,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   _formatearFecha(evento.fecha),
                   style: const TextStyle(
                     color: TemaApp.textoSecundario,
-                    fontSize: 12,
+                    fontSize: 13,
                   ),
                 ),
-                const Divider(height: 20),
+                const Divider(height: 22),
                 const Text(
                   'Propiedades',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
-                const SizedBox(height: 6),
-                SelectableText(
-                  const JsonEncoder.withIndent('  ').convert(evento.props),
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: SelectableText(
+                    const JsonEncoder.withIndent('  ').convert(evento.props),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            'Mostrando ${inicio + 1}–$fin de ${eventos.length}',
+            key: const Key('analitica_paginacion_rango'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: TemaApp.textoSecundario,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        if (totalPaginas > 1) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Página ${pagina + 1} de $totalPaginas',
+            key: const Key('analitica_paginacion_pagina'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: TemaApp.textoSecundario,
+              fontSize: 12,
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  key: const Key('analitica_paginacion_anterior'),
+                  onPressed: pagina == 0
+                      ? null
+                      : () => _cambiarPagina(pagina - 1),
+                  child: const Text('Anterior'),
+                ),
+              ),
+              Expanded(
+                child: TextButton(
+                  key: const Key('analitica_paginacion_siguiente'),
+                  onPressed: pagina >= totalPaginas - 1
+                      ? null
+                      : () => _cambiarPagina(pagina + 1),
+                  child: const Text('Siguiente'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
