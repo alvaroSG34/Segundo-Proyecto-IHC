@@ -85,9 +85,14 @@ Future<void> _mostrar(
 }
 
 Future<void> _abrir(WidgetTester tester, bool editar) async {
-  final boton = find.text(editar ? 'Editar' : 'Eliminar');
-  await tester.ensureVisible(boton);
+  if (find.text('Detalles del partido').evaluate().isEmpty) {
+    await tester.ensureVisible(find.text('Ver detalle').first);
+    await tester.tap(find.text('Ver detalle').first);
+    await tester.pumpAndSettle();
+  }
+  await tester.tap(find.byType(PopupMenuButton<String>));
   await tester.pumpAndSettle();
+  final boton = find.text(editar ? 'Editar' : 'Eliminar partido');
   await tester.tap(boton);
   await tester.pumpAndSettle();
   if (editar) {
@@ -202,30 +207,34 @@ void main() {
       },
     );
 
-    testWidgets('$accion: cancelar no cambia el partido ni registra finalizacion', (
-      tester,
-    ) async {
-      final repo = _Repositorio();
-      final analitica = _Analitica();
-      await _mostrar(tester, repo, analitica);
-      await _abrir(tester, editar);
-      if (editar) {
-        await tester.binding.handlePopRoute();
-      } else {
-        await tester.tap(find.text('Cancelar'));
-      }
-      await tester.pumpAndSettle();
-      expect(
-        analitica.eventos.where(
-          (e) => [
-            EventosAnalitica.partidoEditado,
-            EventosAnalitica.partidoEliminado,
-          ].contains(e.$1),
-        ),
-        isEmpty,
-      );
-      expect((await repo.obtenerMisPartidos()).single.titulo, 'Titulo privado');
-    });
+    testWidgets(
+      '$accion: cancelar no cambia el partido ni registra finalizacion',
+      (tester) async {
+        final repo = _Repositorio();
+        final analitica = _Analitica();
+        await _mostrar(tester, repo, analitica);
+        await _abrir(tester, editar);
+        if (editar) {
+          await tester.binding.handlePopRoute();
+        } else {
+          await tester.tap(find.text('Cancelar'));
+        }
+        await tester.pumpAndSettle();
+        expect(
+          analitica.eventos.where(
+            (e) => [
+              EventosAnalitica.partidoEditado,
+              EventosAnalitica.partidoEliminado,
+            ].contains(e.$1),
+          ),
+          isEmpty,
+        );
+        expect(
+          (await repo.obtenerMisPartidos()).single.titulo,
+          'Titulo privado',
+        );
+      },
+    );
 
     testWidgets('$accion: fallo de analitica no impide la operacion', (
       tester,

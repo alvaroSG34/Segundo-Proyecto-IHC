@@ -157,7 +157,15 @@ class _VistaReprogramarPartidoState extends State<VistaReprogramarPartido> {
     return PopScope(
       canPop: !_guardando,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Reprogramar partido')),
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: AppBar(title: const Text('Reprogramar partido')),
+            ),
+          ),
+        ),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),

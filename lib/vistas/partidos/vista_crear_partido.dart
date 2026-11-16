@@ -656,15 +656,23 @@ class _VistaCrearPartidoState extends State<VistaCrearPartido> {
     return PopScope(
       canPop: !_guardando,
       child: Scaffold(
-        appBar: AppBar(
-          leading: _guardando
-              ? const IconButton(
-                  onPressed: null,
-                  icon: Icon(Icons.arrow_back),
-                  tooltip: 'Volver',
-                )
-              : null,
-          title: Text(_esEdicion ? 'Editar partido' : 'Crear partido'),
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: AppBar(
+                leading: _guardando
+                    ? const IconButton(
+                        onPressed: null,
+                        icon: Icon(Icons.arrow_back),
+                        tooltip: 'Volver',
+                      )
+                    : null,
+                title: Text(_esEdicion ? 'Editar partido' : 'Crear partido'),
+              ),
+            ),
+          ),
         ),
         body: Center(
           child: ConstrainedBox(

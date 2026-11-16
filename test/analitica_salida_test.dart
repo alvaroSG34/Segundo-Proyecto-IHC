@@ -91,6 +91,18 @@ Future<void> _mostrar(
 }
 
 Future<void> _abrirSalida(WidgetTester tester) async {
+  if (find.bySemanticsLabel('Como jugador').evaluate().isNotEmpty &&
+      find.text('Detalles del partido').evaluate().isEmpty) {
+    await tester.tap(find.bySemanticsLabel('Como jugador'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Ver detalle').first);
+    await tester.tap(find.text('Ver detalle').first);
+    await tester.pumpAndSettle();
+  }
+  if (find.text('Detalles del partido').evaluate().isNotEmpty) {
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+  }
   final boton = find.text('Salir del partido');
   await tester.ensureVisible(boton);
   await tester.pumpAndSettle();

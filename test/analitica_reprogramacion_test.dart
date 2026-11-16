@@ -117,6 +117,36 @@ Future<void> _mostrar(
 }
 
 Future<void> _tocar(WidgetTester tester, Finder boton) async {
+  if (boton.evaluate().isEmpty &&
+      find.text('Detalles del partido').evaluate().isEmpty) {
+    final esAccionDeJugador =
+        boton.toString().contains('partido_reconfirmar') ||
+        boton.toString().contains('partido_retirarse_reprogramacion');
+    if (esAccionDeJugador &&
+        find.bySemanticsLabel('Como jugador').evaluate().isNotEmpty) {
+      await tester.tap(find.bySemanticsLabel('Como jugador'));
+      await tester.pumpAndSettle();
+    }
+    await tester.ensureVisible(find.text('Ver detalle').first);
+    await tester.tap(find.text('Ver detalle').first);
+    await tester.pumpAndSettle();
+  }
+  if (boton.evaluate().isEmpty &&
+      boton.toString().contains('partido_reprogramar')) {
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    boton = find.text('Reprogramar');
+  } else if (boton.evaluate().isEmpty &&
+      boton.toString().contains('partido_reconfirmar')) {
+    boton = find.text('Confirmar asistencia');
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+  } else if (boton.evaluate().isEmpty &&
+      boton.toString().contains('partido_retirarse_reprogramacion')) {
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    boton = find.text('Retirarme de la nueva fecha');
+  }
   await tester.ensureVisible(boton);
   await tester.pumpAndSettle();
   await tester.tap(boton);
