@@ -7,7 +7,7 @@ import 'package:unisport/modelos/propuesta_equipos.dart';
 import 'package:unisport/servicios/analitica/servicio_analitica.dart';
 import 'package:unisport/servicios/partidos/controlador_explorar.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
-import 'package:unisport/vistas/partidos/vista_equipos.dart';
+import 'package:unisport/vistas/partidos/vista_detalle_partido.dart';
 
 import 'apoyo/repositorio_en_memoria.dart';
 import 'apoyo/servicio_autenticacion_falso.dart';
@@ -90,7 +90,13 @@ Future<void> _mostrar(
     ),
   );
   await tester.pumpAndSettle();
-  await _tocar(tester, 'Ver equipos');
+  await tester.tap(find.bySemanticsLabel('Como jugador'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Ver detalle'));
+  await tester.pumpAndSettle();
+  await tester.drag(find.byType(ListView).last, const Offset(0, -700));
+  await tester.pumpAndSettle();
+  await _tocar(tester, 'Responder propuesta');
 }
 
 Future<void> _tocar(WidgetTester tester, String texto) async {
@@ -134,7 +140,7 @@ void main() {
         final analitica = _Analitica();
         await tester.pumpWidget(
           MaterialApp(
-            home: VistaEquipos(
+            home: VistaDetallePartido(
               partido: (await repo.obtenerPartidosUnidos()).single,
               repositorio: repo,
               usuarioId: 'capitan',

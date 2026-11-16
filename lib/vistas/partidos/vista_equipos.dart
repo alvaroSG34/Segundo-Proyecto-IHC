@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../modelos/modelo_partido.dart';
 import '../../modelos/propuesta_equipos.dart';
-import '../../modelos/resultado_partido.dart';
 import '../../servicios/partidos/repositorio_partidos.dart';
 import '../../servicios/analitica/servicio_analitica.dart';
 import '../../tema/caja_mensaje.dart';
+import '../../tema/tema_app.dart';
 
 class VistaEquipos extends StatefulWidget {
   final ModeloPartido partido;
@@ -29,10 +30,7 @@ class _VistaEquiposState extends State<VistaEquipos> {
   late ModeloPartido _partido = widget.partido;
   List<ParticipantePartido> _participantes = [];
   PropuestaEquipos? _propuesta;
-  ResultadoValidadoPartido? _resultado;
   final Map<String, String> _equipos = {};
-  final _marcadorA = TextEditingController();
-  final _marcadorB = TextEditingController();
   String? _capitanId;
   bool _cargando = true;
   bool _guardando = false;
@@ -48,13 +46,6 @@ class _VistaEquiposState extends State<VistaEquipos> {
   void initState() {
     super.initState();
     _cargar();
-  }
-
-  @override
-  void dispose() {
-    _marcadorA.dispose();
-    _marcadorB.dispose();
-    super.dispose();
   }
 
   Future<void> _cargar() async {
@@ -76,15 +67,11 @@ class _VistaEquiposState extends State<VistaEquipos> {
         _partido.id,
       );
       final propuesta = await widget.repositorio.obtenerPropuesta(_partido.id);
-      final resultado = propuesta?.estado == EstadoPropuesta.aceptada
-          ? await widget.repositorio.obtenerResultado(_partido.id)
-          : null;
       if (!mounted) return;
       setState(() {
         _partido = actuales.first;
         _participantes = participantes;
         _propuesta = propuesta;
-        _resultado = resultado;
         _equipos.clear();
         for (final p in participantes) {
           _equipos[p.id] = propuesta?.equipoB.contains(p.id) == true
@@ -93,10 +80,6 @@ class _VistaEquiposState extends State<VistaEquipos> {
         }
         _capitanId = propuesta?.capitanRivalId;
         _editando = propuesta == null && _puedeEditar;
-        if (resultado != null) {
-          _marcadorA.text = '${resultado.marcadorEquipoA}';
-          _marcadorB.text = '${resultado.marcadorEquipoB}';
-        }
       });
     } on StateError catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -178,255 +161,205 @@ class _VistaEquiposState extends State<VistaEquipos> {
     }
   }
 
-  Future<void> _registrarResultado() async {
-    if (_guardando) return;
-    final equipoA = int.tryParse(_marcadorA.text.trim());
-    final equipoB = int.tryParse(_marcadorB.text.trim());
-    if (equipoA == null || equipoB == null) {
-      setState(() => _error = 'Ingresa dos valores enteros para el marcador.');
-      return;
-    }
+  List<ParticipantePartido> _jugadoresEquipo(String letra) =>
+      _participantes.where((p) => _equipos[p.id] == letra).toList();
+
+  void _moverJugador(ParticipantePartido participante, String equipoDestino) {
+    if (participante.esOrganizador || _guardando) return;
     setState(() {
-      _guardando = true;
-      _error = null;
+      _equipos[participante.id] = equipoDestino;
+      if (equipoDestino == 'A' && _capitanId == participante.id) {
+        _capitanId = null;
+      }
     });
-    try {
-      await widget.repositorio.registrarResultado(
-        _partido.id,
-        equipoA,
-        equipoB,
-      );
-      await _cargar();
-    } on StateError catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _guardando = false);
-    }
   }
 
-  Future<void> _disputarResultado() async {
-    if (_guardando) return;
-    final props = _iniciarValidacionResultado();
-    var motivoEscrito = '';
-    final motivo = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Disputar marcador'),
-        content: TextField(
-          autofocus: true,
-          maxLength: 300,
-          onChanged: (valor) => motivoEscrito = valor,
-          decoration: const InputDecoration(
-            labelText: 'Motivo',
-            hintText: 'Explica qué debe corregirse',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, motivoEscrito),
-            child: const Text('Enviar disputa'),
-          ),
-        ],
+  Widget _tarjetaEquipo(String letra, {bool editable = false}) {
+    final jugadores = _jugadoresEquipo(letra);
+    final esEquipoA = letra == 'A';
+    final colorEquipo = esEquipoA ? TemaApp.verdeOscuro : TemaApp.azulDeportivo;
+    final fondoEquipo = esEquipoA ? TemaApp.verdeSuave : TemaApp.azulSuave;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: TemaApp.superficie,
+        border: Border.all(color: TemaApp.borde),
+        borderRadius: BorderRadius.circular(18),
       ),
-    );
-    if (motivo == null || !mounted) return;
-    await _actuarSobreResultado(
-      EventosAnalitica.resultadoDisputado,
-      () => widget.repositorio.disputarResultado(
-        _partido.id,
-        _resultado!.revision,
-        motivo,
-      ),
-      props,
-    );
-  }
-
-  Map<String, String> _iniciarValidacionResultado() {
-    final props = {'intento_id': crearIntentoId()};
-    registrarEvento(
-      widget.servicioAnalitica,
-      EventosAnalitica.validacionResultadoIniciada,
-      props,
-    );
-    return props;
-  }
-
-  Future<void> _confirmarResultado() async {
-    if (_guardando) return;
-    await _actuarSobreResultado(
-      EventosAnalitica.resultadoConfirmado,
-      () => widget.repositorio.confirmarResultado(
-        _partido.id,
-        _resultado!.revision,
-      ),
-      _iniciarValidacionResultado(),
-    );
-  }
-
-  Future<void> _actuarSobreResultado(
-    String evento,
-    Future<void> Function() accion,
-    Map<String, String> props,
-  ) async {
-    if (_guardando) return;
-    setState(() {
-      _guardando = true;
-      _error = null;
-    });
-    try {
-      await accion();
-      registrarEvento(widget.servicioAnalitica, evento, props);
-      await _cargar();
-    } on StateError catch (e) {
-      registrarEvento(
-        widget.servicioAnalitica,
-        EventosAnalitica.validacionResultadoFallida,
-        {...props, 'codigo_error': 'servicio_partidos'},
-      );
-      await _cargar();
-      if (mounted) setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _guardando = false);
-    }
-  }
-
-  Widget _seccionResultado() {
-    final resultado = _resultado;
-    final esCapitan = _propuesta!.capitanRivalId == widget.usuarioId;
-    final puedeRegistrar =
-        _partido.soyOrganizador &&
-        (resultado == null ||
-            resultado.estado == EstadoResultadoPartido.disputado);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(height: 32),
-        Text(
-          'Resultado del partido',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        if (resultado == null)
-          const Text('El organizador todavía no registró el marcador.')
-        else ...[
-          Text(
-            'Equipo A ${resultado.marcador} Equipo B',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          Text('Estado: ${resultado.estado.etiqueta}'),
-          if (resultado.motivoDisputa != null)
-            CajaMensaje(
-              texto: 'Motivo de la disputa: ${resultado.motivoDisputa}',
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            color: fondoEquipo,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Equipo $letra',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: TemaApp.textoPrincipal,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${jugadores.length} ${jugadores.length == 1 ? 'jugador' : 'jugadores'}',
+                  style: const TextStyle(color: TemaApp.textoSecundario),
+                ),
+              ],
             ),
-          if (resultado.esDefinitivo)
-            const CajaMensaje(
-              texto:
-                  'Resultado definitivo: fue confirmado por el capitán rival.',
+          ),
+          if (jugadores.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Mueve aquí a los jugadores que formarán este equipo.',
+                style: TextStyle(color: TemaApp.textoSecundario),
+              ),
             )
           else
-            const Text('Este resultado aún no es definitivo.'),
-        ],
-        if (puedeRegistrar) ...[
-          const SizedBox(height: 16),
-          Text(
-            resultado == null ? 'Registrar marcador' : 'Corregir marcador',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  key: const ValueKey('marcador_equipo_a'),
-                  controller: _marcadorA,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Equipo A'),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('-'),
-              ),
-              Expanded(
-                child: TextField(
-                  key: const ValueKey('marcador_equipo_b'),
-                  controller: _marcadorB,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Equipo B'),
-                ),
+            for (var i = 0; i < jugadores.length; i++) ...[
+              if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
+              _filaJugador(
+                jugadores[i],
+                equipo: letra,
+                colorEquipo: colorEquipo,
+                editable: editable,
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: _guardando ? null : _registrarResultado,
-            child: Text(
-              resultado == null ? 'Registrar marcador' : 'Enviar corrección',
-            ),
-          ),
         ],
-        if (resultado?.estado == EstadoResultadoPartido.pendiente &&
-            esCapitan) ...[
-          const SizedBox(height: 16),
-          const Text('Al confirmar, el resultado será definitivo.'),
-          OutlinedButton(
-            onPressed: _guardando ? null : _confirmarResultado,
-            child: const Text('Confirmar resultado'),
-          ),
-          OutlinedButton(
-            onPressed: _guardando ? null : _disputarResultado,
-            child: const Text('Disputar resultado'),
-          ),
-        ],
-        if (resultado != null && resultado.historial.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text('Historial', style: Theme.of(context).textTheme.titleMedium),
-          for (final evento in resultado.historial)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(evento.accion.etiqueta),
-              subtitle: Text(
-                '${evento.marcadorEquipoA} - ${evento.marcadorEquipoB} · ${evento.actorNombre}'
-                '${evento.motivo == null ? '' : '\n${evento.motivo}'}',
-              ),
-            ),
-        ],
-      ],
+      ),
     );
   }
 
-  Widget _listaEquipo(String letra, List<String> ids) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Equipo $letra', style: Theme.of(context).textTheme.titleMedium),
-        for (final id in ids)
-          ListTile(
-            title: Text(
-              _participantes
-                      .where((p) => p.id == id)
-                      .map((p) => p.nombre)
-                      .firstOrNull ??
-                  'Jugador',
-            ),
-            subtitle:
-                id == _propuesta!.capitanRivalId ||
-                    _participantes.any((p) => p.id == id && p.esOrganizador)
-                ? const Text('Capitán')
-                : null,
-          ),
-      ],
+  Widget _filaJugador(
+    ParticipantePartido participante, {
+    required String equipo,
+    required Color colorEquipo,
+    required bool editable,
+  }) {
+    final esCapitan = participante.esOrganizador
+        ? equipo == 'A'
+        : participante.id == _capitanId;
+    final destino = equipo == 'A' ? 'B' : 'A';
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+      leading: Icon(LucideIcons.userRound, color: colorEquipo, size: 20),
+      title: Text(
+        participante.nombre,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      subtitle: esCapitan
+          ? Text(participante.esOrganizador ? 'Capitán (tú)' : 'Capitán')
+          : null,
+      trailing: editable && !participante.esOrganizador
+          ? IconButton(
+              key: ValueKey('mover_jugador_${participante.id}_$destino'),
+              tooltip: 'Mover a Equipo $destino',
+              onPressed: _guardando
+                  ? null
+                  : () => _moverJugador(participante, destino),
+              iconSize: 18,
+              icon: Icon(
+                equipo == 'A' ? LucideIcons.arrowRight : LucideIcons.arrowLeft,
+              ),
+            )
+          : null,
     );
   }
+
+  Widget _selectorCapitan(List<ParticipantePartido> rivales) =>
+      DropdownButtonFormField<String>(
+        key: ValueKey('capitan_${_capitanId ?? "ninguno"}_${rivales.length}'),
+        initialValue: _capitanId,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Capitán del Equipo B',
+          prefixIcon: Icon(LucideIcons.crown),
+        ),
+        hint: Text(
+          rivales.isEmpty
+              ? 'Mueve al menos un jugador al Equipo B'
+              : 'Selecciona al capitán',
+        ),
+        items: [
+          for (final p in rivales)
+            DropdownMenuItem(value: p.id, child: Text(p.nombre)),
+        ],
+        onChanged: _guardando
+            ? null
+            : (valor) => setState(() => _capitanId = valor),
+      );
+
+  Widget _estadoPropuesta() {
+    final estado = _propuesta!.estado;
+    final aceptada = estado == EstadoPropuesta.aceptada;
+    final color = aceptada ? TemaApp.verdeOscuro : TemaApp.naranjaAviso;
+    final fondo = aceptada ? TemaApp.verdeSuave : TemaApp.naranjaSuave;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      decoration: BoxDecoration(
+        color: fondo,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            aceptada ? LucideIcons.circleCheck : LucideIcons.clock3,
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Propuesta: ${estado.etiqueta}',
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mensajeEquiposPorProponer() => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: TemaApp.azulSuave,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: TemaApp.azulDeportivo.withValues(alpha: .2)),
+    ),
+    child: const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(LucideIcons.info, color: TemaApp.azulDeportivo),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Los equipos todavía no están definidos.',
+            style: TextStyle(color: TemaApp.textoPrincipal),
+          ),
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final rivales = _participantes.where((p) => _equipos[p.id] == 'B').toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Equipos del partido')),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: AppBar(title: const Text('Equipos del partido')),
+          ),
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -442,73 +375,35 @@ class _VistaEquiposState extends State<VistaEquipos> {
                         _partido.titulo,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 6),
+                      Text(
+                        _editando
+                            ? 'Reparte los jugadores y elige al capitán del Equipo B. Tú eres el capitán del Equipo A.'
+                            : 'Distribución y estado de los equipos del partido.',
+                        style: const TextStyle(color: TemaApp.textoSecundario),
+                      ),
+                      const SizedBox(height: 18),
                       if (_error != null) ...[
                         CajaMensaje(texto: _error!),
                         TextButton(
                           onPressed: _guardando ? null : _cargar,
                           child: const Text('Volver a cargar'),
                         ),
+                        const SizedBox(height: 10),
                       ],
                       if (_editando) ...[
-                        const Text(
-                          'Reparte los jugadores y elige al capitán del Equipo B. Tú eres el capitán del Equipo A.',
-                        ),
-                        for (final p in _participantes)
-                          ListTile(
-                            title: Text(p.nombre),
-                            subtitle: p.esOrganizador
-                                ? const Text('Capitán del Equipo A')
-                                : null,
-                            trailing: DropdownButton<String>(
-                              key: ValueKey('equipo_${p.id}'),
-                              value: _equipos[p.id],
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'A',
-                                  child: Text('Equipo A'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'B',
-                                  child: Text('Equipo B'),
-                                ),
-                              ],
-                              onChanged: p.esOrganizador || _guardando
-                                  ? null
-                                  : (valor) {
-                                      setState(() {
-                                        _equipos[p.id] = valor!;
-                                        if (_capitanId == p.id &&
-                                            valor != 'B') {
-                                          _capitanId = null;
-                                        }
-                                      });
-                                    },
-                            ),
-                          ),
-                        DropdownButtonFormField<String>(
-                          key: ValueKey(
-                            'capitan_${_capitanId ?? "ninguno"}_${rivales.length}',
-                          ),
-                          initialValue: _capitanId,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Capitán rival',
-                          ),
-                          items: [
-                            for (final p in rivales)
-                              DropdownMenuItem(
-                                value: p.id,
-                                child: Text(p.nombre),
-                              ),
-                          ],
-                          onChanged: _guardando
-                              ? null
-                              : (valor) => setState(() => _capitanId = valor),
-                        ),
+                        _tarjetaEquipo('A', editable: true),
+                        const SizedBox(height: 14),
+                        _tarjetaEquipo('B', editable: true),
+                        const SizedBox(height: 14),
+                        _selectorCapitan(rivales),
                         const SizedBox(height: 16),
-                        ElevatedButton(
+                        FilledButton(
+                          key: const ValueKey('enviar_propuesta_equipos'),
                           onPressed: _guardando ? null : _guardar,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 52),
+                          ),
                           child: Text(
                             _guardando ? 'Enviando…' : 'Enviar propuesta',
                           ),
@@ -521,16 +416,21 @@ class _VistaEquiposState extends State<VistaEquipos> {
                             child: const Text('Cancelar'),
                           ),
                       ] else if (_propuesta != null) ...[
-                        Text('Propuesta: ${_propuesta!.estado.etiqueta}'),
-                        const SizedBox(height: 16),
-                        _listaEquipo('A', _propuesta!.equipoA),
-                        _listaEquipo('B', _propuesta!.equipoB),
+                        _estadoPropuesta(),
+                        const SizedBox(height: 14),
+                        _tarjetaEquipo('A'),
+                        const SizedBox(height: 14),
+                        _tarjetaEquipo('B'),
                         if (_puedeEditar)
-                          OutlinedButton(
-                            onPressed: _guardando
-                                ? null
-                                : () => setState(() => _editando = true),
-                            child: const Text('Editar propuesta'),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 14),
+                            child: OutlinedButton.icon(
+                              onPressed: _guardando
+                                  ? null
+                                  : () => setState(() => _editando = true),
+                              icon: const Icon(LucideIcons.pencil),
+                              label: const Text('Editar propuesta'),
+                            ),
                           ),
                         if (_propuesta!.estado == EstadoPropuesta.pendiente &&
                             _propuesta!.capitanRivalId == widget.usuarioId &&
@@ -548,14 +448,15 @@ class _VistaEquiposState extends State<VistaEquipos> {
                             child: const Text('Rechazar'),
                           ),
                         ],
-                        if (_propuesta!.estado == EstadoPropuesta.aceptada &&
-                            _partido.fechaPasada)
-                          _seccionResultado(),
                       ] else ...[
-                        const Text('Equipos por proponer'),
+                        _mensajeEquiposPorProponer(),
                         if (!_partido.fechaPasada && _partido.soyOrganizador)
-                          const Text(
-                            'Cierra la convocatoria para proponer los equipos.',
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Cierra la convocatoria para proponer los equipos.',
+                              style: TextStyle(color: TemaApp.textoSecundario),
+                            ),
                           ),
                       ],
                     ],

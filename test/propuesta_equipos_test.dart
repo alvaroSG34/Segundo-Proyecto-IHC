@@ -184,13 +184,19 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Aceptar'), findsNothing);
-    final organizador = tester.widget<DropdownButton<String>>(
-      find.byKey(const ValueKey('equipo_org')),
-    );
-    expect(organizador.onChanged, isNull);
-    await tester.tap(find.byKey(const ValueKey('equipo_jug')));
+    expect(find.byKey(const ValueKey('mover_jugador_org_B')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('mover_jugador_jug_B')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Equipo B').last);
+    expect(find.byKey(const ValueKey('mover_jugador_jug_A')), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Alex').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('mover_jugador_jug_A')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('capitan_ninguno_0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mover_jugador_jug_B')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('mover_jugador_jug_B')));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
@@ -221,4 +227,69 @@ void main() {
     expect(find.text('Aceptar'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('la distribución se adapta sin desbordar entre 320 y 480 px', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    for (final ancho in [320.0, 390.0, 480.0]) {
+      await tester.binding.setSurfaceSize(Size(ancho, 900));
+      final repo = await preparar();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VistaEquipos(
+            partido: (await repo.obtenerMisPartidos()).single,
+            repositorio: repo,
+            usuarioId: 'org',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Equipo A'), findsOneWidget, reason: 'ancho $ancho');
+      expect(find.text('Equipo B'), findsOneWidget, reason: 'ancho $ancho');
+      expect(tester.takeException(), isNull, reason: 'ancho $ancho');
+      await tester.pumpWidget(const SizedBox());
+    }
+  });
+
+  testWidgets('el error de carga permite reintentar', (tester) async {
+    final repo = RepositorioFallaUnaVez();
+    await repo.crearPartido(partido());
+    repo.usarSesionDe('jug', 'Jugador');
+    await repo.unirseAPartido('m-1');
+    repo.usarSesionDe('org', 'Alex');
+    final actual = (await repo.obtenerMisPartidos()).single;
+    repo.fallarSiguienteConsulta = true;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: VistaEquipos(
+          partido: actual,
+          repositorio: repo,
+          usuarioId: 'org',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fallo temporal de prueba.'), findsOneWidget);
+    await tester.tap(find.text('Volver a cargar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Equipo A'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class RepositorioFallaUnaVez extends RepositorioEnMemoria {
+  RepositorioFallaUnaVez() : super(usuarioId: 'org', usuarioNombre: 'Alex');
+
+  bool fallarSiguienteConsulta = false;
+
+  @override
+  Future<List<ModeloPartido>> obtenerMisPartidos() async {
+    if (fallarSiguienteConsulta) {
+      fallarSiguienteConsulta = false;
+      throw StateError('Fallo temporal de prueba.');
+    }
+    return super.obtenerMisPartidos();
+  }
 }
