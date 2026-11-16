@@ -257,7 +257,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final botonHistorial = find.byKey(const Key('icono_abrir_historial'));
+        final botonHistorial = find.ancestor(
+          of: find.text('Historial'),
+          matching: find.byType(NavigationDestination),
+        );
         expect(botonHistorial, findsOneWidget);
 
         final tamano = tester.getSize(botonHistorial);
@@ -299,6 +302,7 @@ void main() {
         expect(tamanoBoton.height, greaterThanOrEqualTo(48.0));
 
         // Tocar el botón orientador abre Explorar partidos
+        await tester.ensureVisible(botonExplorar);
         await tester.tap(botonExplorar);
         await tester.pumpAndSettle();
 
@@ -370,7 +374,113 @@ void main() {
         expect(find.text('Tenis Carlos'), findsOneWidget);
       },
     );
+
+    testWidgets('la paginación muestra 10 partidos y recorre el historial', (
+      tester,
+    ) async {
+      final ahora = DateTime(2026, 11, 15, 12);
+      final repo = _RepositorioHistorialContador();
+      final auth = ServicioAutenticacionFalso(repo);
+      for (var i = 0; i < 12; i++) {
+        repo.sembrar(
+          'u-diego',
+          ModeloPartido(
+            id: 'p-$i',
+            titulo: 'Partido $i',
+            disciplina: 'Fútbol',
+            icono: 'Fútbol',
+            ubicacion: 'Cancha $i',
+            fechaHora: _fechaHora(ahora.subtract(Duration(days: i + 1))),
+            cuposTotales: 10,
+            cuposOcupados: 4,
+            organizadorNombre: 'Diego',
+          ),
+        );
+      }
+      await auth.iniciarSesion('diego@unisport.edu', '123456');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VistaHistorial(
+            repositorioPartidos: auth.repositorio,
+            controladorExplorar: controladorExplorar,
+            servicioAuth: auth,
+            referenciaTemporal: ahora,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TarjetaHistorial), findsNWidgets(10));
+      expect(find.text('Mostrando 1–10 de 12'), findsOneWidget);
+      expect(find.text('Página 1 de 2'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextButton>(
+              find.byKey(const Key('historial_paginacion_anterior')),
+            )
+            .onPressed,
+        isNull,
+      );
+
+      final siguiente = find.byKey(const Key('historial_paginacion_siguiente'));
+      await tester.ensureVisible(siguiente);
+      await tester.tap(siguiente);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TarjetaHistorial), findsNWidgets(2));
+      expect(find.text('Mostrando 11–12 de 12'), findsOneWidget);
+      expect(find.text('Partido 11'), findsOneWidget);
+      final anterior = find.byKey(const Key('historial_paginacion_anterior'));
+      expect(tester.widget<TextButton>(anterior).onPressed, isNotNull);
+
+      await tester.ensureVisible(anterior);
+      await tester.tap(anterior);
+      await tester.pumpAndSettle();
+      expect(find.text('Mostrando 1–10 de 12'), findsOneWidget);
+
+      await tester.ensureVisible(siguiente);
+      await tester.tap(siguiente);
+      await tester.pumpAndSettle();
+      expect(find.text('Mostrando 11–12 de 12'), findsOneWidget);
+
+      final filtroOrganizador = find.byKey(const Key('filtro_organizador'));
+      await tester.ensureVisible(filtroOrganizador);
+      await tester.tap(filtroOrganizador);
+      await tester.pumpAndSettle();
+      expect(find.text('Mostrando 1–10 de 12'), findsOneWidget);
+      expect(find.text('Página 1 de 2'), findsOneWidget);
+
+      await tester.ensureVisible(siguiente);
+      await tester.tap(siguiente);
+      await tester.pumpAndSettle();
+      expect(find.text('Mostrando 11–12 de 12'), findsOneWidget);
+
+      final scrollable = find.descendant(
+        of: find.byType(RefreshIndicator),
+        matching: find.byType(Scrollable),
+      );
+      await tester.drag(scrollable, const Offset(0, 1000));
+      await tester.pumpAndSettle();
+      await tester.drag(scrollable, const Offset(0, 500));
+      await tester.pumpAndSettle();
+
+      expect(repo.cargasHistorial, 2);
+      expect(find.byType(TarjetaHistorial), findsNWidgets(10));
+      expect(find.text('Mostrando 1–10 de 12'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
+}
+
+class _RepositorioHistorialContador extends RepositorioEnMemoria {
+  int cargasHistorial = 0;
+
+  @override
+  Future<List<EventoHistorial>> obtenerHistorial({DateTime? ahora}) {
+    cargasHistorial++;
+    return super.obtenerHistorial(ahora: ahora);
+  }
 }
 
 String _fechaHora(DateTime fecha) {

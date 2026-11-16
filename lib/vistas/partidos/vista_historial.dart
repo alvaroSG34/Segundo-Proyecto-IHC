@@ -47,6 +47,8 @@ class VistaHistorial extends StatefulWidget {
 }
 
 class _VistaHistorialState extends State<VistaHistorial> {
+  static const int _eventosPorPagina = 10;
+
   late final RepositorioPartidos _repositorio =
       widget.repositorioPartidos ??
       RepositorioPartidosSupabase(Supabase.instance.client);
@@ -57,6 +59,7 @@ class _VistaHistorialState extends State<VistaHistorial> {
   List<EventoHistorial> _eventos = [];
   bool _cargando = true;
   String _filtroRol = 'todos'; // 'todos' | 'organizador' | 'jugador'
+  int _paginaActual = 0;
 
   @override
   void initState() {
@@ -84,7 +87,10 @@ class _VistaHistorialState extends State<VistaHistorial> {
 
   Future<void> _cargarHistorial() async {
     if (!widget.servicioAuth.estaAutenticado) return;
-    setState(() => _cargando = true);
+    setState(() {
+      _cargando = true;
+      _paginaActual = 0;
+    });
 
     try {
       final eventos = await _repositorio.obtenerHistorial(
@@ -149,17 +155,34 @@ class _VistaHistorialState extends State<VistaHistorial> {
       if (_filtroRol == 'jugador') return e.rol == RolParticipacion.jugador;
       return true;
     }).toList();
+    final totalPaginas = (eventosFiltrados.length / _eventosPorPagina).ceil();
+    final pagina = totalPaginas == 0
+        ? 0
+        : _paginaActual.clamp(0, totalPaginas - 1).toInt();
+    final inicio = pagina * _eventosPorPagina;
+    final fin = (inicio + _eventosPorPagina)
+        .clamp(0, eventosFiltrados.length)
+        .toInt();
+    final eventosPagina = eventosFiltrados.sublist(inicio, fin);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Historial de participación'),
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft),
-          tooltip: 'Volver',
-          // Ley de Fitts: objetivo táctil cómodo de 48 px
-          iconSize: 22,
-          padding: const EdgeInsets.all(12),
-          onPressed: () => Navigator.pop(context),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: AppBar(
+              title: const Text('Historial de participación'),
+              leading: IconButton(
+                icon: const Icon(LucideIcons.arrowLeft),
+                tooltip: 'Volver',
+                // Ley de Fitts: objetivo táctil cómodo de 48 px
+                iconSize: 22,
+                padding: const EdgeInsets.all(12),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
         ),
       ),
       bottomNavigationBar: BarraNavegacionPartidos(
@@ -181,10 +204,6 @@ class _VistaHistorialState extends State<VistaHistorial> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Resumen superior (Carga cognitiva)
-                  _construirResumenTrayectoria(usuario.nombre),
-                  const SizedBox(height: 16),
-
                   // Filtros estructurados (Ley de Hick: no competir en desorden)
                   _construirSelectorFiltros(),
                   const SizedBox(height: 18),
@@ -203,22 +222,26 @@ class _VistaHistorialState extends State<VistaHistorial> {
                   else if (eventosFiltrados.isEmpty)
                     _construirEstadoVacio()
                   else ...[
-                    Text(
-                      '${eventosFiltrados.length} ${eventosFiltrados.length == 1 ? "partido registrado" : "partidos registrados"} (más recientes primero)',
-                      key: const Key('historial_cantidad_visible'),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: TemaApp.textoSecundario,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...eventosFiltrados.map(
+
+                    const SizedBox(height: 8),
+                    ...eventosPagina.map(
                       (e) => TarjetaHistorial(
                         evento: e,
                         referenciaTemporal: widget.referenciaTemporal,
                       ),
                     ),
+                                        const SizedBox(height: 12),
+                    Text(
+                      'Mostrando ${inicio + 1}–$fin de ${eventosFiltrados.length}',
+                      key: const Key('historial_paginacion_rango'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: TemaApp.textoSecundario,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (totalPaginas > 1)
+                      _construirPaginacion(pagina, totalPaginas),
                   ],
                 ],
               ),
@@ -229,105 +252,7 @@ class _VistaHistorialState extends State<VistaHistorial> {
     );
   }
 
-  Widget _construirResumenTrayectoria(String nombre) {
-    final finalizados = _eventos.where((e) => e.yaDisputado).length;
-    final organizados = _eventos
-        .where((e) => e.rol == RolParticipacion.organizador)
-        .length;
-    final unidos = _eventos
-        .where((e) => e.rol == RolParticipacion.jugador)
-        .length;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-      decoration: BoxDecoration(
-        color: TemaApp.verdeSuave.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: TemaApp.verdeDeportivo.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.history,
-                color: TemaApp.verdeOscuro,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Trayectoria deportiva · $nombre',
-                  style: TemaApp.titulo(tamano: 15),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _construirIndicador(
-                  'Total',
-                  '${_eventos.length}',
-                  clave: 'historial_total',
-                ),
-              ),
-              Expanded(
-                child: _construirIndicador('Disputados', '$finalizados'),
-              ),
-              Expanded(
-                child: _construirIndicador(
-                  'Organizados',
-                  '$organizados',
-                  clave: 'historial_organizados',
-                ),
-              ),
-              Expanded(
-                child: _construirIndicador(
-                  'Como jugador',
-                  '$unidos',
-                  clave: 'historial_jugador',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _construirIndicador(String label, String valor, {String? clave}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          valor,
-          key: clave == null ? null : Key(clave),
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: TemaApp.textoPrincipal,
-          ),
-        ),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: TemaApp.textoSecundario,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   // Ley de Hick: Tres opciones claras, mutuamente excluyentes, con igual peso visual
   Widget _construirSelectorFiltros() {
@@ -352,10 +277,10 @@ class _VistaHistorialState extends State<VistaHistorial> {
         button: true,
         selected: activo,
         excludeSemantics: true,
-        onTap: () => setState(() => _filtroRol = clave),
+        onTap: () => _seleccionarFiltro(clave),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _filtroRol = clave),
+          onTap: () => _seleccionarFiltro(clave),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             // Área táctil mínima de 48 píxeles lógicos.
@@ -380,6 +305,58 @@ class _VistaHistorialState extends State<VistaHistorial> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _seleccionarFiltro(String clave) {
+    if (_filtroRol == clave) return;
+    setState(() {
+      _filtroRol = clave;
+      _paginaActual = 0;
+    });
+  }
+
+  Widget _construirPaginacion(int pagina, int totalPaginas) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        children: [
+          Text(
+            'Página ${pagina + 1} de $totalPaginas',
+            key: const Key('historial_paginacion_pagina'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: TemaApp.textoSecundario,
+              fontSize: 12,
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton.icon(
+                  key: const Key('historial_paginacion_anterior'),
+                  onPressed: pagina == 0
+                      ? null
+                      : () => setState(() => _paginaActual = pagina - 1),
+                  icon: const Icon(LucideIcons.arrowLeft, size: 18),
+                  label: const Text('Anterior'),
+                ),
+              ),
+              Expanded(
+                child: TextButton.icon(
+                  key: const Key('historial_paginacion_siguiente'),
+                  onPressed: pagina >= totalPaginas - 1
+                      ? null
+                      : () => setState(() => _paginaActual = pagina + 1),
+                  icon: const Icon(LucideIcons.arrowRight, size: 18),
+                  label: const Text('Siguiente'),
+                  iconAlignment: IconAlignment.end,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
