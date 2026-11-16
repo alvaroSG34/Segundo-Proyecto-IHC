@@ -74,7 +74,9 @@ void main() {
     }
     await tester.pumpWidget(pantalla());
     await tester.pumpAndSettle();
-    expect(find.text('2 partidos encontrados'), findsOneWidget);
+    expect(find.text('Partidos próximos'), findsOneWidget);
+    expect(find.text('Ordenados por fecha más cercana'), findsNothing);
+    expect(find.text('2 partidos encontrados'), findsNothing);
     expect(
       tester
           .widgetList<TarjetaPartido>(find.byType(TarjetaPartido))
@@ -88,10 +90,8 @@ void main() {
           .map((w) => w.partido.id),
       ['reciente', 'viejo'],
     );
-    expect(
-      find.text('Ordenados del más reciente al más antiguo'),
-      findsOneWidget,
-    );
+    expect(find.text('Futsal reciente'), findsOneWidget);
+    expect(find.text('Futsal viejo'), findsOneWidget);
   });
 
   testWidgets(

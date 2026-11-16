@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/servicios/partidos/controlador_explorar.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
-import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
 
 import 'apoyo/repositorio_en_memoria.dart';
@@ -44,9 +44,85 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('mis_partidos_error')), findsNothing);
-    final tarjeta = tester.widget<TarjetaPartido>(find.byType(TarjetaPartido));
+    final tarjeta = tester.widget<TarjetaMisPartidos>(
+      find.byType(TarjetaMisPartidos),
+    );
     expect(tarjeta.partido.id, 'con-suplentes');
-    expect(tarjeta.suplentes, ['Suplente']);
+    await tester.tap(
+      find.byKey(const Key('mis_partidos_detalle_con-suplentes')),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -800));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Seguimiento'));
+    await tester.pumpAndSettle();
+    expect(find.text('Suplente'), findsOneWidget);
+  });
+
+  testWidgets('el detalle conserva las acciones del organizador', (
+    tester,
+  ) async {
+    final auth = ServicioAutenticacionFalso();
+    await auth.iniciarSesion('diego@unisport.edu', '123456');
+    auth.repositorio.sembrar(
+      'u-diego',
+      _partido('detalle-organizador', 'Partido organizado'),
+    );
+    await _abrir(tester, auth, auth.repositorio);
+    await tester.tap(
+      find.byKey(const Key('mis_partidos_detalle_detalle-organizador')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Detalles del partido'), findsOneWidget);
+    await tester.drag(find.byType(ListView).last, const Offset(0, -700));
+    await tester.pumpAndSettle();
+    expect(find.text('Cerrar inscripciones'), findsOneWidget);
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    expect(find.text('Reprogramar'), findsOneWidget);
+    expect(find.text('Editar'), findsOneWidget);
+    expect(find.text('Eliminar partido'), findsOneWidget);
+  });
+
+  testWidgets('el detalle conserva la acción de salir para un jugador', (
+    tester,
+  ) async {
+    final auth = ServicioAutenticacionFalso();
+    await auth.iniciarSesion('diego@unisport.edu', '123456');
+    auth.repositorio.sembrar(
+      'u-lorgio',
+      _partido('detalle-jugador', 'Partido inscrito'),
+    );
+    await auth.repositorio.unirseAPartido('detalle-jugador');
+    await _abrir(tester, auth, auth.repositorio);
+    await tester.tap(find.bySemanticsLabel('Como jugador'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('mis_partidos_detalle_detalle-jugador')),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -700));
+    await tester.pumpAndSettle();
+    expect(find.text('Salir del partido'), findsOneWidget);
+    expect(find.text('Editar'), findsNothing);
+  });
+
+  testWidgets('tarjeta de resumen cabe en una pantalla móvil estrecha', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 740);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final auth = ServicioAutenticacionFalso();
+    await auth.iniciarSesion('diego@unisport.edu', '123456');
+    auth.repositorio.sembrar(
+      'u-diego',
+      _partido('estrecho', 'Partido de prueba con nombre largo'),
+    );
+    await _abrir(tester, auth, auth.repositorio);
+    expect(find.byType(TarjetaMisPartidos), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -83,25 +159,16 @@ void main() {
             );
           }
           expect(find.byKey(const Key('mis_partidos_vacio')), findsOneWidget);
-          expect(
-            find.text('No tienes partidos en esta categoría'),
-            findsOneWidget,
-          );
+          expect(find.text('No tienes partidos próximos'), findsOneWidget);
           expect(
             find.text(
               filtro.$1 == 'unido'
                   ? 'Toca "Explorar partidos para unirme" para encontrar uno.'
-                  : 'Toca "Crear partido" para agregar uno.',
+                  : filtro.$1 == 'organizados'
+                  ? 'Toca "Crear partido" para agregar uno.'
+                  : 'Cambia la categoría o crea un partido para comenzar.',
             ),
             findsOneWidget,
-          );
-          expect(
-            tester
-                .widget<Text>(
-                  find.byKey(const Key('mis_partidos_cantidad_visible')),
-                )
-                .data,
-            '0',
           );
           expect(
             tester
@@ -117,19 +184,11 @@ void main() {
           );
           expect(find.byType(TarjetaPartido), findsNothing);
         }
-        for (final accion in [
-          'Explorar',
-          'Historial de participación',
-          'Crear partido',
-        ]) {
-          final control = accion == 'Historial de participación'
-              ? find.byKey(const Key('icono_abrir_historial'))
-              : find.bySemanticsLabel(RegExp('^$accion'));
+        for (final accion in ['Explorar', 'Crear partido']) {
+          final control = find.bySemanticsLabel(RegExp('^$accion'));
           final visual = accion == 'Crear partido'
-              ? find.byType(FloatingActionButton)
-              : accion == 'Explorar'
-              ? find.byType(NavigationDestination).first
-              : find.byKey(const Key('icono_abrir_historial'));
+              ? find.byKey(const Key('mis_partidos_crear'))
+              : find.byType(NavigationDestination).first;
           await _visible(tester, visual);
           expect(control, findsOneWidget);
           expect(
@@ -159,34 +218,14 @@ void main() {
         repo.sembrar('u-diego', _partido('propio', 'Organizado'));
         repo.sembrar('u-lorgio', _partido('jugador', 'Inscrito'));
         await repo.unirseAPartido('jugador');
-        await _abrir(tester, auth, repo);
-        await _visible(tester, _filtro('unido'));
-        await tester.tap(find.bySemanticsLabel('Como jugador'));
-        await tester.pumpAndSettle();
-        expect(find.byType(TarjetaPartido), findsOneWidget);
         repo.fallar = true;
-        final explorar = find.descendant(
-          of: find.byType(NavigationBar),
-          matching: find.text('Explorar'),
-        );
-        await _visible(tester, explorar);
-        await tester.tap(explorar);
-        await tester.pumpAndSettle();
-        expect(find.byType(VistaExplorarPartidos), findsOneWidget);
-        await tester.pageBack();
-        await tester.pumpAndSettle();
+        await _abrir(tester, auth, repo);
         expect(find.text('Error de carga de prueba.'), findsOneWidget);
         expect(find.byKey(const Key('mis_partidos_error')), findsOneWidget);
         expect(find.byKey(const Key('mis_partidos_vacio')), findsNothing);
-        expect(find.byType(TarjetaPartido), findsNothing);
-        expect(
-          tester
-              .widget<Text>(
-                find.byKey(const Key('mis_partidos_cantidad_visible')),
-              )
-              .data,
-          '—',
-        );
+        expect(find.byType(TarjetaMisPartidos), findsNothing);
+        await tester.tap(find.bySemanticsLabel('Como jugador'));
+        await tester.pumpAndSettle();
         final reintentar = find.byKey(const Key('mis_partidos_reintentar'));
         await _visible(tester, reintentar);
         expect(
@@ -231,19 +270,11 @@ void main() {
               .toBoolOrNull(),
           isTrue,
         );
-        final tarjeta = tester.widget<TarjetaPartido>(
-          find.byType(TarjetaPartido),
+        final tarjeta = tester.widget<TarjetaMisPartidos>(
+          find.byType(TarjetaMisPartidos),
         );
         expect(tarjeta.partido.id, 'jugador');
         expect(tarjeta.partido.soyOrganizador, isFalse);
-        expect(
-          tester
-              .widget<Text>(
-                find.byKey(const Key('mis_partidos_cantidad_visible')),
-              )
-              .data,
-          '1',
-        );
         expect(
           tester
               .widget<Text>(

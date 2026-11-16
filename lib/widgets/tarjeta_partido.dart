@@ -10,9 +10,6 @@ import '../tema/tema_app.dart';
 class TarjetaPartido extends StatelessWidget {
   final ModeloPartido partido;
 
-  final VoidCallback? onEquipos;
-  final String? estadoEquipos;
-  final String textoBotonEquipos;
   final VoidCallback? onEditar;
   final VoidCallback? onEliminar;
   final VoidCallback? onCompletarEquipo;
@@ -22,6 +19,7 @@ class TarjetaPartido extends StatelessWidget {
   final VoidCallback? onUnirse;
   final VoidCallback? onEntrarEnEspera;
   final VoidCallback? onSalirDeEspera;
+  final VoidCallback? onVerDetalle;
 
   /// "Salir del partido" (H3): lo ve quien se unió, mientras la regla lo permita.
   final VoidCallback? onSalir;
@@ -32,9 +30,6 @@ class TarjetaPartido extends StatelessWidget {
   const TarjetaPartido({
     super.key,
     required this.partido,
-    this.onEquipos,
-    this.estadoEquipos,
-    this.textoBotonEquipos = 'Ver equipos',
     this.onEditar,
     this.onEliminar,
     this.onCompletarEquipo,
@@ -44,6 +39,7 @@ class TarjetaPartido extends StatelessWidget {
     this.onUnirse,
     this.onEntrarEnEspera,
     this.onSalirDeEspera,
+    this.onVerDetalle,
     this.onSalir,
     this.suplentes,
     this.bajasTardias,
@@ -81,15 +77,15 @@ class TarjetaPartido extends StatelessWidget {
                       children: [
                         const Icon(
                           LucideIcons.mapPin,
-                          size: 13,
+                          size: 17,
                           color: TemaApp.textoSecundario,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 7),
                         Expanded(
                           child: Text(
                             partido.ubicacion,
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 14,
                               color: TemaApp.textoSecundario,
                             ),
                           ),
@@ -102,15 +98,15 @@ class TarjetaPartido extends StatelessWidget {
                         children: [
                           const Icon(
                             LucideIcons.user,
-                            size: 13,
+                            size: 17,
                             color: TemaApp.textoSecundario,
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 7),
                           Expanded(
                             child: Text(
                               'Organiza: ${partido.organizadorNombre}',
                               style: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 14,
                                 color: TemaApp.textoSecundario,
                               ),
                             ),
@@ -123,15 +119,15 @@ class TarjetaPartido extends StatelessWidget {
                       children: [
                         const Icon(
                           LucideIcons.clock,
-                          size: 13,
+                          size: 17,
                           color: TemaApp.textoSecundario,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 7),
                         Expanded(
                           child: Text(
                             partido.fechaHora,
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 14,
                               color: TemaApp.textoSecundario,
                             ),
                           ),
@@ -260,15 +256,17 @@ class TarjetaPartido extends StatelessWidget {
               ),
             ],
           ),
-          if (estadoEquipos != null) ...[
-            const SizedBox(height: 12),
-            Text(estadoEquipos!),
-            if (onEquipos != null)
-              OutlinedButton.icon(
-                onPressed: onEquipos,
-                icon: const Icon(Icons.groups_outlined),
-                label: Text(textoBotonEquipos),
+          if (onVerDetalle != null) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              key: const Key('partido_ver_detalle'),
+              onPressed: onVerDetalle,
+              icon: const Icon(LucideIcons.externalLink, size: 17),
+              label: const Text('Ver detalle'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 46),
               ),
+            ),
           ],
           if (partido.soyOrganizador &&
               suplentes != null &&

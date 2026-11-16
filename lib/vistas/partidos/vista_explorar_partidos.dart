@@ -16,6 +16,7 @@ import '../../tema/tema_app.dart';
 import '../../widgets/panel_filtros.dart';
 import '../../widgets/barra_navegacion_partidos.dart';
 import '../../widgets/tarjeta_partido.dart';
+import 'vista_detalle_partido.dart';
 
 /// Explorar partidos organizados por otros estudiantes, buscarlos, filtrarlos
 /// (requisito #6) y unirse a ellos (requisito #5).
@@ -379,10 +380,76 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     }
   }
 
+  Future<ModeloPartido?> _buscarPartidoActual(String id) async {
+    final usuario = widget.servicioAuth.usuarioActual;
+    if (usuario == null) return null;
+    final propios = await _repositorio.obtenerMisPartidos();
+    final unidos = await _repositorio.obtenerPartidosUnidos();
+    for (final partido in [...propios, ...unidos]) {
+      if (partido.id == id) return partido;
+    }
+    final encontrados = await _repositorio.buscarPartidos(
+      _filtro,
+      ahora: widget.referenciaTemporal,
+    );
+    for (final partido in encontrados) {
+      if (partido.id == id) return partido;
+    }
+    return null;
+  }
+
+  Future<void> _abrirDetalle(ModeloPartido partido) async {
+    final usuarioId = widget.servicioAuth.usuarioActual?.id;
+    if (usuarioId == null) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VistaDetallePartido(
+          partido: partido,
+          repositorio: _repositorio,
+          usuarioId: usuarioId,
+          servicioAnalitica: widget.servicioAnalitica,
+          onUnirse: partido.puedeUnirse ? () => _unirse(partido) : null,
+          onEntrarEnEspera: partido.puedeEntrarEnEspera
+              ? () => _entrarEnEspera(partido)
+              : null,
+          onSalirDeEspera: partido.estoyEnEspera
+              ? () => _salirDeEspera(partido)
+              : null,
+          onReconfirmar: partido.reconfirmacionPendiente
+              ? () => _responderReprogramacion(partido, true)
+              : null,
+          onRetirarseReprogramacion: partido.reconfirmacionPendiente
+              ? () => _responderReprogramacion(partido, false)
+              : null,
+          onSalir: partido.puedeSalir ? () => _salir(partido) : null,
+          recargarPartido: () async {
+            await _cargar();
+            final actualizado = await _buscarPartidoActual(partido.id);
+            if (actualizado != null) return actualizado;
+            for (final actual in _partidos) {
+              if (actual.id == partido.id) return actual;
+            }
+            return null;
+          },
+        ),
+      ),
+    );
+    if (mounted) await _cargar();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Explorar partidos')),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: AppBar(title: const Text('Explorar partidos')),
+          ),
+        ),
+      ),
       bottomNavigationBar: BarraNavegacionPartidos(
         selectedIndex: 0,
         servicioAuth: widget.servicioAuth,
@@ -422,39 +489,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                     Expanded(child: _botonPeriodo(PeriodoPartidos.vencidos)),
                   ],
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  _filtro.periodo == PeriodoPartidos.vencidos
-                      ? 'Partidos vencidos'
-                      : 'Partidos próximos',
-                  style: TemaApp.titulo(tamano: 20),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _filtro.periodo == PeriodoPartidos.vencidos
-                      ? 'Ordenados del más reciente al más antiguo'
-                      : 'Ordenados por fecha más cercana',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: TemaApp.textoSecundario,
-                  ),
-                ),
                 const SizedBox(height: 14),
-                if (!_cargando && _errorCarga == null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      _partidos.length == 1
-                          ? '1 partido encontrado'
-                          : '${_partidos.length} partidos encontrados',
-                      key: const Key('explorar_cantidad'),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: TemaApp.textoSecundario,
-                      ),
-                    ),
-                  ),
                 if (_cargando)
                   Semantics(
                     key: const Key('explorar_cargando'),
@@ -483,6 +518,7 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                   ..._partidos.map(
                     (partido) => TarjetaPartido(
                       partido: partido,
+                      onVerDetalle: () => _abrirDetalle(partido),
                       onUnirse: () => _unirse(partido),
                       onSalir: () => _salir(partido),
                       onReconfirmar: partido.reconfirmacionPendiente

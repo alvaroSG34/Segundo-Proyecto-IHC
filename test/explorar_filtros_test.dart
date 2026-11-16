@@ -62,14 +62,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('No se pudieron cargar los partidos.'), findsOneWidget);
-    expect(find.byKey(const Key('explorar_cantidad')), findsNothing);
     expect(find.byKey(const Key('explorar_reintentar')), findsOneWidget);
     repo.fallar = false;
     await tester.ensureVisible(find.byKey(const Key('explorar_reintentar')));
     await tester.tap(find.byKey(const Key('explorar_reintentar')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('explorar_reintentar')), findsNothing);
-    expect(find.byKey(const Key('explorar_cantidad')), findsOneWidget);
+    expect(find.text('No se pudieron cargar los partidos.'), findsNothing);
   });
 
   late ControladorExplorar controladorExplorar;
@@ -103,14 +102,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
-    expect(find.text('2 partidos encontrados'), findsOneWidget);
+    expect(find.text('Futsal nocturno'), findsOneWidget);
+    expect(find.text('Vóley mixto'), findsOneWidget);
     expect(find.text('Organiza: Lorgio'), findsNWidgets(2));
 
     // Búsqueda con resultados
     await tester.enterText(find.byType(TextField), 'vóley');
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
-    expect(find.text('1 partido encontrado'), findsOneWidget);
     expect(find.text('Vóley mixto'), findsOneWidget);
     expect(find.text('Futsal nocturno'), findsNothing);
 
@@ -130,7 +129,8 @@ void main() {
     await tester.tap(find.text('Quitar filtros'));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
-    expect(find.text('2 partidos encontrados'), findsOneWidget);
+    expect(find.text('Futsal nocturno'), findsOneWidget);
+    expect(find.text('Vóley mixto'), findsOneWidget);
   });
 
   testWidgets('unirse desde la pantalla actualiza los cupos', (tester) async {
@@ -153,6 +153,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
+    await tester.drag(find.byType(ListView).last, const Offset(0, -280));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Unirme al equipo'));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
@@ -188,6 +190,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
+    await tester.drag(find.byType(ListView).last, const Offset(0, -280));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Unirme al equipo'));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
@@ -260,6 +264,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       await tester.pump();
 
+      await tester.drag(find.byType(ListView).last, const Offset(0, -280));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Unirme al equipo'));
       await tester.pump(const Duration(milliseconds: 600));
       await tester.pumpAndSettle();

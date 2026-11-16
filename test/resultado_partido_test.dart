@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/modelos/propuesta_equipos.dart';
 import 'package:unisport/modelos/resultado_partido.dart';
-import 'package:unisport/vistas/partidos/vista_equipos.dart';
+import 'package:unisport/vistas/partidos/vista_detalle_partido.dart';
 
 import 'apoyo/repositorio_en_memoria.dart';
 
@@ -123,9 +123,11 @@ void main() {
     await expectLater(repo.obtenerResultado('m-1'), throwsStateError);
   });
 
-  testWidgets('la pantalla completa disputa, corrección y confirmación', (
+  testWidgets('el detalle disputa, corrige y confirma el marcador', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final repo = await preparar();
 
     Future<void> abrirComo(String id, String nombre) async {
@@ -136,7 +138,7 @@ void main() {
           : (await repo.obtenerPartidosUnidos()).single;
       await tester.pumpWidget(
         MaterialApp(
-          home: VistaEquipos(
+          home: VistaDetallePartido(
             partido: partido,
             repositorio: repo,
             usuarioId: id,
@@ -148,16 +150,19 @@ void main() {
 
     await abrirComo('organizador', 'Organizador');
     await tester.enterText(
-      find.byKey(const ValueKey('marcador_equipo_a')),
+      find.byKey(const ValueKey('detalle_marcador_equipo_a')),
       '2',
     );
     await tester.enterText(
-      find.byKey(const ValueKey('marcador_equipo_b')),
+      find.byKey(const ValueKey('detalle_marcador_equipo_b')),
       '1',
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Registrar marcador'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Registrar marcador'));
     await tester.pumpAndSettle();
-    expect(find.text('Este resultado aún no es definitivo.'), findsOneWidget);
+    expect(
+      find.text('Pendiente de respuesta del capitán rival.'),
+      findsOneWidget,
+    );
 
     await abrirComo('capitan', 'Capitán rival');
     await tester.tap(find.text('Disputar resultado'));
@@ -166,27 +171,34 @@ void main() {
       find.byType(TextField),
       'El segundo gol no fue válido.',
     );
+    await tester.ensureVisible(find.text('Enviar disputa'));
     await tester.tap(find.text('Enviar disputa'));
     await tester.pumpAndSettle();
     expect(
-      find.text('Motivo de la disputa: El segundo gol no fue válido.'),
+      find.text('Motivo de disputa: El segundo gol no fue válido.'),
       findsOneWidget,
     );
 
     await abrirComo('organizador', 'Organizador');
+    expect(
+      find.text(
+        'El marcador fue disputado. Corrígelo y envía una nueva versión.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Pendiente de respuesta del capitán rival.'),
+      findsNothing,
+    );
     await tester.enterText(
-      find.byKey(const ValueKey('marcador_equipo_a')),
+      find.byKey(const ValueKey('detalle_marcador_equipo_a')),
       '1',
     );
-    await tester.ensureVisible(find.text('Enviar corrección'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Enviar corrección'));
     await tester.pumpAndSettle();
-    expect(find.text('Estado: Pendiente de confirmación'), findsOneWidget);
+    expect(find.text('Pendiente de confirmación'), findsOneWidget);
 
     await abrirComo('capitan', 'Capitán rival');
-    await tester.ensureVisible(find.text('Confirmar resultado'));
-    await tester.pumpAndSettle();
     // Se informa de la consecuencia antes de confirmar el marcador.
     expect(
       find.text('Al confirmar, el resultado será definitivo.'),
@@ -195,11 +207,70 @@ void main() {
     expect(find.text('Disputar resultado'), findsOneWidget);
     await tester.tap(find.text('Confirmar resultado'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Resultado definitivo'), findsOneWidget);
+    expect(
+      find.text('Resultado definitivo, confirmado por el capitán rival.'),
+      findsOneWidget,
+    );
     expect(find.text('Marcador registrado'), findsOneWidget);
     expect(find.text('Marcador disputado'), findsOneWidget);
     expect(find.text('Marcador corregido'), findsOneWidget);
     expect(find.text('Resultado confirmado'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('el marcador futuro se informa pero no permite registrarlo', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = await preparar();
+    final partido = (await repo.obtenerMisPartidos()).single.copyWith(
+      fechaHora: '10/10/2099 · 19:00',
+    );
+    repo.sembrar('organizador', partido);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: VistaDetallePartido(
+          partido: partido,
+          repositorio: repo,
+          usuarioId: 'organizador',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Resultado del partido'), findsOneWidget);
+    expect(
+      find.text('El marcador podrá registrarse cuando termine el partido.'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('detalle_marcador_equipo_a')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('la tarjeta del marcador se adapta a 320 px', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = await preparar();
+    await repo.registrarResultado('m-1', 3, 2);
+    repo.usarSesionDe('capitan', 'Capitán rival');
+    final partido = (await repo.obtenerPartidosUnidos()).single;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: VistaDetallePartido(
+          partido: partido,
+          repositorio: repo,
+          usuarioId: 'capitan',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Resultado del partido'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
