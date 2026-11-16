@@ -232,6 +232,11 @@ class _VistaPerfilState extends State<VistaPerfil> {
                 child: OutlinedButton(
                   key: const Key('confirmar_eliminar_cuenta'),
                   onPressed: () => Navigator.pop(dialogo, true),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: TemaApp.rojoAlerta,
+                    backgroundColor: TemaApp.rojoSuave,
+                    side: const BorderSide(color: TemaApp.rojoAlerta),
+                  ),
                   child: const Text(
                     'Eliminar cuenta',
                     textAlign: TextAlign.center,
@@ -281,7 +286,15 @@ class _VistaPerfilState extends State<VistaPerfil> {
       return const Scaffold(body: Center(child: Text('Sesión no disponible.')));
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi perfil')),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: AppBar(title: const Text('Mi perfil')),
+          ),
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -310,6 +323,11 @@ class _VistaPerfilState extends State<VistaPerfil> {
                 OutlinedButton(
                   key: const Key('eliminar_cuenta'),
                   onPressed: _eliminandoCuenta ? null : _eliminarCuenta,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: TemaApp.rojoAlerta,
+                    backgroundColor: TemaApp.rojoSuave,
+                    side: const BorderSide(color: TemaApp.rojoAlerta),
+                  ),
                   child: Text(
                     _eliminandoCuenta
                         ? 'Eliminando cuenta...'

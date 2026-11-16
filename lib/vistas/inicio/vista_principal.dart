@@ -94,28 +94,57 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
     Color color,
     VoidCallback alPresionar, {
     Color colorTexto = Colors.white,
+    IconData? icono,
+    bool iconoEncima = false,
+    double alturaMinima = 0,
   }) {
     return ElevatedButton(
       onPressed: alPresionar,
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: colorTexto,
-        minimumSize: Size.zero,
-        padding: const EdgeInsets.all(12),
+        minimumSize: Size(0, alturaMinima),
+        padding: EdgeInsets.all(iconoEncima ? 8 : 12),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
-      child: Text(
-        texto,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: colorTexto,
-        ),
-      ),
+      child: icono == null
+          ? _textoBoton(texto, colorTexto)
+          : iconoEncima
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ExcludeSemantics(
+                  child: Icon(icono, size: 28, color: colorTexto),
+                ),
+                const SizedBox(height: 8),
+                _textoBoton(texto, colorTexto),
+              ],
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ExcludeSemantics(
+                  child: Icon(icono, size: 22, color: colorTexto),
+                ),
+                const SizedBox(width: 8),
+                _textoBoton(texto, colorTexto),
+              ],
+            ),
     );
   }
+
+  Widget _textoBoton(String texto, Color colorTexto) => Text(
+    texto,
+    textAlign: TextAlign.center,
+    style: TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+      color: colorTexto,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -233,60 +262,85 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                         'Crear\nPartido',
                         const Color(0xFF26C99A),
                         () => _crearPartido(context),
-                        colorTexto: const Color(0xFF062D29),
+                        icono: LucideIcons.plus,
+                        iconoEncima: true,
                       ),
-                      _boton('Mis\nPartidos', const Color(0xFF0077A8), () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VistaMisPartidos(
-                              repositorioPartidos: _repositorio,
-                              servicioAnalitica: _analitica,
-                              controladorExplorar: _controladorExplorar,
-                              servicioAuth: widget.servicioAuth,
+                      _boton(
+                        'Mis\nPartidos',
+                        const Color(0xFF0077A8),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VistaMisPartidos(
+                                repositorioPartidos: _repositorio,
+                                servicioAnalitica: _analitica,
+                                controladorExplorar: _controladorExplorar,
+                                servicioAuth: widget.servicioAuth,
+                              ),
                             ),
-                          ),
-                        );
-                      }),
-                      _boton('Explorar', const Color(0xFFF59E0B), () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VistaExplorarPartidos(
-                              repositorioPartidos: _repositorio,
-                              servicioAnalitica: _analitica,
-                              controladorExplorar: _controladorExplorar,
-                              servicioAuth: widget.servicioAuth,
+                          );
+                        },
+                        icono: LucideIcons.calendarDays,
+                        iconoEncima: true,
+                      ),
+                      _boton(
+                        'Explorar',
+                        const Color(0xFFF59E0B),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VistaExplorarPartidos(
+                                repositorioPartidos: _repositorio,
+                                servicioAnalitica: _analitica,
+                                controladorExplorar: _controladorExplorar,
+                                servicioAuth: widget.servicioAuth,
+                              ),
                             ),
-                          ),
-                        );
-                      }, colorTexto: const Color(0xFF301C00)),
-                      _boton('Historial', const Color(0xFF7C3AED), () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VistaHistorial(
-                              repositorioPartidos: _repositorio,
-                              servicioAnalitica: _analitica,
-                              controladorExplorar: _controladorExplorar,
-                              servicioAuth: widget.servicioAuth,
+                          );
+                        },
+                        icono: LucideIcons.compass,
+                        iconoEncima: true,
+                      ),
+                      _boton(
+                        'Historial',
+                        const Color(0xFF7C3AED),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VistaHistorial(
+                                repositorioPartidos: _repositorio,
+                                servicioAnalitica: _analitica,
+                                controladorExplorar: _controladorExplorar,
+                                servicioAuth: widget.servicioAuth,
+                              ),
                             ),
-                          ),
-                        );
-                      }),
+                          );
+                        },
+                        icono: LucideIcons.history,
+                        iconoEncima: true,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _boton('Analítica', const Color(0xFF475569), () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        settings: const RouteSettings(name: '/analitica'),
-                        builder: (_) =>
-                            VistaAnalitica(servicioAnalitica: _analitica),
-                      ),
-                    );
-                  }),
+                  _boton(
+                    'Analítica',
+                    const Color(0xFF475569),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          settings: const RouteSettings(name: '/analitica'),
+                          builder: (_) =>
+                              VistaAnalitica(servicioAnalitica: _analitica),
+                        ),
+                      );
+                    },
+                    icono: LucideIcons.barChart3,
+                    alturaMinima: 56,
+                  ),
                   const SizedBox(height: 24),
                   Center(
                     child: OutlinedButton.icon(

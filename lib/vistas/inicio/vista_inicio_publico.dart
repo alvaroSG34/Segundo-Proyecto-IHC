@@ -27,24 +27,32 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
       return VistaPrincipal(servicioAuth: widget.servicioAuth);
     }
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: TemaApp.verdeDeportivo,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: const Icon(
-                LucideIcons.trophy,
-                color: Colors.white,
-                size: 18,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: AppBar(
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: TemaApp.verdeDeportivo,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: const Icon(
+                      LucideIcons.trophy,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text('UniSport', style: TemaApp.titulo(tamano: 21)),
+                ],
               ),
             ),
-            const SizedBox(width: 10),
-            Text('UniSport', style: TemaApp.titulo(tamano: 21)),
-          ],
+          ),
         ),
       ),
       body: Center(

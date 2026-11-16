@@ -63,23 +63,33 @@ class BarraNavegacionPartidos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: selectedIndex,
-      onDestinationSelected: (indice) => _navegarA(context, indice),
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(LucideIcons.compass),
-          label: 'Explorar',
-        ),
-        NavigationDestination(
-          icon: Icon(LucideIcons.calendarDays),
-          label: 'Mis partidos',
-        ),
-        NavigationDestination(
-          icon: Icon(LucideIcons.history),
-          label: 'Historial',
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: constraints.maxWidth.clamp(0, 480),
+            child: NavigationBar(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (indice) => _navegarA(context, indice),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(LucideIcons.compass),
+                  label: 'Explorar',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.calendarDays),
+                  label: 'Mis partidos',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.history),
+                  label: 'Historial',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

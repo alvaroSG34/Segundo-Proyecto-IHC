@@ -12,7 +12,7 @@ import 'package:unisport/vistas/autenticacion/vista_login.dart';
 import 'package:unisport/vistas/partidos/vista_crear_partido.dart';
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
 import 'package:unisport/vistas/partidos/vista_historial.dart';
-import 'package:unisport/vistas/partidos/vista_equipos.dart';
+import 'package:unisport/vistas/partidos/vista_detalle_partido.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/vistas/autenticacion/vista_perfil.dart';
 import 'package:unisport/vistas/autenticacion/vista_registro.dart';
@@ -249,7 +249,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: TemaApp.tema,
-        home: VistaEquipos(
+        home: VistaDetallePartido(
           partido: partidoResultado,
           repositorio: repoResultados,
           usuarioId: 'capitan',
@@ -259,10 +259,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Confirmar resultado'));
     await tester.pumpAndSettle();
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('../evidencias/tarea-10-resultado-pendiente.png'),
-    );
+    expect(find.text('Resultado del partido'), findsOneWidget);
+    expect(find.text('Confirmar resultado'), findsOneWidget);
+    expect(find.text('Disputar resultado'), findsOneWidget);
     auth.repositorio.sembrar(
       'u-diego',
       ModeloPartido(

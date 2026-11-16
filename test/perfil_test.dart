@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/vistas/autenticacion/vista_perfil.dart';
 import 'package:unisport/servicios/analitica/servicio_analitica.dart';
+import 'package:unisport/tema/tema_app.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
 
 import 'apoyo/repositorio_en_memoria.dart';
@@ -48,7 +49,12 @@ void main() {
       analitica.eventos.single.$1,
       EventosAnalitica.cuentaEliminacionIniciada,
     );
-    await tester.tap(find.byKey(const Key('confirmar_eliminar_cuenta')));
+    final confirmar = find.byKey(const Key('confirmar_eliminar_cuenta'));
+    final estiloConfirmar = tester.widget<OutlinedButton>(confirmar).style!;
+    expect(estiloConfirmar.foregroundColor!.resolve({}), TemaApp.rojoAlerta);
+    expect(estiloConfirmar.backgroundColor!.resolve({}), TemaApp.rojoSuave);
+    expect(estiloConfirmar.side!.resolve({})!.color, TemaApp.rojoAlerta);
+    await tester.tap(confirmar);
     await tester.pumpAndSettle();
     expect(analitica.eventos.map((e) => e.$1), [
       EventosAnalitica.cuentaEliminacionIniciada,
@@ -71,6 +77,10 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: VistaPerfil(servicioAuth: auth)));
 
     final boton = find.byKey(const Key('eliminar_cuenta'));
+    final estiloBoton = tester.widget<OutlinedButton>(boton).style!;
+    expect(estiloBoton.foregroundColor!.resolve({}), TemaApp.rojoAlerta);
+    expect(estiloBoton.backgroundColor!.resolve({}), TemaApp.rojoSuave);
+    expect(estiloBoton.side!.resolve({})!.color, TemaApp.rojoAlerta);
     await tester.ensureVisible(boton);
     await tester.tap(boton);
     await tester.pumpAndSettle();
