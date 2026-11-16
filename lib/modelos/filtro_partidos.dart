@@ -7,6 +7,7 @@ enum PeriodoPartidos { todos, proximos, vencidos }
 enum FiltroFecha {
   cualquiera('Cualquier fecha'),
   hoy('Hoy'),
+  estaSemana('Esta semana'),
   proximos7Dias('Próximos 7 días'),
   rango('Rango de fechas');
 
@@ -105,6 +106,9 @@ class FiltroPartidos {
         return null;
       case FiltroFecha.hoy:
         return (hoy, _sumarDias(hoy, 1));
+      case FiltroFecha.estaSemana:
+        final inicioSemana = _sumarDias(hoy, 1 - hoy.weekday);
+        return (inicioSemana, _sumarDias(inicioSemana, 7));
       case FiltroFecha.proximos7Dias:
         return (hoy, _sumarDias(hoy, 8));
       case FiltroFecha.rango:
