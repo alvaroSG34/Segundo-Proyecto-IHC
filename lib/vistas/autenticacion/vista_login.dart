@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:unisport/tema/iconos_app.dart';
 
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 import '../../servicios/analitica/servicio_analitica.dart';
@@ -10,7 +10,7 @@ import '../../widgets/boton_accion.dart';
 import '../../widgets/campo_clave.dart';
 import 'vista_registro.dart';
 import 'vista_recuperar_clave.dart';
-import '../inicio/vista_principal.dart';
+import '../inicio/vista_principal_diferida.dart';
 
 /// Formulario de inicio de sesión de UniSport
 class VistaLogin extends StatefulWidget {
@@ -117,7 +117,7 @@ class _VistaLoginState extends State<VistaLogin> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (_) => VistaPrincipal(
+        builder: (_) => VistaPrincipalDiferida(
           servicioAuth: widget.servicioAuth,
           servicioAnalitica: _analitica,
         ),

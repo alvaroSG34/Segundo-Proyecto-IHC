@@ -1,20 +1,24 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:unisport/tema/iconos_app.dart';
 
 import '../../tema/iconos_deporte.dart';
 import '../../tema/tema_app.dart';
-import '../autenticacion/vista_login.dart';
-import '../autenticacion/vista_registro.dart';
-import 'vista_principal.dart';
+import '../autenticacion/pantallas_autenticacion.dart' deferred as auth_screens;
+import 'vista_principal_diferida.dart';
 
 /// Ruta Pública: Portada de bienvenida a UniSport accesible sin sesión
 class VistaInicioPublico extends StatefulWidget {
-  final ServicioAutenticacion servicioAuth;
+  final ServicioAutenticacion? servicioAuth;
+  final bool estaPreparando;
 
-  const VistaInicioPublico({super.key, required this.servicioAuth});
+  const VistaInicioPublico({
+    super.key,
+    this.servicioAuth,
+    this.estaPreparando = false,
+  });
 
   @override
   State<VistaInicioPublico> createState() => _VistaInicioPublicoState();
@@ -23,8 +27,9 @@ class VistaInicioPublico extends StatefulWidget {
 class _VistaInicioPublicoState extends State<VistaInicioPublico> {
   @override
   Widget build(BuildContext context) {
-    if (widget.servicioAuth.estaAutenticado) {
-      return VistaPrincipal(servicioAuth: widget.servicioAuth);
+    final servicioAuth = widget.servicioAuth;
+    if (servicioAuth?.estaAutenticado ?? false) {
+      return VistaPrincipalDiferida(servicioAuth: servicioAuth!);
     }
     return Scaffold(
       appBar: PreferredSize(
@@ -85,15 +90,20 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
                     visualDensity: VisualDensity.standard,
                     minimumSize: const Size(48, 52),
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            VistaLogin(servicioAuth: widget.servicioAuth),
-                      ),
-                    );
-                  },
+                  onPressed: servicioAuth == null
+                      ? null
+                      : () async {
+                          await auth_screens.loadLibrary();
+                          if (!context.mounted) return;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => auth_screens.VistaLogin(
+                                servicioAuth: servicioAuth,
+                              ),
+                            ),
+                          );
+                        },
                   icon: const Icon(LucideIcons.logIn, size: 19),
                   label: const Text('Iniciar sesión'),
                 ),
@@ -103,18 +113,37 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
                     visualDensity: VisualDensity.standard,
                     minimumSize: const Size(48, 52),
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            VistaRegistro(servicioAuth: widget.servicioAuth),
-                      ),
-                    );
-                  },
+                  onPressed: servicioAuth == null
+                      ? null
+                      : () async {
+                          await auth_screens.loadLibrary();
+                          if (!context.mounted) return;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => auth_screens.VistaRegistro(
+                                servicioAuth: servicioAuth,
+                              ),
+                            ),
+                          );
+                        },
                   icon: const Icon(LucideIcons.userPlus, size: 19),
                   label: const Text('Crear nueva cuenta'),
                 ),
+                if (widget.estaPreparando) ...[
+                  const SizedBox(height: 12),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      'Preparando el inicio de sesión…',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: TemaApp.textoSecundario,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

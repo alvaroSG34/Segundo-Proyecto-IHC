@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:unisport/config/configuracion_supabase.dart';
@@ -9,7 +9,8 @@ import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 // La portada ya no ofrece el botón privado: probar el acceso directo a la ruta.
 void abrirRutaProtegidaE2E(WidgetTester tester) {
   final portada = find.byType(VistaInicioPublico);
-  final auth = tester.widget<VistaInicioPublico>(portada).servicioAuth;
+  final auth = tester.widget<VistaInicioPublico>(portada).servicioAuth ??
+      (throw StateError('The E2E landing page must receive an auth service.'));
   Navigator.of(tester.element(portada)).push(
     MaterialPageRoute<void>(
       builder: (_) => VistaMisPartidos(

@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:unisport/tema/iconos_app.dart';
 
 import '../../modelos/baja_tardia.dart';
 import '../../modelos/modelo_partido.dart';

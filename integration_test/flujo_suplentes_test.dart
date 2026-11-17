@@ -1,9 +1,9 @@
 import 'apoyo/analitica_e2e.dart';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:unisport/tema/iconos_app.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:unisport/main.dart' as app;
 import 'package:unisport/modelos/modelo_partido.dart';

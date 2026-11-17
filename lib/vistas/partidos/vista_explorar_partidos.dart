@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:unisport/tema/iconos_app.dart';
 
 import '../../servicios/partidos/controlador_explorar.dart';
 import '../../modelos/filtro_partidos.dart';

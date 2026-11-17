@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:unisport/tema/iconos_app.dart';
 
 import '../../servicios/analitica/servicio_analitica.dart';
 import '../../tema/tema_app.dart';

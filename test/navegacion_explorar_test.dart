@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:unisport/tema/iconos_app.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/vistas/analitica/vista_analitica.dart';
 import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';

@@ -164,12 +164,16 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
   Future<void> inicializar() async {
     _estaCargando = true;
     notifyListeners();
-
-    final usuario = _cliente.auth.currentUser;
-    _usuarioActual = usuario == null ? null : await _cargarPerfil(usuario);
-
-    _estaCargando = false;
-    notifyListeners();
+    try {
+      final usuario = _cliente.auth.currentUser;
+      _usuarioActual = usuario == null ? null : await _cargarPerfil(usuario);
+    } catch (error) {
+      debugPrint('No se pudo restaurar la sesión: $error');
+      _usuarioActual = null;
+    } finally {
+      _estaCargando = false;
+      notifyListeners();
+    }
   }
 
   /// Traduce los errores de Supabase Auth a mensajes para el estudiante.
