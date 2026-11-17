@@ -1,0 +1,4 @@
+# Enable Flutter's multithreaded Wasm renderer through SharedArrayBuffer.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
