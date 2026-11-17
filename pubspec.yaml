@@ -56,13 +56,13 @@ flutter:
   fonts:
     - family: Inter
       fonts:
-        - asset: assets/fonts/Inter-Variable.ttf
+        - asset: assets/fonts/Inter-Variable-v1.ttf
           weight: 400
     # Flutter Web usa Roboto como fuente de respaldo del renderer; se asigna
     # el mismo archivo de Inter para evitar otra familia y una descarga externa.
     - family: Roboto
       fonts:
-        - asset: assets/fonts/Inter-Variable.ttf
+        - asset: assets/fonts/Inter-Variable-v1.ttf
           weight: 400
     - family: Lucide
       fonts:
