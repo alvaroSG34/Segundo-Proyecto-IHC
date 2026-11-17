@@ -1141,7 +1141,7 @@ class _VistaDetallePartidoState extends State<VistaDetallePartido> {
             children: [
               Text(
                 titulo,
-                style: TextStyle(fontWeight: FontWeight.w800, color: color),
+                style: TextStyle(fontWeight: FontWeight.w700, color: color),
               ),
               const SizedBox(height: 4),
               Text(mensaje),

@@ -1,7 +1,10 @@
 ﻿# Reporte Lighthouse — UniSport
 
-**Actualizado:** 16 de noviembre de 2026  
+**Actualizado:** 17 de noviembre de 2026
+
 **Base de código:** commit `974be42` más los cambios de optimización descritos abajo.
+
+**Nota de vigencia:** las métricas de Cloudflare Pages de este reporte corresponden a la versión pública anterior a la alineación tipográfica local descrita al final. Aún no se ha publicado ni medido esa actualización.
 
 ## Resumen ejecutivo
 
@@ -9,7 +12,7 @@ Se comparó la compilación JavaScript anterior con la versión optimizada compi
 
 La versión final transfiere aproximadamente **38 % menos bytes** que la compilación de línea base y el TBT mediano bajó **57 % en móvil** y **36 % en escritorio**. La primera pintura móvil sigue variando mucho y el LCP aún es alto; el rendimiento necesita otra ronda de trabajo.
 
-La campaña más reciente se midió con Wrangler, emulando Cloudflare Pages y aplicando Brotli y los encabezados de aislamiento. En tres corridas por perfil, Lighthouse dio una mediana de **38 en móvil** y **63 en escritorio**, con LCP de **19.757 s** y **3.611 s**. La transferencia cayó a **3,287 KiB**. La mejora se midió localmente; todavía no se ha publicado un despliegue nuevo.
+El preview local de Cloudflare Pages obtuvo medianas de **38 en móvil** y **63 en escritorio**. Después del push se midió el sitio público `https://unisport-ihc.pages.dev/` en tres corridas por perfil: la mediana subió a **46 en móvil** y **72 en escritorio**. El LCP mediano fue **16.040 s** en móvil y **3.279 s** en escritorio; el TBT fue **788 ms** y **2 ms**, respectivamente. El LCP móvil sigue siendo el principal pendiente. La entrega pública respondió con COOP/COEP, MIME `application/wasm` y Brotli para el Wasm.
 
 ### Puntuaciones por categoría
 
@@ -85,7 +88,7 @@ Se sirvió el build release desde Wrangler Pages Dev. Cloudflare aplicó Brotli 
 | Escritorio | 2 | 62 | 0.181 | 3.623 | 3.795 | 261 | 0.00 |
 | Escritorio | 3 | 65 | 0.184 | 3.611 | 2.557 | 249 | 0.00 |
 
-Respecto al build diferido servido por Python sin compresión, el total transferido bajó de **5,408 a 3,287 KiB (39 %)**. El LCP mediano simulado bajó **28 % en móvil** y **34 % en escritorio**; el TBT bajó **25 % y 39 %**, respectivamente. `main.dart.wasm` pasó de unos **3,383 KiB** a **1,304 KiB** transferidos. Es una validación local del mismo modo de entrega que se desplegará; después del próximo despliegue se debe volver a medir la URL pública.
+Respecto al build diferido servido por Python sin compresión, el total transferido bajó de **5,408 a 3,287 KiB (39 %)**. El LCP mediano simulado bajó **28 % en móvil** y **34 % en escritorio**; el TBT bajó **25 % y 39 %**, respectivamente. `main.dart.wasm` pasó de unos **3,383 KiB** a **1,304 KiB** transferidos. Esa campaña fue una validación local; la sección de producción registra la medición posterior de la URL pública.
 
 ### Diagnóstico del LCP móvil
 
@@ -139,7 +142,8 @@ La tabla conserva las tres mediciones JavaScript anteriores para que la comparac
 5. **Portada durante el arranque.** La bienvenida se muestra mientras Supabase prepara la sesión, en vez de dejar la vista inicial vacía.
 6. **Carga diferida.** La pantalla privada principal se separó del módulo inicial; inicio de sesión y registro se cargan cuando se solicitan. La compilación Flutter 3.50 generó módulos Wasm adicionales de aproximadamente 608 KiB, 66 KiB y 8 KiB. La transferencia bajó de 5,783 KiB a 5,408 KiB y el LCP mediano móvil, de 28.979 s a 27.576 s.
 7. **Entrega de Wasm en Cloudflare Pages.** El workflow de despliegue ahora compila con `--wasm --enable-wasm-deferred-loading`. Flutter copia `web/_headers` al build y Cloudflare Pages entrega `main.dart.wasm` con Brotli y tipo MIME `application/wasm`.
-8. **Aislamiento y rastreo.** `web/_headers` activa COOP/COEP para que el renderer Wasm pueda usar varios hilos. `web/robots.txt` evita que la regla SPA convierta la respuesta del rastreador en HTML inválido. Se añadieron `preconnect` a los orígenes de Flutter y Google Fonts.
+8. **Aislamiento y rastreo.** `web/_headers` activa COOP/COEP para que el renderer Wasm pueda usar varios hilos. `web/robots.txt` evita que la regla SPA convierta la respuesta del rastreador en HTML inválido. `web/index.html` mantiene el `preconnect` requerido por el renderer Flutter.
+9. **Tipografía alineada y autoalojada.** La app usa una sola fuente variable Inter local para 400–700. Se quitaron Plus Jakarta Sans, la dependencia Google Fonts y los `preconnect` a fuentes remotas. Flutter Web usa el mismo archivo Inter como respaldo de Roboto, sin bajar Roboto de Google Fonts.
 
 La transferencia total bajó de **9,347 KiB a 5,783 KiB** (aproximadamente **38 %**). El LCP mediano mejoró **42 % en móvil** y **34 % en escritorio** respecto a la línea base.
 
@@ -148,7 +152,7 @@ La transferencia total bajó de **9,347 KiB a 5,783 KiB** (aproximadamente **38 
 - **Rendimiento móvil:** en el preview de Cloudflare la mediana de LCP bajó a 19.757 s y el TBT a 2,517 ms, pero el LCP sigue alto. Al ser una interfaz Flutter dibujada en canvas, Lighthouse no expone un nodo LCP nativo. Conviene contrastar la pintura y la respuesta en un móvil real, además del laboratorio simulado.
 - **API obsoleta:** Lighthouse aún detecta `Intl.v8BreakIterator` en el bundle generado. El aviso puede originarse en Flutter o en una dependencia; localizarlo en la fuente antes de cambiar paquetes.
 - **Source maps:** no hay source maps válidos para el JavaScript de respaldo. Pueden facilitar depuración si se publican en un entorno controlado.
-- **Hosting:** el preview local confirma Brotli, MIME Wasm y COOP/COEP en Wrangler. Falta repetir Lighthouse sobre el dominio público tras desplegar este cambio.
+- **Hosting:** Wrangler y el sitio público entregan Brotli, MIME Wasm y COOP/COEP. La validación Lighthouse de producción está documentada más abajo.
 - **Accesibilidad manual:** las auditorías automáticas dan 100/100, pero no se verificó con lector de pantalla ni se completó una revisión formal de teclado.
 
 ## Cobertura de pantallas
@@ -160,15 +164,140 @@ Lighthouse evaluó la ruta inicial `/` en perfiles móvil y escritorio. Se naveg
 - **Fecha:** 16 de noviembre de 2026.
 - **Herramientas:** línea base y Wasm previo: Flutter 3.47.7 / Dart 3.13.5 y Chromium 159; campañas recientes: Flutter 3.50.0 / Dart 3.14.0, Lighthouse 13.6.0, Chrome 157 y Wrangler 4.163.0.
 - **Perfiles:** móvil simulado por Lighthouse y preset de escritorio.
-- **Repeticiones:** tres por perfil para la línea base JavaScript, la iteración diferida y el preview final de Cloudflare Pages; cinco por perfil para la compilación Wasm previa.
+- **Repeticiones:** tres por perfil para la línea base JavaScript, la iteración diferida, el preview local y el sitio público de Cloudflare Pages; cinco por perfil para la compilación Wasm previa.
 - **Servidor:** `http://127.0.0.1:8765/`, servidor HTTP local de Python sobre `build/web`.
 - **Configuración:** se usó la clave publishable local desde `.env` para compilar. No se incluyó en este reporte ni en las evidencias.
 - **Variantes:** línea base JavaScript compilada desde el commit `974be42`; versión final release con los cambios de esta revisión y `--wasm`.
 - **Servidor final de benchmark:** Wrangler Pages Dev sirvió `build/web`, aplicó el archivo `_headers` y negociación Brotli. El workflow del repositorio publica ese mismo directorio en Cloudflare Pages.
+- **Validación pública:** `https://unisport-ihc.pages.dev/`, medida después del push con tres corridas por perfil.
 
 Flutter documenta los encabezados necesarios para el renderer multihilo y la compresión del Wasm; Cloudflare Pages admite reglas en `_headers` y entrega Gzip/Brotli cuando corresponde: [Flutter WebAssembly](https://docs.flutter.dev/platform-integration/web/wasm), [Flutter Web en producción](https://docs.flutter.dev/deployment/web), [encabezados de Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/headers/), [contenido y compresión de Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/serving-pages/).
 
-## Detalle de la corrida móvil final
+## Validación de Cloudflare Pages en producción
+
+Se midió la URL pública tras el push. Se hicieron tres corridas móviles y tres de escritorio con Lighthouse 13.6.0 y Chrome 157. La página respondió HTTP 200. Cloudflare entregó `main.dart.wasm` como `application/wasm`, los encabezados COOP/COEP y `Content-Encoding: br` al solicitar Brotli.
+
+### Medianas y rangos de tres corridas
+
+| Métrica | Móvil | Escritorio |
+|---|---:|---:|
+| Rendimiento | **46 (46–46)** | **72 (72–73)** |
+| Accesibilidad | 100 | 100 |
+| Buenas prácticas | 81 | 81 |
+| SEO | 100 | 100 |
+| FCP | 1.058 s (0.884–1.071) | 0.403 s (0.398–0.406) |
+| LCP | 16.040 s (15.696–16.078) | 3.279 s (3.187–3.336) |
+| Speed Index | 41.530 s (40.887–45.067) | 14.546 s (5.372–14.632) |
+| TBT | 788 ms (771–804) | 2 ms (1–11) |
+| CLS | 0.00 (0.00–0.00) | 0.00 (0.00–0.00) |
+
+| Perfil | Corrida | Rendimiento | FCP (s) | LCP (s) | Speed Index (s) | TBT (ms) | CLS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Móvil | 1 | 46 | 0.884 | 16.040 | 41.530 | 804 | 0.00 |
+| Móvil | 2 | 46 | 1.058 | 15.696 | 45.067 | 771 | 0.00 |
+| Móvil | 3 | 46 | 1.071 | 16.078 | 40.887 | 788 | 0.00 |
+| Escritorio | 1 | 72 | 0.406 | 3.279 | 5.372 | 2 | 0.00 |
+| Escritorio | 2 | 73 | 0.403 | 3.187 | 14.632 | 1 | 0.00 |
+| Escritorio | 3 | 72 | 0.398 | 3.336 | 14.546 | 11 | 0.00 |
+
+En comparación con el preview local, el puntaje mediano subió **8 puntos en móvil** y **9 en escritorio**. El LCP bajó aproximadamente **19 % en móvil** y **9 % en escritorio**; el TBT móvil bajó cerca de **69 %**. Speed Index varió bastante, sobre todo en escritorio, así que conviene seguir comparando sus corridas y no interpretar una sola medición como tendencia.
+
+### Entorno de la medición pública
+
+| Parámetro | Valor |
+|---|---|
+| URL | `https://unisport-ihc.pages.dev/` |
+| Fecha | 17 de noviembre de 2026, entre 14:49 y 14:53 UTC |
+| Lighthouse / Chrome | 13.6.0 / 157.0.8103.79 |
+| Perfiles | Móvil simulado y preset de escritorio |
+| Móvil simulado | Moto G Power (2022), Android 11; throttling simulado |
+| Entrega comprobada | HTTP 200, Cloudflare, Wasm MIME correcto, COOP/COEP y Brotli |
+
+### Hallazgos de la traza de inicio móvil
+
+Se capturó una traza adicional en Chrome con el mismo perfil móvil simulado. Esa corrida diagnóstica obtuvo 45/100, FCP de 0.952 s, LCP de 16.312 s, Speed Index de 42.882 s y TBT de 839 ms. Es una corrida aparte y no se incluyó en las medianas anteriores.
+
+| Recurso / trabajo | Resultado observado |
+|---|---:|
+| `main.dart.wasm` | 1.30 MB transferidos (3.49 MB decodificados); solicitud iniciada a 1.304 s y completada a 22.693 s en la simulación móvil |
+| `skwasm.wasm` | 1.23 MB transferidos (3.61 MB decodificados); descarga de 2.74 s |
+| Fuentes externas | Seis archivos de Google Fonts, unos 741 KB transferidos; comenzaron a solicitarse entre 22.8 y 25.3 s |
+| Evaluación de `main.dart.mjs` | 2.27 s de scripting |
+| Trabajo total del hilo principal | 3.92 s; evaluación de scripts 2.35 s y otras tareas 1.42 s |
+| Tareas largas | 14; la mayor duró 198 ms |
+
+La traza señala primero la descarga del módulo principal Wasm y luego la carga tardía de varias fuentes. La ejecución de JavaScript también consume tiempo, pero no aparece una tarea individual extensa que explique por sí sola el LCP. La siguiente mejora que conviene evaluar es reducir el trabajo inicial incluido en Wasm y revisar qué variantes de fuentes externas se solicitan.
+
+En esta corrida Lighthouse registró FCP/LCP observados en la traza de aproximadamente 25.605/25.788 s, mientras que las métricas simuladas usadas para puntuar fueron 0.952/16.312 s. Son campos distintos de Lighthouse bajo throttling simulado; la diferencia queda documentada y conviene contrastarla con una prueba en un dispositivo real antes de atribuirla a un widget o elemento concreto.
+
+### Composición del build Wasm
+
+Se compiló una copia release de diagnóstico con Flutter 3.50, `--wasm`, carga diferida y source maps. Los source maps se usaron solo localmente y no se conservaron ni publicaron.
+
+| Módulo | Tamaño Wasm sin comprimir | Contenido identificado en el source map |
+|---|---:|---|
+| `main.dart.wasm` | **3,489,564 bytes** | Código inicial, incluido `GoogleFontsLite`, Flutter y la portada |
+| `main.dart_module1.wasm` | 608,688 bytes | Pantallas privadas y funciones de partidos; incluye vistas de explorar, crear, detalle e historial, además de componentes Material de calendario y hora |
+| `main.dart_module2.wasm` | 66,401 bytes | Inicio de sesión, registro, recuperación de clave y dependencias asociadas |
+| `main.dart_module3.wasm` | 7,643 bytes | Source map asociado al drawer de Material |
+
+### Alineación tipográfica local con Figma
+
+El sistema visual inspeccionado en Figma define Inter con pesos Regular 400, Medium 500, Semi Bold 600 y Bold 700. Se eliminaron Plus Jakarta Sans y los pesos 800. Ahora se declara `assets/fonts/Inter-Variable.ttf`, un único archivo variable con los ejes de peso 100–900. La licencia OFL se conserva junto al archivo en `assets/fonts/Inter-OFL.txt`. Flutter 3.41 y posteriores aplican `FontWeight` al eje variable [según la documentación oficial de Flutter](https://docs.flutter.dev/release/breaking-changes/font-weight-variation); la fuente y sus ejes están publicados en [Google Fonts](https://github.com/google/fonts/blob/main/ofl/inter/METADATA.pb).
+
+Se quitó `google_fonts` de `pubspec.yaml` y `pubspec.lock`. Al revisar el código del renderer Flutter 3.50 se encontró que CanvasKit y skwasm descargan Roboto cuando `FontManifest.json` no declara una familia Roboto. El manifiesto ahora asigna el mismo asset Inter a las familias Inter y Roboto: el tema usa Inter y el alias cubre solo el respaldo interno del renderer. Así se conserva una sola fuente física y se elimina la petición externa de Roboto. También se quitó el `preconnect` a `fonts.gstatic.com`.
+
+| Build local release Wasm | Wasm inicial sin comprimir | Transferencia total Lighthouse |
+|---|---:|---:|
+| Antes de unificar tipografía | 3,463,874 bytes | — |
+| Inter estático con Google Fonts | 2,609,718 bytes | 2,897 KiB |
+| Inter variable local, final | **2,579,244 bytes** | **2,652 KiB** |
+
+Frente al build con Inter remoto, el Wasm inicial bajó otros **30,474 bytes (1.2 %)** y la transferencia medida bajó **245 KiB (8.5 %)**. La actualización aún no está desplegada, por lo que las métricas públicas más arriba siguen correspondiendo a la versión anterior.
+
+### Lighthouse local después del cambio tipográfico
+
+Se sirvió el build final con Wrangler Pages Dev y se hicieron tres corridas por perfil. La campaña aisló la categoría **Rendimiento** (`--only-categories=performance`); las categorías de accesibilidad, buenas prácticas y SEO del sitio público corresponden a la versión anterior.
+
+**Entorno:** 17 de noviembre de 2026; Flutter 3.50.0 release Wasm, Wrangler 4.164.0, Lighthouse 13.6.0 y Chrome 157. Perfil móvil simulado de Lighthouse y preset de escritorio.
+
+| Métrica | Móvil | Escritorio |
+|---|---:|---:|
+| Rendimiento | **45 (43–46)** | **77 (74–77)** |
+| FCP | 0.642 s (0.638–0.657) | 0.191 s (0.191–0.194) |
+| LCP | 15.695 s (15.445–15.941) | 2.918 s (2.848–2.964) |
+| Speed Index | 8.204 s (7.781–10.199) | 2.839 s (2.604–3.996) |
+| TBT | 1,005 ms (914–1,179) | 83 ms (72–88) |
+| CLS | 0.00 | 0.00 |
+| Transferencia total | 2,652 KiB | 2,652 KiB |
+
+| Perfil | Corrida | Rendimiento | FCP (s) | LCP (s) | Speed Index (s) | TBT (ms) | CLS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Móvil | 1 | 43 | 0.657 | 15.695 | 8.204 | 1,179 | 0.00 |
+| Móvil | 2 | 46 | 0.642 | 15.445 | 7.781 | 1,005 | 0.00 |
+| Móvil | 3 | 45 | 0.638 | 15.941 | 10.199 | 914 | 0.00 |
+| Escritorio | 1 | 74 | 0.191 | 2.964 | 3.996 | 72 | 0.00 |
+| Escritorio | 2 | 77 | 0.194 | 2.848 | 2.839 | 83 | 0.00 |
+| Escritorio | 3 | 77 | 0.191 | 2.918 | 2.604 | 88 | 0.00 |
+
+En las trazas ya no aparecen solicitudes de fuentes a `fonts.gstatic.com`. Se transfiere el archivo local `Inter-Variable.ttf` (unos 470 KB); el manifiesto lo registra como Inter y como respaldo Roboto del renderer. La segunda lectura del mismo asset transfirió solo 259 bytes. Así se evita la descarga remota de Roboto (unos 64 KB) y se reemplazan las cuatro variantes remotas de Inter (unos 646 KB) por un único archivo local.
+
+Las capturas de Lighthouse de la bienvenida móvil y de escritorio muestran texto y botones legibles, sin recortes visibles. No se capturaron las pantallas privadas donde también cambiaron pesos tipográficos.
+
+| Comparación local | Inter remoto | Inter variable local | Cambio mediano |
+|---|---:|---:|---:|
+| Rendimiento móvil / escritorio | 39 / 67 | **45 / 77** | +6 / +10 puntos |
+| LCP móvil / escritorio | 17.213 s / 3.216 s | **15.695 s / 2.918 s** | −8.8 % / −9.3 % |
+| TBT móvil / escritorio | 2,310 ms / 258 ms | **1,005 ms / 83 ms** | −56.5 % / −67.8 % |
+| Transferencia total | 2,897 KiB | **2,652 KiB** | −245 KiB (−8.5 %) |
+
+La comparación usa las mismas herramientas y servidor local; Lighthouse presenta variación entre corridas. El LCP móvil sigue siendo el mayor pendiente. El rendimiento público (medianas anteriores de 46/72) aún no se ha repetido con esta versión en Cloudflare Pages, por lo que no se atribuye un cambio de producción hasta desplegarla.
+
+En el build previo a la alineación, el tamaño sin comprimir del módulo principal coincide prácticamente con los **3,489,526 bytes decodificados** observados en la respuesta pública. En esa versión, Brotli reducía su transferencia a cerca de **1.30 MB**.
+
+El source map descrito arriba corresponde al build previo a la alineación tipográfica. En esa versión, la fuente con más ubicaciones mapeadas fue `google_fonts_lite.dart`: el archivo del paquete pesa 1,873,498 bytes y registra **1,926 familias**. La cantidad de ubicaciones no equivale directamente a bytes del Wasm; Flutter no produjo un desglose exacto por paquete. En el código local actual, se eliminó el paquete Google Fonts y la app carga Inter desde un asset variable local.
+
+## Detalle del informe móvil del preview local
 
 Este apartado incorpora los resultados del informe Lighthouse móvil que se generó para el preview local de Cloudflare Pages. El HTML se elimina del repositorio; estos datos quedan como evidencia legible y versionable aquí.
 
@@ -231,4 +360,4 @@ La campaña se midió en build release Wasm con carga diferida, servido por Wran
 
 ## Conclusión y siguiente trabajo
 
-La compresión Brotli en Pages es la mejora más medible hasta ahora: redujo la transferencia alrededor de 39 % y mejoró el LCP en ambos perfiles. El score móvil subió de 35 a 38; falta validar el despliegue público y revisar la experiencia en un dispositivo real, porque el LCP simulado sigue alto y no identifica un nodo DOM. Mantener accesibilidad en 100, CLS en cero y SEO en 100.
+La compresión Brotli redujo la transferencia cerca de 39 % en el preview local. La validación pública confirmó medianas de 46/100 y 16.040 s de LCP en móvil, y 72/100 y 3.279 s en escritorio. El perfil identificó la descarga de `main.dart.wasm` y las fuentes externas como los principales costos de inicio que conviene optimizar. El LCP móvil sigue alto y el Speed Index presentó variabilidad; después de reducir esos costos, se debe repetir la prueba en producción y contrastar la experiencia en un dispositivo real. Se mantuvieron accesibilidad en 100, CLS en cero y SEO en 100.

@@ -1,9 +1,10 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:google_fonts/google_fonts_lite.dart';
 
 /// Tema visual de UniSport: modo claro, superficies limpias, verde deportivo
 /// como color de acción y cian como acento informativo.
 class TemaApp {
+  static const String fuenteTipografica = 'Inter';
+
   // Base
   static const Color fondo = Color(0xFFF6F8FB);
   static const Color superficie = Color(0xFFFFFFFF);
@@ -45,7 +46,7 @@ class TemaApp {
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: fondo,
-      fontFamily: GoogleFontsLite.getFont('Inter').fontFamily,
+      fontFamily: fuenteTipografica,
       colorScheme: ColorScheme.fromSeed(
         seedColor: verdeDeportivo,
         brightness: Brightness.light,
@@ -69,11 +70,11 @@ class TemaApp {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFontsLite.getFont(
-          'Plus Jakarta Sans',
+        titleTextStyle: const TextStyle(
+          fontFamily: fuenteTipografica,
           color: textoPrincipal,
           fontSize: 20,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           letterSpacing: -0.3,
         ),
         iconTheme: const IconThemeData(color: textoPrincipal),
@@ -108,8 +109,8 @@ class TemaApp {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFontsLite.getFont(
-            'Inter',
+          textStyle: const TextStyle(
+            fontFamily: fuenteTipografica,
             fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
@@ -124,8 +125,8 @@ class TemaApp {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFontsLite.getFont(
-            'Inter',
+          textStyle: const TextStyle(
+            fontFamily: fuenteTipografica,
             fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
@@ -134,8 +135,8 @@ class TemaApp {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: verdeOscuro,
-          textStyle: GoogleFontsLite.getFont(
-            'Inter',
+          textStyle: const TextStyle(
+            fontFamily: fuenteTipografica,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -143,8 +144,8 @@ class TemaApp {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: textoPrincipal,
-        contentTextStyle: GoogleFontsLite.getFont(
-          'Inter',
+        contentTextStyle: const TextStyle(
+          fontFamily: fuenteTipografica,
           color: Colors.white,
           fontWeight: FontWeight.w500,
         ),
@@ -161,8 +162,8 @@ class TemaApp {
         indicatorColor: verdeSuave,
         height: 68,
         labelTextStyle: WidgetStateProperty.resolveWith(
-          (estados) => GoogleFontsLite.getFont(
-            'Inter',
+          (estados) => TextStyle(
+            fontFamily: fuenteTipografica,
             fontSize: 12,
             fontWeight: estados.contains(WidgetState.selected)
                 ? FontWeight.w700
@@ -187,9 +188,9 @@ class TemaApp {
   static TextStyle titulo({
     double tamano = 24,
     Color color = textoPrincipal,
-    FontWeight peso = FontWeight.w800,
-  }) => GoogleFontsLite.getFont(
-    'Plus Jakarta Sans',
+    FontWeight peso = FontWeight.w700,
+  }) => TextStyle(
+    fontFamily: fuenteTipografica,
     fontSize: tamano,
     fontWeight: peso,
     color: color,

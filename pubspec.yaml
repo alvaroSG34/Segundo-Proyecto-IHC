@@ -32,9 +32,6 @@ dependencies:
     sdk: flutter
   material_ui: ^1.5.0
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  google_fonts: ^9.0.0
   supabase_flutter: ^2.18.3
   file_saver: ^0.7.0
 
@@ -57,6 +54,16 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 400
+    # Flutter Web usa Roboto como fuente de respaldo del renderer; se asigna
+    # el mismo archivo de Inter para evitar otra familia y una descarga externa.
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 400
     - family: Lucide
       fonts:
         - asset: assets/fonts/lucide.ttf

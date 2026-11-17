@@ -455,7 +455,7 @@ class _VistaAnaliticaState extends State<VistaAnalitica> {
           padding: EdgeInsets.only(bottom: 12),
           child: Text(
             'Eventos recientes',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
         ),
         for (final (indice, evento) in eventosPagina.indexed)

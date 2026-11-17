@@ -200,7 +200,7 @@ class _VistaEquiposState extends State<VistaEquipos> {
                     'Equipo $letra',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: TemaApp.textoPrincipal,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

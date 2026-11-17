@@ -358,7 +358,7 @@ class _VistaPerfilState extends State<VistaPerfil> {
             style: const TextStyle(
               color: TemaApp.verdeOscuro,
               fontSize: 26,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -372,7 +372,7 @@ class _VistaPerfilState extends State<VistaPerfil> {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 3),
