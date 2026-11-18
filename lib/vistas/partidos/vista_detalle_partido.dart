@@ -144,11 +144,12 @@ class _VistaDetallePartidoState extends State<VistaDetallePartido> {
 
   Future<void> actualizar() async {
     final p = await widget.recargarPartido?.call();
+    if (!mounted) return;
     if (p == null && widget.recargarPartido != null) {
-      if (mounted) Navigator.of(context).maybePop();
+      Navigator.of(context).maybePop();
       return;
     }
-    if (p != null && mounted) setState(() => partido = p);
+    if (p != null) setState(() => partido = p);
     await cargar();
   }
 

@@ -13,6 +13,44 @@ import 'apoyo/servicio_autenticacion_falso.dart';
 
 void main() {
   testWidgets(
+    'cerrar el detalle durante la recarga no actualiza una pantalla desmontada',
+    (tester) async {
+      final auth = ServicioAutenticacionFalso();
+      final partido = ModeloPartido(
+        id: 'recarga-pendiente',
+        titulo: 'Partido',
+        disciplina: 'Futsal',
+        icono: 'Futsal',
+        ubicacion: 'Cancha',
+        fechaHora: '10/10/2099 · 19:00',
+        cuposTotales: 4,
+        cuposOcupados: 1,
+        organizadorNombre: 'Organizador',
+      );
+      final respuesta = Completer<ModeloPartido?>();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VistaDetallePartido(
+            partido: partido,
+            repositorio: auth.repositorio,
+            usuarioId: 'otro',
+            recargarPartido: () => respuesta.future,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final recarga = tester
+          .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+          .onRefresh();
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      respuesta.complete(partido);
+      await recarga;
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Explorar abre el detalle y conserva el acceso rápido para unirse',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(800, 1000));
