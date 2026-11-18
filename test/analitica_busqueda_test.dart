@@ -237,7 +237,7 @@ void main() {
       await _esperarEvento(tester);
       expect(analitica.eventos, hasLength(2));
       expect(analitica.eventos.last.$2['cantidad_resultados'], 1);
-      expect(find.text('1 partido encontrado'), findsOneWidget);
+      expect(find.text('Futsal nocturno'), findsOneWidget);
     },
   );
 
@@ -258,7 +258,7 @@ void main() {
     await _mostrar(tester, analitica, _Repositorio());
     await tester.enterText(find.byType(TextField), 'Futsal');
     await _esperarEvento(tester);
-    expect(find.text('1 partido encontrado'), findsOneWidget);
+    expect(find.text('Futsal nocturno'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -270,7 +270,7 @@ void main() {
     await _mostrar(tester, analitica, _Repositorio());
     _filtrar(tester, const FiltroPartidos(texto: 'Futsal'));
     await _esperarEvento(tester);
-    expect(find.text('1 partido encontrado'), findsOneWidget);
+    expect(find.text('Futsal nocturno'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     pendiente.complete();
     await tester.pumpAndSettle();

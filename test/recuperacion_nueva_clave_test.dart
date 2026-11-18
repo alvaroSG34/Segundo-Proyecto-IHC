@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:unisport/main.dart';
 import 'package:unisport/vistas/autenticacion/vista_nueva_clave.dart';
+import 'package:unisport/vistas/inicio/vista_principal_diferida.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
 
 import 'apoyo/servicio_autenticacion_falso.dart';
@@ -41,6 +42,10 @@ void main() {
       expect(find.text('Contraseña actualizada'), findsOneWidget);
       await tester.tap(find.byKey(const Key('recuperacion_continuar')));
       await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(VistaPrincipalDiferida), findsOneWidget);
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.byType(VistaPrincipal), findsOneWidget);
 
       await auth.cerrarSesion();

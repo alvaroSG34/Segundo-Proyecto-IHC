@@ -107,12 +107,16 @@ Future<void> _abrirSalida(WidgetTester tester) async {
   await tester.ensureVisible(boton);
   await tester.pumpAndSettle();
   await tester.tap(boton);
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(milliseconds: 500));
 }
 
-Future<void> _confirmar(WidgetTester tester) async {
+Future<void> _confirmar(WidgetTester tester, {bool pendiente = false}) async {
   await tester.tap(find.text('Sí, salir'));
-  await tester.pumpAndSettle();
+  if (pendiente) {
+    await tester.pump(const Duration(milliseconds: 500));
+  } else {
+    await tester.pumpAndSettle();
+  }
 }
 
 void main() {
@@ -240,7 +244,7 @@ void main() {
         final repositorio = _Repositorio()..pendiente = respuesta.future;
         await _mostrar(tester, explorar, repositorio, analitica);
         await _abrirSalida(tester);
-        await _confirmar(tester);
+        await _confirmar(tester, pendiente: true);
         expect(analitica.eventos.single.$1, EventosAnalitica.salidaIniciada);
         expect(await repositorio.obtenerPartidosUnidos(), hasLength(1));
         respuesta.complete();

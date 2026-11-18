@@ -148,9 +148,13 @@ Future<void> _tocar(WidgetTester tester, Finder boton) async {
     boton = find.text('Retirarme de la nueva fecha');
   }
   await tester.ensureVisible(boton);
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(milliseconds: 500));
   await tester.tap(boton);
-  await tester.pumpAndSettle();
+  if (boton.toString().contains('Reprogramar')) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump(const Duration(milliseconds: 500));
+  }
 }
 
 Future<void> _responder(WidgetTester tester, bool acepta) async {

@@ -94,7 +94,11 @@ Future<void> _abrir(WidgetTester tester, bool editar) async {
   await tester.pumpAndSettle();
   final boton = find.text(editar ? 'Editar' : 'Eliminar partido');
   await tester.tap(boton);
-  await tester.pumpAndSettle();
+  if (editar) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump(const Duration(milliseconds: 500));
+  }
   if (editar) {
     final campo = find.byKey(const Key('partido_titulo'));
     await tester.ensureVisible(campo);
