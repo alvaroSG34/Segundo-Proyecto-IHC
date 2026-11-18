@@ -15,6 +15,7 @@ import 'package:unisport/vistas/autenticacion/vista_login.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/widgets/boton_accion.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
 
 const _correo = String.fromEnvironment('E2E_CORREO');
@@ -504,7 +505,7 @@ Future<void> _comprobarPartido(
   final tarjeta = find.descendant(
     of: find.byType(VistaMisPartidos),
     matching: find.byWidgetPredicate(
-      (w) => w is TarjetaPartido && w.partido.titulo == titulo,
+      (w) => w is TarjetaMisPartidos && w.partido.titulo == titulo,
     ),
   );
   await _esperar(
@@ -523,7 +524,7 @@ Future<void> _comprobarPartido(
     find.descendant(of: tarjeta, matching: find.text(ubicacion)),
     findsOneWidget,
   );
-  final p = tester.widget<TarjetaPartido>(tarjeta).partido;
+  final p = tester.widget<TarjetaMisPartidos>(tarjeta).partido;
   expect(p.disciplina, 'Futsal');
   expect(p.fechaInicio, fecha);
   expect(p.cuposTotales, 10);

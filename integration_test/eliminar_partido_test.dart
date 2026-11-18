@@ -14,7 +14,8 @@ import 'package:unisport/vistas/autenticacion/vista_login.dart';
 import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
-import 'package:unisport/widgets/tarjeta_partido.dart';
+import 'package:unisport/vistas/partidos/vista_historial.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
 
 const _correo = String.fromEnvironment('E2E_CORREO');
 const _clave = String.fromEnvironment('E2E_CLAVE');
@@ -149,7 +150,9 @@ void main() {
 
       debugPrint('Eliminar E2E · 2/5: cancelar conserva tarjeta y fila');
       await _abrirConfirmacion(tester, partido.id, titulo);
-      final cancelar = _dialogo(find.widgetWithText(OutlinedButton, 'Cancelar'));
+      final cancelar = _dialogo(
+        find.widgetWithText(OutlinedButton, 'Cancelar'),
+      );
       await _visible(tester, cancelar);
       _accesible(
         tester,
@@ -163,6 +166,8 @@ void main() {
         findsNothing,
         reason: 'Cancelar debe cerrar la confirmación.',
       );
+      await tester.pageBack();
+      await _esperar(tester, _tarjeta(partido.id));
       expect(
         _tarjeta(partido.id),
         findsOneWidget,
@@ -179,7 +184,7 @@ void main() {
         reason: 'Cancelar conserva la fila completa sin modificarla.',
       );
 
-      debugPrint('Eliminar E2E · 3/5: confirmar en tres toques');
+      debugPrint('Eliminar E2E · 3/5: confirmar en cinco toques');
       await tester.pageBack();
       await _esperar(tester, find.byType(VistaPrincipal));
       var toques = 0;
@@ -187,7 +192,7 @@ void main() {
       toques++;
       await _esperar(tester, _tarjeta(partido.id));
       await _abrirConfirmacion(tester, partido.id, titulo);
-      toques++;
+      toques += 3;
       final confirmar = _dialogo(
         find.widgetWithText(OutlinedButton, 'Eliminar'),
       );
@@ -202,13 +207,15 @@ void main() {
       toques++;
       expect(
         toques,
-        3,
+        5,
         reason:
-            'Menú → Mis partidos → Eliminar → confirmar requiere tres toques.',
+            'Mis partidos, detalle, menu, eliminar y confirmar: cinco toques.',
       );
 
       debugPrint('Eliminar E2E · 4/5: borrado real antes de la limpieza');
       await _esperar(tester, find.text('Partido "$titulo" eliminado'));
+      await tester.pageBack();
+      await _esperar(tester, find.byType(VistaMisPartidos));
       expect(
         find.byType(AlertDialog),
         findsNothing,
@@ -232,9 +239,9 @@ void main() {
       );
 
       debugPrint('Eliminar E2E · 5/5: reabrir confirma persistencia');
-      await tester.pageBack();
-      await _esperar(tester, find.byType(VistaPrincipal));
-      await _tocar(tester, find.bySemanticsLabel('Mis\nPartidos'));
+      await _tocar(tester, find.text('Historial'));
+      await _esperar(tester, find.byType(VistaHistorial));
+      await _tocar(tester, find.text('Mis partidos'));
       await _esperar(tester, find.byType(VistaMisPartidos));
       await _esperar(
         tester,
@@ -258,12 +265,9 @@ void main() {
   }, timeout: const Timeout(Duration(minutes: 8)));
 }
 
-Finder _tarjeta(String id) => find.descendant(
-  of: find.byType(VistaMisPartidos),
-  matching: find.byWidgetPredicate(
-    (w) => w is TarjetaPartido && w.partido.id == id,
-    description: 'tarjeta del partido temporal por ID',
-  ),
+Finder _tarjeta(String id) => find.byWidgetPredicate(
+  (w) => w is TarjetaMisPartidos && w.partido.id == id,
+  description: 'tarjeta de Mis partidos por ID',
 );
 Finder _dialogo(Finder control) =>
     find.descendant(of: find.byType(AlertDialog), matching: control);
@@ -272,26 +276,29 @@ Future<void> _abrirConfirmacion(
   String id,
   String titulo,
 ) async {
-  final visual = find.descendant(
-    of: _tarjeta(id),
-    matching: find.widgetWithText(TextButton, 'Eliminar'),
+  await _tocar(tester, find.byKey(Key('mis_partidos_detalle_$id')));
+  await _esperar(tester, find.text('Detalles del partido'));
+  await _tocar(tester, find.byTooltip('M\u00e1s acciones'));
+  final eliminar = find
+      .widgetWithText(PopupMenuItem<String>, 'Eliminar partido')
+      .last;
+  await _visible(tester, eliminar);
+  _accesible(
+    tester,
+    find.bySemanticsLabel('Eliminar partido'),
+    eliminar,
+    'Eliminar partido',
   );
-  await _visible(tester, visual);
-  final accesible = find.descendant(
-    of: _tarjeta(id),
-    matching: find.bySemanticsLabel('Eliminar'),
-  );
-  _accesible(tester, accesible, visual, 'Eliminar partido');
-  await _tocar(tester, accesible);
+  await _tocar(tester, eliminar);
   await _esperar(tester, find.byType(AlertDialog));
   expect(
-    _dialogo(find.text('¿Eliminar partido?')),
+    _dialogo(find.text('\u00bfEliminar partido?')),
     findsOneWidget,
-    reason: 'Debe mostrarse el título de confirmación.',
+    reason: 'Debe mostrarse el t\u00edtulo de confirmaci\u00f3n.',
   );
   final advertencia = _dialogo(
     find.text(
-      'Se eliminará "$titulo", sus inscripciones, suplentes y resultados. Esta acción no se puede deshacer.',
+      'Se eliminar\u00e1 "$titulo", sus inscripciones, suplentes y resultados. Esta acci\u00f3n no se puede deshacer.',
     ),
   );
   await _visible(tester, advertencia);

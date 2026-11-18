@@ -9,8 +9,9 @@ import 'package:unisport/vistas/autenticacion/vista_login.dart';
 import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/vistas/partidos/vista_equipos.dart';
+import 'package:unisport/vistas/partidos/vista_detalle_partido.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
-import 'package:unisport/widgets/tarjeta_partido.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
 
 const organizadorCorreo = String.fromEnvironment('E2E_ORGANIZADOR_CORREO');
 const organizadorClave = String.fromEnvironment('E2E_ORGANIZADOR_CLAVE');
@@ -246,8 +247,20 @@ Future<void> abrirPartidoUI(
 }) async {
   await tocar(tester, find.widgetWithText(ElevatedButton, 'Mis\nPartidos'));
   await esperar(tester, find.byType(VistaMisPartidos));
+  await esperar(
+    tester,
+    find.descendant(
+      of: find.byKey(const Key('mis_partidos_filtro_unido')),
+      matching: find.byWidgetPredicate(
+        (w) => w is ChoiceChip && w.onSelected != null,
+      ),
+    ),
+  );
+  if (Supabase.instance.client.auth.currentUser?.id != partido.organizadorId) {
+    await tocar(tester, find.byKey(const Key('mis_partidos_filtro_unido')));
+  }
   final tarjeta = find.byWidgetPredicate(
-    (widget) => widget is TarjetaPartido && widget.partido.id == partido.id,
+    (widget) => widget is TarjetaMisPartidos && widget.partido.id == partido.id,
     description: 'tarjeta del partido E2E ${partido.titulo}',
   );
   await esperar(
@@ -255,11 +268,14 @@ Future<void> abrirPartidoUI(
     tarjeta,
     motivo: 'El partido preparado debe aparecer en Mis partidos.',
   );
-  final verEquipos = find.descendant(
-    of: tarjeta,
-    matching: find.text(proponerEquipos ? 'Proponer equipos' : 'Ver equipos'),
-  );
-  await tocar(tester, verEquipos);
+  await tocar(tester, find.byKey(Key('mis_partidos_detalle_${partido.id}')));
+  await esperar(tester, find.byType(VistaDetallePartido));
+  await esperarDetalleCargado(tester);
+  await tocar(tester, find.byTooltip('Más acciones'));
+  final opcion = proponerEquipos || find.text('Ver equipos').evaluate().isEmpty
+      ? find.text('Proponer equipos').last
+      : find.text('Ver equipos').last;
+  await tocar(tester, opcion);
   await esperar(tester, find.byType(VistaEquipos));
   await esperar(tester, find.text(partido.titulo));
 }
@@ -270,17 +286,33 @@ Future<void> recargarPartidoUI(
 ) async {
   await tester.pageBack();
   await tester.pumpAndSettle();
+  await esperar(tester, find.byType(VistaDetallePartido));
+  await tester.pageBack();
+  await tester.pumpAndSettle();
   await esperar(tester, find.byType(VistaMisPartidos));
   final tarjeta = find.byWidgetPredicate(
-    (widget) => widget is TarjetaPartido && widget.partido.id == partido.id,
+    (widget) => widget is TarjetaMisPartidos && widget.partido.id == partido.id,
   );
   await esperar(tester, tarjeta);
-  await tocar(
-    tester,
-    find.descendant(of: tarjeta, matching: find.text('Ver equipos')),
-  );
+  await tocar(tester, find.byKey(Key('mis_partidos_detalle_${partido.id}')));
+  await esperar(tester, find.byType(VistaDetallePartido));
+  await esperarDetalleCargado(tester);
+  await tocar(tester, find.byTooltip('Más acciones'));
+  await tocar(tester, find.text('Ver equipos').last);
   await esperar(tester, find.byType(VistaEquipos));
   await esperar(tester, find.text(partido.titulo));
+}
+
+Future<void> esperarDetalleCargado(WidgetTester tester) async {
+  final cargando = find.descendant(
+    of: find.byKey(const Key('detalle_contenido')),
+    matching: find.byType(CircularProgressIndicator),
+  );
+  final reloj = Stopwatch()..start();
+  while (cargando.evaluate().isNotEmpty && reloj.elapsed < limite) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(cargando, findsNothing, reason: 'El detalle debe terminar de cargar.');
 }
 
 Future<void> esperarPartidoTerminado(

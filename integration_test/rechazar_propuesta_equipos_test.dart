@@ -27,8 +27,10 @@ void main() {
 
       // La propuesta se envía desde la interfaz, con el jugador en B y
       // designado como capitán rival (único autorizado para responder).
-      await tocar(tester, find.byKey(ValueKey('equipo_${partido.capitanId}')));
-      await tocar(tester, find.text('Equipo B').last);
+      await tocar(
+        tester,
+        find.byKey(ValueKey('mover_jugador_${partido.capitanId}_B')),
+      );
       final selectorCapitan = find.byType(DropdownButtonFormField<String>);
       final opcion = tester
           .widget<DropdownButton<String>>(

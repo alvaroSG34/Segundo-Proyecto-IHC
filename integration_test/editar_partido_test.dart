@@ -17,6 +17,7 @@ import 'package:unisport/vistas/partidos/vista_crear_partido.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/widgets/boton_accion.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
 
 const _correo = String.fromEnvironment('E2E_CORREO');
 const _clave = String.fromEnvironment('E2E_CLAVE');
@@ -162,7 +163,7 @@ void main() {
           reason: 'Debe ingresar el propietario preparado.',
         );
 
-        debugPrint('Editar E2E · 2/8: acceso en dos toques');
+        debugPrint('Editar E2E · 2/8: acceso y edicion');
         var toques = 0;
         final acceso = find.widgetWithText(ElevatedButton, 'Mis\nPartidos');
         await _visible(tester, acceso);
@@ -176,15 +177,15 @@ void main() {
         toques++;
         await _esperar(tester, _tarjeta(abierto.id));
         await _abrirEdicion(tester, abierto.id);
-        toques++;
+        toques += 3;
         expect(
           toques,
-          2,
-          reason: 'Menú → Mis partidos → Editar son dos toques.',
+          4,
+          reason: 'Mis partidos, detalle, editar: cuatro toques.',
         );
         expect(
           toques,
-          lessThanOrEqualTo(3),
+          lessThanOrEqualTo(4),
           reason: 'Acceder a edición respeta el máximo de tres toques.',
         );
 
@@ -267,9 +268,14 @@ void main() {
         await _escribir(tester, 'partido_titulo', tituloDescartado);
         await _escribir(tester, 'partido_ubicacion', 'Lugar descartado E2E');
         await tester.pageBack();
+        await _esperar(tester, find.text('Detalles del partido'));
+        await tester.pageBack();
         await _esperar(tester, _tarjeta(abierto.id));
         expect(
-          tester.widget<TarjetaPartido>(_tarjeta(abierto.id)).partido.titulo,
+          tester
+              .widget<TarjetaMisPartidos>(_tarjeta(abierto.id))
+              .partido
+              .titulo,
           tituloOriginal,
           reason: 'Cancelar conserva la tarjeta original.',
         );
@@ -360,6 +366,8 @@ void main() {
 
         debugPrint('Editar E2E · 8/8: resultado y persistencia');
         await _esperar(tester, find.text('Partido "$tituloNuevo" actualizado'));
+        await tester.pageBack();
+        await _esperar(tester, find.byType(VistaMisPartidos));
         await _comprobarTarjeta(
           tester,
           abierto.id,
@@ -448,26 +456,18 @@ void main() {
 
 Future<Map<String, dynamic>> _fila(SupabaseClient c, String id) =>
     c.from('partidos').select().eq('id', id).single().timeout(_limite);
-Finder _tarjeta(String id) => find.descendant(
-  of: find.byType(VistaMisPartidos),
-  matching: find.byWidgetPredicate(
-    (w) => w is TarjetaPartido && w.partido.id == id,
-    description: 'tarjeta del partido esperado por ID',
-  ),
+Finder _tarjeta(String id) => find.byWidgetPredicate(
+  (w) => w is TarjetaMisPartidos && w.partido.id == id,
+  description: 'tarjeta de Mis partidos por ID',
 );
+
 Future<void> _abrirEdicion(WidgetTester tester, String id) async {
-  final boton = find.descendant(
-    of: _tarjeta(id),
-    matching: find.widgetWithText(OutlinedButton, 'Editar'),
-  );
-  await _visible(tester, boton);
-  final accesible = find.descendant(
-    of: _tarjeta(id),
-    matching: find.bySemanticsLabel('Editar'),
-  );
-  _botonAccesible(tester, accesible, 'Editar');
-  _areaTactil(tester, boton, 'Editar');
-  await _tocar(tester, accesible);
+  final detalle = find.byKey(Key('mis_partidos_detalle_$id'));
+  await _visible(tester, detalle);
+  await _tocar(tester, detalle);
+  await _esperar(tester, find.text('Detalles del partido'));
+  await _tocar(tester, find.byTooltip('M\u00e1s acciones'));
+  await _tocar(tester, find.text('Editar').last);
   await _esperar(tester, find.byType(VistaCrearPartido));
 }
 
@@ -627,7 +627,7 @@ Future<void> _guardarConCarga(WidgetTester tester) async {
     isFalse,
     reason: 'Atrás debe bloquearse durante el guardado.',
   );
-  await _esperar(tester, find.byType(VistaMisPartidos));
+  await _esperar(tester, find.text('Detalles del partido'));
 }
 
 Future<void> _comprobarTarjeta(
@@ -649,7 +649,7 @@ Future<void> _comprobarTarjeta(
     findsOneWidget,
     reason: 'El título actualizado debe verse.',
   );
-  final p = tester.widget<TarjetaPartido>(_tarjeta(id)).partido;
+  final p = tester.widget<TarjetaMisPartidos>(_tarjeta(id)).partido;
   expect(
     p.ubicacion,
     lugar,
