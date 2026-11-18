@@ -52,6 +52,7 @@ app.*.map.json
 .env
 .env.*
 !.env.example
+/release-defines.json
 
 # Firmas y certificados de Android
 key.properties
