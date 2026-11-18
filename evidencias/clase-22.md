@@ -106,7 +106,7 @@ flutter --suppress-analytics --no-version-check analyze --no-pub
 
 ### Capturas reproducibles
 
-Fixture: `test/evidencias_clase22_test.dart`. No agrega rutas ni pantallas al producto y se omite en la suite normal. Para regenerar el después:
+El fixture `test/evidencias_clase22_test.dart` se retiró de la suite. Las capturas existentes se conservan; las siguientes instrucciones son históricas y requieren recuperar el fixture desde Git para volver a ejecutarlas:
 
 ```powershell
 flutter --suppress-analytics --no-version-check test --no-pub test/evidencias_clase22_test.dart --update-goldens --dart-define=CLASE22_CAPTURA=despues --reporter expanded
