@@ -10,20 +10,23 @@ class TemaApp {
   static const Color superficie = Color(0xFFFFFFFF);
   static const Color superficieSuave = Color(0xFFF1F5F9);
   static const Color textoPrincipal = Color(0xFF0F172A);
-  static const Color textoSecundario = Color(0xFF64748B);
+  static const Color textoSecundario = Color(0xFF475569);
   static const Color borde = Color(0xFFE2E8F0);
+  // WCAG 2.2 AA: bordes necesarios para identificar controles (>= 3:1).
+  // Equivalente al token de Figma `border-control-aa`.
+  static const Color bordeControlAa = Color(0xFF7D8EA3);
 
   // Marca y acentos
-  static const Color verdeDeportivo = Color(0xFF16A34A);
+  static const Color verdeDeportivo = Color(0xFF15803D);
   static const Color verdeOscuro = Color(0xFF15803D);
   static const Color verdeSuave = Color(0xFFDCFCE7);
   static const Color azulDeportivo = Color(
-    0xFF0284C7,
+    0xFF0369A1,
   ); // cian/azul para enlaces e info
   static const Color azulSuave = Color(0xFFE0F2FE);
-  static const Color naranjaAviso = Color(0xFFEA580C);
+  static const Color naranjaAviso = Color(0xFFC2410C);
   static const Color naranjaSuave = Color(0xFFFFEDD5);
-  static const Color rojoAlerta = Color(0xFFDC2626);
+  static const Color rojoAlerta = Color(0xFFB91C1C);
   static const Color rojoSuave = Color(0xFFFEE2E2);
   static const Color amarilloSuave = Color(0xFFFEF9C3);
   static const double radio = 16;
@@ -90,11 +93,11 @@ class TemaApp {
           color: textoSecundario,
           fontWeight: FontWeight.w500,
         ),
-        hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+        hintStyle: const TextStyle(color: textoSecundario),
         prefixIconColor: textoSecundario,
         suffixIconColor: textoSecundario,
-        border: bordeCampo(borde),
-        enabledBorder: bordeCampo(borde),
+        border: bordeCampo(bordeControlAa),
+        enabledBorder: bordeCampo(bordeControlAa),
         focusedBorder: bordeCampo(verdeDeportivo, 1.8),
         errorBorder: bordeCampo(rojoAlerta),
         focusedErrorBorder: bordeCampo(rojoAlerta, 1.8),
@@ -121,7 +124,7 @@ class TemaApp {
           foregroundColor: textoPrincipal,
           backgroundColor: superficie,
           minimumSize: const Size(double.infinity, 52),
-          side: const BorderSide(color: borde, width: 1.4),
+          side: const BorderSide(color: bordeControlAa, width: 1.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
