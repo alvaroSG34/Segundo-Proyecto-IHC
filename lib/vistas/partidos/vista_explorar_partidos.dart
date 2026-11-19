@@ -242,11 +242,11 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
     final bajaTardia = partido.esBajaTardia(ahora: ahora);
     final confirmar = await confirmarAccion(
       context,
-      titulo: '¿Salir del partido?',
+      titulo: bajaTardia ? '¿Registrar baja tardía?' : '¿Salir del partido?',
       mensaje: bajaTardia
           ? 'Faltan menos de 2 horas para "${partido.titulo}". Saldrás del equipo y la baja tardía será visible para el organizador.'
           : 'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
-      textoConfirmar: 'Sí, salir',
+      textoConfirmar: bajaTardia ? 'Registrar baja tardía' : 'Sí, salir',
     );
     if (confirmar != true || !mounted) return;
 
@@ -515,6 +515,16 @@ class _VistaExplorarPartidosState extends State<VistaExplorarPartidos> {
                 else if (_partidos.isEmpty)
                   _construirEstadoVacio()
                 else ...[
+                  Text(
+                    '${_partidos.length} ${_partidos.length == 1 ? 'partido encontrado' : 'partidos encontrados'}',
+                    key: const Key('explorar_cantidad'),
+                    semanticsLabel: 'Cantidad de partidos: ${_partidos.length}',
+                    style: const TextStyle(
+                      color: TemaApp.textoSecundario,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   ..._partidos.map(
                     (partido) => TarjetaPartido(
                       partido: partido,

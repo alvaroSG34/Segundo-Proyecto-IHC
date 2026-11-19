@@ -264,7 +264,7 @@ class TarjetaPartido extends StatelessWidget {
               icon: const Icon(LucideIcons.externalLink, size: 17),
               label: const Text('Ver detalle'),
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 46),
+                minimumSize: const Size(double.infinity, 48),
               ),
             ),
           ],

@@ -431,7 +431,7 @@ class _VistaHistorialState extends State<VistaHistorial> {
               icon: const Icon(LucideIcons.plus, size: 18),
               label: const Text('Crear un partido'),
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 46),
+                minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

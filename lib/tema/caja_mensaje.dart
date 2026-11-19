@@ -25,6 +25,9 @@ Future<bool> confirmarAccion(
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(ctx, false),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                    ),
                     child: const Text('Cancelar'),
                   ),
                 ),
@@ -32,6 +35,9 @@ Future<bool> confirmarAccion(
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(ctx, true),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                    ),
                     child: Text(textoConfirmar, textAlign: TextAlign.center),
                   ),
                 ),

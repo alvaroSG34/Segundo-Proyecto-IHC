@@ -96,7 +96,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
     Color colorTexto = Colors.white,
     IconData? icono,
     bool iconoEncima = false,
-    double alturaMinima = 0,
+    double alturaMinima = 48,
   }) {
     return ElevatedButton(
       onPressed: alPresionar,

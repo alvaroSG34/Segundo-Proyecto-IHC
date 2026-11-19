@@ -365,11 +365,11 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
     final bajaTardia = partido.esBajaTardia(ahora: ahora);
     final confirmar = await confirmarAccion(
       context,
-      titulo: '¿Salir del partido?',
+      titulo: bajaTardia ? '¿Registrar baja tardía?' : '¿Salir del partido?',
       mensaje: bajaTardia
           ? 'Faltan menos de 2 horas para "${partido.titulo}". Saldrás del equipo y la baja tardía será visible para el organizador.'
           : 'Dejarás tu cupo en "${partido.titulo}" y otra persona podrá tomarlo.',
-      textoConfirmar: 'Sí, salir',
+      textoConfirmar: bajaTardia ? 'Registrar baja tardía' : 'Sí, salir',
     );
     if (confirmar != true || !mounted) return;
 
@@ -472,7 +472,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                         style: FilledButton.styleFrom(
                           backgroundColor: TemaApp.verdeDeportivo,
                           foregroundColor: Colors.white,
-                          minimumSize: const Size(48, 44),
+                          minimumSize: const Size(48, 48),
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                         ),
                       ),
@@ -519,7 +519,7 @@ class _VistaMisPartidosState extends State<VistaMisPartidos> {
                       icon: const Icon(LucideIcons.slidersHorizontal, size: 18),
                       label: const Text('Filtros'),
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(48, 46),
+                        minimumSize: const Size(48, 48),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                       ),
                     ),
