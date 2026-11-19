@@ -214,7 +214,11 @@ void main() {
 
       debugPrint('Eliminar E2E · 4/5: borrado real antes de la limpieza');
       await _esperar(tester, find.text('Partido "$titulo" eliminado'));
-      await tester.pageBack();
+      await tester.pumpAndSettle();
+      if (find.byType(VistaDetallePartido).evaluate().isNotEmpty) {
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+      }
       await _esperar(tester, find.byType(VistaMisPartidos));
       expect(
         find.byType(AlertDialog),
