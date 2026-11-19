@@ -331,7 +331,29 @@ Future<void> _tocarReconfirmar(WidgetTester tester, String id) async {
     await esperar(tester, btn);
     await tocar(tester, btn);
   } else {
-    await tocar(tester, _boton(id, 'partido_reconfirmar'));
+    final tarjeta = _tarjeta(id);
+    final btn = _boton(id, 'partido_reconfirmar');
+    final scroll = find.byType(Scrollable);
+    if (scroll.evaluate().isNotEmpty) {
+      try {
+        await tester.scrollUntilVisible(
+          tarjeta,
+          250,
+          scrollable: scroll.first,
+          maxScrolls: 30,
+        );
+      } catch (_) {}
+      try {
+        await tester.scrollUntilVisible(
+          btn,
+          150,
+          scrollable: scroll.first,
+          maxScrolls: 30,
+        );
+      } catch (_) {}
+    }
+    await esperar(tester, btn);
+    await tocar(tester, btn);
   }
 }
 
@@ -342,9 +364,35 @@ Future<void> _tocarRetirarme(WidgetTester tester, String id) async {
     await esperar(tester, find.text('Retirarme de la nueva fecha'));
     await tocar(tester, find.text('Retirarme de la nueva fecha').last);
   } else {
-    await tocar(tester, _boton(id, 'partido_retirarse_reprogramacion'));
+    final tarjeta = _tarjeta(id);
+    final btn = _boton(id, 'partido_retirarse_reprogramacion');
+    final scroll = find.byType(Scrollable);
+    if (scroll.evaluate().isNotEmpty) {
+      try {
+        await tester.scrollUntilVisible(
+          tarjeta,
+          250,
+          scrollable: scroll.first,
+          maxScrolls: 30,
+        );
+      } catch (_) {}
+      try {
+        await tester.scrollUntilVisible(
+          btn,
+          150,
+          scrollable: scroll.first,
+          maxScrolls: 30,
+        );
+      } catch (_) {}
+    }
+    await esperar(tester, btn);
+    await tocar(tester, btn);
   }
 }
+
+Finder _tarjeta(String id) => find.byWidgetPredicate(
+  (widget) => widget is TarjetaPartido && widget.partido.id == id,
+);
 
 Finder _boton(String id, String clave) => find.descendant(
   of: find.byWidgetPredicate(
