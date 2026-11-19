@@ -319,6 +319,15 @@ Future<void> _tocarReconfirmar(WidgetTester tester, String id) async {
   if (find.byType(VistaDetallePartido).evaluate().isNotEmpty) {
     await esperarDetalleCargado(tester);
     final btn = find.widgetWithText(FilledButton, 'Confirmar asistencia');
+    final scroll = find.descendant(
+      of: find.byType(VistaDetallePartido),
+      matching: find.byType(Scrollable),
+    );
+    if (scroll.evaluate().isNotEmpty) {
+      try {
+        await tester.scrollUntilVisible(btn, 250, scrollable: scroll.first);
+      } catch (_) {}
+    }
     await esperar(tester, btn);
     await tocar(tester, btn);
   } else {

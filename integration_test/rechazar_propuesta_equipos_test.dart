@@ -58,7 +58,7 @@ void main() {
       expect(pendiente['capitan_rival_id'], partido.capitanId);
 
       await cambiarSesionUI(tester, capitanCorreo, capitanClave);
-      await abrirPartidoUI(tester, partido);
+      await abrirPartidoUI(tester, partido, abrirEquipos: true);
       await esperar(tester, find.text('Propuesta: Pendiente'));
       await esperar(tester, find.text('Rechazar'));
       expect(cliente.auth.currentUser!.id, partido.capitanId);
@@ -78,7 +78,7 @@ void main() {
           .timeout(limite);
       expect(rechazada, {...pendiente, 'estado': 'rechazada'});
 
-      await recargarPartidoUI(tester, partido);
+      await recargarPartidoUI(tester, partido, abrirEquipos: true);
       await esperar(tester, find.text('Propuesta: Rechazada'));
       _comprobarRechazo();
       expect(find.text('Editar propuesta'), findsNothing);
@@ -86,7 +86,7 @@ void main() {
       // Otra sesión debe observar el rechazo persistido y permitir al
       // organizador preparar una nueva propuesta.
       await cambiarSesionUI(tester, organizadorCorreo, organizadorClave);
-      await abrirPartidoUI(tester, partido);
+      await abrirPartidoUI(tester, partido, abrirEquipos: true);
       await esperar(tester, find.text('Propuesta: Rechazada'));
       _comprobarRechazo();
       expect(find.text('Editar propuesta'), findsOneWidget);
