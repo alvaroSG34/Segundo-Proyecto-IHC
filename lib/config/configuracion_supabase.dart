@@ -23,5 +23,13 @@ class ConfiguracionSupabase {
     defaultValue: '',
   );
 
+  /// Pagina publica que recibe el enlace enviado por Supabase al recuperar
+  /// una contrasena. Se usa tambien desde Android para evitar que Supabase
+  /// redirija al `localhost` configurado durante el desarrollo.
+  static const String urlRecuperacion = String.fromEnvironment(
+    'AUTH_REDIRECT_URL',
+    defaultValue: 'https://unisport-ihc.pages.dev',
+  );
+
   static bool get estaConfigurada => url.isNotEmpty && clavePublica.isNotEmpty;
 }

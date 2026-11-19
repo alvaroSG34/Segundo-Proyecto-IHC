@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../config/enlaces_publicos.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 
 import 'package:unisport/tema/iconos_app.dart';
@@ -129,6 +130,24 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
                         },
                   icon: const Icon(LucideIcons.userPlus, size: 19),
                   label: const Text('Crear nueva cuenta'),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  key: const Key('inicio_politica_privacidad'),
+                  onPressed: () async {
+                    final abierta = await abrirPoliticaPrivacidad();
+                    if (!abierta && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'No se pudo abrir la política de privacidad.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(LucideIcons.shieldCheck, size: 18),
+                  label: const Text('Política de privacidad'),
                 ),
                 if (widget.estaPreparando) ...[
                   const SizedBox(height: 12),

@@ -6,6 +6,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:unisport/tema/iconos_app.dart';
 
+import '../../config/enlaces_publicos.dart';
 import '../../modelos/modelo_partido.dart';
 import '../../servicios/autenticacion/servicio_autenticacion.dart';
 import '../../servicios/analitica/servicio_analitica.dart';
@@ -279,6 +280,17 @@ class _VistaPerfilState extends State<VistaPerfil> {
     );
   }
 
+  Future<void> _abrirPoliticaPrivacidad() async {
+    final abierta = await abrirPoliticaPrivacidad();
+    if (!abierta && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo abrir la política de privacidad.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final usuario = widget.servicioAuth.usuarioActual;
@@ -320,6 +332,13 @@ class _VistaPerfilState extends State<VistaPerfil> {
                 const SizedBox(height: 20),
                 _seccionClave(),
                 const SizedBox(height: 20),
+                TextButton.icon(
+                  key: const Key('politica_privacidad'),
+                  onPressed: _abrirPoliticaPrivacidad,
+                  icon: const Icon(LucideIcons.shieldCheck),
+                  label: const Text('Política de privacidad'),
+                ),
+                const SizedBox(height: 12),
                 OutlinedButton(
                   key: const Key('eliminar_cuenta'),
                   onPressed: _eliminandoCuenta ? null : _eliminarCuenta,

@@ -37,7 +37,6 @@ jobs:
         run: |
           flutter build web --release \
             --wasm \
-            --enable-wasm-deferred-loading \
             --dart-define=SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
             --dart-define=SUPABASE_KEY="${{ secrets.SUPABASE_KEY }}"
 

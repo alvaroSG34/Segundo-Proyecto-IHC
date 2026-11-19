@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../config/configuracion_supabase.dart';
 import '../../modelos/modelo_usuario.dart';
 
 /// Sesión y autenticación del estudiante.
@@ -256,7 +257,7 @@ class ServicioAutenticacionSupabase extends ServicioAutenticacion {
     try {
       await _cliente.auth.resetPasswordForEmail(
         correo.trim().toLowerCase(),
-        redirectTo: kIsWeb ? Uri.base.origin : null,
+        redirectTo: ConfiguracionSupabase.urlRecuperacion,
       );
       return null;
     } catch (e) {
