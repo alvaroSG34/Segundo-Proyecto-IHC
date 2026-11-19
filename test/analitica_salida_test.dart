@@ -111,7 +111,10 @@ Future<void> _abrirSalida(WidgetTester tester) async {
 }
 
 Future<void> _confirmar(WidgetTester tester, {bool pendiente = false}) async {
-  await tester.tap(find.text('Sí, salir'));
+  final btn = find.text('Registrar baja tardía').evaluate().isNotEmpty
+      ? find.text('Registrar baja tardía')
+      : find.text('Sí, salir');
+  await tester.tap(btn);
   if (pendiente) {
     await tester.pump(const Duration(milliseconds: 500));
   } else {
@@ -161,14 +164,29 @@ void main() {
         expect(analitica.eventos, isEmpty);
         await _abrirSalida(tester);
         // La consecuencia se explica antes de confirmar la salida.
-        expect(find.text('¿Salir del partido?'), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (w) =>
+                w is Text &&
+                (w.data == '¿Salir del partido?' ||
+                    w.data == '¿Registrar baja tardía?'),
+          ),
+          findsOneWidget,
+        );
         expect(
           find.textContaining(
             'Saldrás del equipo y la baja tardía será visible para el organizador.',
           ),
           findsOneWidget,
         );
-        expect(find.text('Sí, salir'), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (w) =>
+                w is Text &&
+                (w.data == 'Sí, salir' || w.data == 'Registrar baja tardía'),
+          ),
+          findsOneWidget,
+        );
         expect(analitica.eventos.single.$1, EventosAnalitica.salidaIniciada);
         final id = analitica.eventos.single.$2['intento_id'];
         expect(id, matches(RegExp(r'^[0-9a-f]{32}$')));

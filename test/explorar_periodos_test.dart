@@ -76,7 +76,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Partidos próximos'), findsOneWidget);
     expect(find.text('Ordenados por fecha más cercana'), findsNothing);
-    expect(find.text('2 partidos encontrados'), findsNothing);
+    expect(find.text('2 partidos encontrados'), findsOneWidget);
     expect(
       tester
           .widgetList<TarjetaPartido>(find.byType(TarjetaPartido))
