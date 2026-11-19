@@ -169,7 +169,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF0BAA60), Color(0xFF10786F)],
+                        colors: [Color(0xFF0B7C55), Color(0xFF10786F)],
                       ),
                     ),
                     child: Row(
@@ -225,10 +225,8 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                             tooltip: 'Mi perfil',
                             onPressed: () => _abrirPerfil(context),
                             style: IconButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.18,
-                              ),
+                              foregroundColor: TemaApp.verdeDeportivo,
+                              backgroundColor: Colors.white,
                               minimumSize: const Size(48, 48),
                             ),
                             icon: const Icon(
@@ -262,6 +260,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                         'Crear\nPartido',
                         const Color(0xFF26C99A),
                         () => _crearPartido(context),
+                        colorTexto: TemaApp.textoPrincipal,
                         icono: LucideIcons.plus,
                         iconoEncima: true,
                       ),
@@ -300,6 +299,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                             ),
                           );
                         },
+                        colorTexto: TemaApp.textoPrincipal,
                         icono: LucideIcons.compass,
                         iconoEncima: true,
                       ),
@@ -352,7 +352,7 @@ class _VistaPrincipalState extends State<VistaPrincipal> {
                         backgroundColor: TemaApp.superficie,
                         minimumSize: const Size(0, 48),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        side: const BorderSide(color: TemaApp.borde),
+                        side: const BorderSide(color: TemaApp.bordeControlAa),
                       ),
                     ),
                   ),
