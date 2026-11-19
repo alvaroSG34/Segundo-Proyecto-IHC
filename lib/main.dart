@@ -39,6 +39,11 @@ class _BootstrapUniSportState extends State<_BootstrapUniSport> {
       await Supabase.initialize(
         url: ConfiguracionSupabase.url,
         publishableKey: ConfiguracionSupabase.clavePublica,
+        // El correo puede solicitarse desde Android y abrirse en otro navegador.
+        // PKCE guarda el verificador solo en el dispositivo que hizo la solicitud.
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.implicit,
+        ),
       );
 
       final servicioAuth = ServicioAutenticacionSupabase(
