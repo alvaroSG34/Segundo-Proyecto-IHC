@@ -13,9 +13,11 @@ import 'package:unisport/vistas/autenticacion/vista_login.dart';
 import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/vistas/partidos/vista_crear_partido.dart';
+import 'package:unisport/vistas/partidos/vista_detalle_partido.dart';
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
 
 // Tres cuentas diferentes, registradas previamente en el mismo Supabase.
 // Las credenciales se pasan al ejecutar la prueba, nunca se guardan aquí.
@@ -97,7 +99,7 @@ void main() {
     await _tocar(tester, find.text('Guardar partido'));
     await _esperar(
       tester,
-      find.text('Partido creado y guardado correctamente.').first,
+      find.text('Partido creado y guardado correctamente.'),
       motivo: 'El organizador debe poder guardar el partido.',
     );
 
@@ -157,7 +159,7 @@ void main() {
     await _tocar(tester, find.text('Sí, salir'));
     await _esperar(
       tester,
-      find.text('Saliste de "$titulo". Entró el primer suplente.').first,
+      find.text('Saliste de "$titulo". Entró el primer suplente.'),
       motivo: 'La salida debe anunciar la promoción.',
     );
 
@@ -225,24 +227,26 @@ void main() {
     await _tocar(tester, find.text('Registrar baja tardía'));
     await _esperar(
       tester,
-      find.text('Baja tardía registrada en "$tituloTardio".').first,
+      find.text('Baja tardía registrada en "$tituloTardio".'),
     );
 
     await _volverAlMenu(tester);
     await _iniciarSesion(tester, _organizadorCorreo, _organizadorClave);
     await _tocar(tester, find.widgetWithText(ElevatedButton, 'Mis\nPartidos'));
     await _esperar(tester, find.byType(VistaMisPartidos));
-    final tarjetaOrganizador = find.byWidgetPredicate(
+    final tarjetaResumen = find.byWidgetPredicate(
       (widget) =>
-          widget is TarjetaPartido && widget.partido.id == partidoTardio.id,
+          widget is TarjetaMisPartidos && widget.partido.id == partidoTardio.id,
     );
-    await _esperar(tester, tarjetaOrganizador);
-    final verBajas = find.descendant(
-      of: tarjetaOrganizador,
-      matching: find.text('Ver bajas tardías (1)'),
+    await _esperar(tester, tarjetaResumen);
+    await _tocar(
+      tester,
+      find.byKey(Key('mis_partidos_detalle_${partidoTardio.id}')),
     );
-    await _tocar(tester, verBajas);
-    await _esperar(tester, find.text('Bajas tardías (1)'));
+    await _esperar(tester, find.byType(VistaDetallePartido));
+    await _esperar(tester, find.text('Seguimiento'));
+    await _tocar(tester, find.text('Seguimiento'));
+    await _esperar(tester, find.textContaining('Baja tardía'));
   });
 }
 
@@ -355,6 +359,6 @@ Future<void> _esperar(
     await tester.pump(const Duration(milliseconds: 200));
   }
   // El campo de contraseña tiene una animación continua.
-  expect(objetivo, findsOneWidget, reason: motivo);
+  expect(objetivo, findsAtLeastNWidgets(1), reason: motivo);
   await tester.pump(const Duration(milliseconds: 500));
 }

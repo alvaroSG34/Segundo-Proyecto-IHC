@@ -244,6 +244,7 @@ Future<void> abrirPartidoUI(
   WidgetTester tester,
   PartidoResultadoE2E partido, {
   bool proponerEquipos = false,
+  bool abrirEquipos = false,
 }) async {
   await tocar(tester, find.widgetWithText(ElevatedButton, 'Mis\nPartidos'));
   await esperar(tester, find.byType(VistaMisPartidos));
@@ -263,6 +264,7 @@ Future<void> abrirPartidoUI(
     (widget) => widget is TarjetaMisPartidos && widget.partido.id == partido.id,
     description: 'tarjeta del partido E2E ${partido.titulo}',
   );
+  await _asegurarVisibleEnMisPartidos(tester, tarjeta);
   await esperar(
     tester,
     tarjeta,
@@ -271,36 +273,62 @@ Future<void> abrirPartidoUI(
   await tocar(tester, find.byKey(Key('mis_partidos_detalle_${partido.id}')));
   await esperar(tester, find.byType(VistaDetallePartido));
   await esperarDetalleCargado(tester);
-  await tocar(tester, find.byTooltip('Más acciones'));
-  final opcion = proponerEquipos || find.text('Ver equipos').evaluate().isEmpty
-      ? find.text('Proponer equipos').last
-      : find.text('Ver equipos').last;
-  await tocar(tester, opcion);
-  await esperar(tester, find.byType(VistaEquipos));
-  await esperar(tester, find.text(partido.titulo));
+  if (proponerEquipos || abrirEquipos) {
+    await tocar(tester, find.byTooltip('Más acciones'));
+    final opcion = proponerEquipos || find.text('Ver equipos').evaluate().isEmpty
+        ? find.text('Proponer equipos').last
+        : find.text('Ver equipos').last;
+    await tocar(tester, opcion);
+    await esperar(tester, find.byType(VistaEquipos));
+    await esperar(tester, find.text(partido.titulo));
+  }
+}
+
+Future<void> _asegurarVisibleEnMisPartidos(
+  WidgetTester tester,
+  Finder tarjeta,
+) async {
+  final reloj = Stopwatch()..start();
+  while (reloj.elapsed < const Duration(seconds: 4)) {
+    if (tarjeta.evaluate().isNotEmpty) return;
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+  final btnFiltros = find.byKey(const Key('mis_partidos_abrir_filtros'));
+  if (btnFiltros.evaluate().isNotEmpty) {
+    await tocar(tester, btnFiltros);
+    await esperar(tester, find.byKey(const Key('mis_partidos_filtro_fecha')));
+    await tocar(tester, find.byKey(const Key('mis_partidos_filtro_fecha')));
+    await esperar(tester, find.text('Todas las fechas').last);
+    await tocar(tester, find.text('Todas las fechas').last);
+    await tocar(tester, find.byKey(const Key('mis_partidos_aplicar_filtros')));
+    await esperar(tester, find.byType(VistaMisPartidos));
+  }
 }
 
 Future<void> recargarPartidoUI(
   WidgetTester tester,
-  PartidoResultadoE2E partido,
-) async {
-  await tester.pageBack();
-  await tester.pumpAndSettle();
-  await esperar(tester, find.byType(VistaDetallePartido));
-  await tester.pageBack();
-  await tester.pumpAndSettle();
+  PartidoResultadoE2E partido, {
+  bool abrirEquipos = false,
+}) async {
+  while (find.byType(VistaMisPartidos).evaluate().isEmpty) {
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+  }
   await esperar(tester, find.byType(VistaMisPartidos));
   final tarjeta = find.byWidgetPredicate(
     (widget) => widget is TarjetaMisPartidos && widget.partido.id == partido.id,
   );
+  await _asegurarVisibleEnMisPartidos(tester, tarjeta);
   await esperar(tester, tarjeta);
   await tocar(tester, find.byKey(Key('mis_partidos_detalle_${partido.id}')));
   await esperar(tester, find.byType(VistaDetallePartido));
   await esperarDetalleCargado(tester);
-  await tocar(tester, find.byTooltip('Más acciones'));
-  await tocar(tester, find.text('Ver equipos').last);
-  await esperar(tester, find.byType(VistaEquipos));
-  await esperar(tester, find.text(partido.titulo));
+  if (abrirEquipos) {
+    await tocar(tester, find.byTooltip('Más acciones'));
+    await tocar(tester, find.text('Ver equipos').last);
+    await esperar(tester, find.byType(VistaEquipos));
+    await esperar(tester, find.text(partido.titulo));
+  }
 }
 
 Future<void> esperarDetalleCargado(WidgetTester tester) async {

@@ -211,7 +211,9 @@ void main() {
       await _esperar(
         tester,
         find.byWidgetPredicate(
-          (w) => w is VistaInicioPublico || w is VistaPrincipal,
+          (w) =>
+              w is VistaPrincipal ||
+              (w is VistaInicioPublico && !w.estaPreparando),
         ),
       );
       final cliente = Supabase.instance.client;
@@ -219,6 +221,11 @@ void main() {
       if (find.byType(VistaPrincipal).evaluate().isNotEmpty) {
         await _tocar(tester, find.text('CERRAR SESIÓN'));
         await _esperar(tester, find.byType(VistaInicioPublico));
+      }
+      final esperaCierre = Stopwatch()..start();
+      while (cliente.auth.currentSession != null &&
+          esperaCierre.elapsed < _limite) {
+        await tester.pump(const Duration(milliseconds: 100));
       }
       expect(
         cliente.auth.currentSession == null,
@@ -273,14 +280,14 @@ void main() {
       await _seleccion(tester, 'todos');
 
       debugPrint('Historial E2E · 3/6: Todos, cantidades, roles y orden');
-      _comprobar(tester, todos, filas, propios, unidos);
+      await _comprobar(tester, todos, filas, propios, unidos);
       expect(
-        _ids(tester).contains(preparados[0].id),
+        todos.contains(preparados[0].id),
         isTrue,
         reason: 'Todos debe incluir el partido organizado.',
       );
       expect(
-        _ids(tester).contains(preparados[1].id),
+        todos.contains(preparados[1].id),
         isTrue,
         reason: 'Todos debe incluir el partido como jugador.',
       );
@@ -290,40 +297,40 @@ void main() {
 
       debugPrint('Historial E2E · 4/6: filtros por rol');
       await _filtrar(tester, 'organizador');
-      _comprobar(tester, propios, filas, propios, unidos);
+      await _comprobar(tester, propios, filas, propios, unidos);
       expect(
-        _ids(tester).contains(preparados[0].id),
+        propios.contains(preparados[0].id),
         isTrue,
         reason: 'Organizados debe incluir el partido propio.',
       );
       expect(
-        _ids(tester).contains(preparados[1].id),
+        propios.contains(preparados[1].id),
         isFalse,
         reason: 'Organizados debe excluir la participación como jugador.',
       );
       await _filtrar(tester, 'jugador');
-      _comprobar(tester, unidos, filas, propios, unidos);
+      await _comprobar(tester, unidos, filas, propios, unidos);
       expect(
-        _ids(tester).contains(preparados[1].id),
+        unidos.contains(preparados[1].id),
         isTrue,
         reason: 'Como jugador debe incluir el partido inscrito.',
       );
       expect(
-        _ids(tester).contains(preparados[0].id),
+        unidos.contains(preparados[0].id),
         isFalse,
         reason: 'Como jugador debe excluir el partido organizado.',
       );
 
       debugPrint('Historial E2E · 5/6: restaurar Todos y reabrir');
       await _filtrar(tester, 'todos');
-      _comprobar(tester, todos, filas, propios, unidos);
+      await _comprobar(tester, todos, filas, propios, unidos);
       await _filtrar(tester, 'jugador');
       await _tocar(tester, find.byTooltip('Volver'));
       await _esperar(tester, find.byType(VistaPrincipal));
       await _tocar(tester, find.bySemanticsLabel('Historial'));
       await _listo(tester);
       await _seleccion(tester, 'todos');
-      _comprobar(tester, todos, filas, propios, unidos);
+      await _comprobar(tester, todos, filas, propios, unidos);
 
       debugPrint('Historial E2E · 6/6: datos intactos antes de la limpieza');
       expect(
@@ -368,10 +375,6 @@ Finder _tarjetas() => find.descendant(
   of: find.byType(VistaHistorial),
   matching: find.byType(TarjetaHistorial),
 );
-Set<String> _ids(WidgetTester tester) => tester
-    .widgetList<TarjetaHistorial>(_tarjetas())
-    .map((t) => t.evento.partidoId)
-    .toSet();
 Future<void> _listo(WidgetTester tester) async {
   await _esperar(tester, find.byType(VistaHistorial));
   await _esperar(
@@ -403,19 +406,33 @@ Future<void> _filtrar(WidgetTester tester, String clave) async {
   await _seleccion(tester, clave);
 }
 
-void _comprobar(
+Future<void> _comprobar(
   WidgetTester tester,
   Set<String> esperados,
   Map<String, Map<String, dynamic>> filas,
   Set<String> propios,
   Set<String> unidos,
-) {
-  final eventos = tester
-      .widgetList<TarjetaHistorial>(_tarjetas())
-      .map((t) => t.evento)
-      .toList();
+) async {
+  final eventos = <EventoHistorial>[];
+  final ids = <String>[];
+  while (true) {
+    final pagina = tester
+        .widgetList<TarjetaHistorial>(_tarjetas())
+        .map((t) => t.evento)
+        .toList();
+    eventos.addAll(pagina);
+    ids.addAll(pagina.map((e) => e.partidoId));
+    final siguiente = find.byKey(const Key('historial_paginacion_siguiente'));
+    if (siguiente.evaluate().isEmpty ||
+        tester.widget<TextButton>(siguiente).onPressed == null) {
+      break;
+    }
+    await tester.ensureVisible(siguiente);
+    await tester.tap(siguiente);
+    await tester.pumpAndSettle();
+  }
   expect(
-    _ids(tester),
+    ids,
     unorderedEquals(esperados),
     reason:
         'Los ID deben corresponder al conjunto completo esperado del filtro.',
@@ -452,24 +469,20 @@ void _comprobar(
       );
     }
   }
-  final n = esperados.length;
   expect(
     tester
-        .widget<Text>(find.byKey(const Key('historial_cantidad_visible')))
+        .widget<Text>(find.byKey(const Key('historial_paginacion_rango')))
         .data,
-    '$n ${n == 1 ? 'partido registrado' : 'partidos registrados'} (más recientes primero)',
-    reason: 'La cantidad visible debe corresponder al filtro.',
+    endsWith('de ${esperados.length}'),
+    reason:
+        'El rango paginado debe representar todos los resultados del filtro.',
   );
-  for (final valor in {
-    'historial_total': filas.length,
-    'historial_organizados': propios.length,
-    'historial_jugador': unidos.length,
-  }.entries) {
-    expect(
-      tester.widget<Text>(find.byKey(Key(valor.key))).data,
-      '${valor.value}',
-      reason: 'El indicador ${valor.key} debe reflejar el historial completo.',
-    );
+  final anterior = find.byKey(const Key('historial_paginacion_anterior'));
+  while (anterior.evaluate().isNotEmpty &&
+      tester.widget<TextButton>(anterior).onPressed != null) {
+    await tester.ensureVisible(anterior);
+    await tester.tap(anterior);
+    await tester.pumpAndSettle();
   }
 }
 

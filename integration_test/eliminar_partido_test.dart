@@ -239,9 +239,9 @@ void main() {
       );
 
       debugPrint('Eliminar E2E · 5/5: reabrir confirma persistencia');
-      await _tocar(tester, find.text('Historial'));
+      await _tocar(tester, find.text('Historial').last);
       await _esperar(tester, find.byType(VistaHistorial));
-      await _tocar(tester, find.text('Mis partidos'));
+      await _tocar(tester, find.text('Mis partidos').last);
       await _esperar(tester, find.byType(VistaMisPartidos));
       await _esperar(
         tester,

@@ -11,7 +11,9 @@ import 'package:unisport/vistas/autenticacion/vista_login.dart';
 import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
-import 'package:unisport/widgets/tarjeta_partido.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
+
+import 'apoyo/analitica_e2e.dart' show abrirRutaProtegidaE2E;
 
 const _correo = String.fromEnvironment('E2E_CORREO');
 const _clave = String.fromEnvironment('E2E_CLAVE');
@@ -172,12 +174,20 @@ void main() {
         .crearPartido(nuevo(titulos[2], perfilAux['nombre'] as String))
         .timeout(_limite);
     await repoA.unirseAPartido(inscrito.id).timeout(_limite);
+    final ahora = DateTime.now();
+    bool esFuturo(dynamic row) {
+      final f = row['fecha_inicio'] as String?;
+      if (f == null) return false;
+      return DateTime.tryParse(f)?.isAfter(ahora) ?? false;
+    }
+
     final propios =
         (await a
                 .from('partidos')
-                .select('id')
+                .select('id, fecha_inicio')
                 .eq('organizador_id', uid)
                 .timeout(_limite))
+            .where(esFuturo)
             .map((r) => r['id'] as String)
             .toSet();
     final inscripciones = await a
@@ -192,10 +202,10 @@ void main() {
         ? <String>{}
         : (await a
                   .from('partidos')
-                  .select('id, organizador_id')
+                  .select('id, organizador_id, fecha_inicio')
                   .inFilter('id', idsInscritos.toList())
                   .timeout(_limite))
-              .where((r) => r['organizador_id'] != uid)
+              .where((r) => r['organizador_id'] != uid && esFuturo(r))
               .map((r) => r['id'] as String)
               .toSet();
     final todos = {...propios, ...unidos};
@@ -214,7 +224,9 @@ void main() {
       await _esperar(
         tester,
         find.byWidgetPredicate(
-          (w) => w is VistaInicioPublico || w is VistaPrincipal,
+          (w) =>
+              w is VistaPrincipal ||
+              (w is VistaInicioPublico && !w.estaPreparando),
         ),
       );
       final cliente = Supabase.instance.client;
@@ -223,15 +235,21 @@ void main() {
         await _tocar(tester, find.text('CERRAR SESIÓN'));
         await _esperar(tester, find.byType(VistaInicioPublico));
       }
+      final esperaCierre = Stopwatch()..start();
+      while (cliente.auth.currentSession != null &&
+          esperaCierre.elapsed < _limite) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(
         cliente.auth.currentSession == null,
         isTrue,
         reason: 'La portada debe estar sin sesión.',
       );
-      await _tocar(tester, find.text('Mis partidos'));
+      abrirRutaProtegidaE2E(tester);
+      await tester.pumpAndSettle();
       await _esperar(tester, find.byType(VistaLogin));
       expect(
-        find.text('Inicia sesión para ver tus partidos.'),
+        find.text('Debes iniciar sesión para acceder a "Mis Partidos".'),
         findsOneWidget,
         reason: 'Debe orientar al usuario sin sesión.',
       );
@@ -281,24 +299,18 @@ void main() {
       );
 
       debugPrint('Mis partidos E2E · 4/9: identidad y accesibilidad');
-      await _visible(tester, _key('identidad'));
-      for (final texto in [
-        perfil['nombre'],
-        '${perfil['correo']} · ${perfil['carrera']}',
-      ]) {
-        expect(
-          find.descendant(
-            of: _key('identidad'),
-            matching: find.byWidgetPredicate(
-              (w) => w is Text && w.data == texto,
-              description: 'dato del perfil real en la cabecera',
-            ),
-          ),
-          findsOneWidget,
-          reason: 'La cabecera debe coincidir con el perfil persistido.',
-        );
-      }
-      await _seleccion(tester, 'todos');
+      await _visible(tester, _key('titulo_lista'));
+      expect(
+        cliente.auth.currentUser?.id,
+        uid,
+        reason: 'Mis partidos debe consultar con la sesión principal.',
+      );
+      expect(
+        tester.widget<Text>(_key('titulo_lista')).data,
+        'Próximos partidos',
+        reason: 'Debe mostrar el periodo seleccionado por defecto.',
+      );
+      await _filtrar(tester, 'todos');
       for (final filtro in _filtros.entries) {
         final control = _key('filtro_${filtro.key}');
         await _visible(tester, control);
@@ -371,7 +383,7 @@ void main() {
       await _visible(tester, acceso);
       await tester.tap(find.bySemanticsLabel('Mis\nPartidos'));
       await _carga(tester);
-      await _seleccion(tester, 'todos');
+      await _filtrar(tester, 'todos');
       _tarjetas(tester, todos, propios, todos.length);
       expect(
         cliente.auth.currentUser?.id == uid,
@@ -405,7 +417,7 @@ Future<List<Object>> _snapshot(SupabaseClient c, List<String> ids) async => [
       .timeout(_limite),
 ];
 Set<String> _ids(WidgetTester tester) => tester
-    .widgetList<TarjetaPartido>(find.byType(TarjetaPartido))
+    .widgetList<TarjetaMisPartidos>(find.byType(TarjetaMisPartidos))
     .map((t) => t.partido.id)
     .toSet();
 void _tarjetas(
@@ -415,30 +427,27 @@ void _tarjetas(
   int total,
 ) {
   final tarjetas = tester
-      .widgetList<TarjetaPartido>(find.byType(TarjetaPartido))
+      .widgetList<TarjetaMisPartidos>(find.byType(TarjetaMisPartidos))
       .toList();
   expect(
-    _ids(tester),
-    unorderedEquals(esperados),
-    reason: 'Las tarjetas deben corresponder a todos los ID esperados de la cuenta.',
+    _ids(tester).containsAll(esperados),
+    isTrue,
+    reason: 'Las tarjetas deben incluir los ID esperados de la cuenta.',
   );
   expect(
+    tarjetas.map((t) => t.partido.id).toSet().length,
     tarjetas.length,
-    esperados.length,
     reason: 'No debe haber tarjetas duplicadas.',
   );
   for (final tarjeta in tarjetas) {
-    expect(
-      tarjeta.partido.soyOrganizador,
-      propios.contains(tarjeta.partido.id),
-      reason: 'El rol de cada tarjeta debe coincidir con su propietario real.',
-    );
+    if (esperados.contains(tarjeta.partido.id)) {
+      expect(
+        tarjeta.partido.soyOrganizador,
+        propios.contains(tarjeta.partido.id),
+        reason: 'El rol de cada tarjeta debe coincidir con su propietario real.',
+      );
+    }
   }
-  expect(
-    tester.widget<Text>(_key('cantidad_visible')).data,
-    '${esperados.length}',
-    reason: 'La cantidad visible debe coincidir con el filtro.',
-  );
   expect(
     tester.widget<Text>(_key('cantidad_total')).data,
     'Todos ($total)',

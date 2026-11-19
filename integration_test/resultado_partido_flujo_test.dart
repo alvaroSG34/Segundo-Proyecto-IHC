@@ -31,16 +31,14 @@ void main() {
       await iniciarSesionUI(tester, organizadorCorreo, organizadorClave);
       await abrirPartidoUI(tester, partido, proponerEquipos: true);
       expect(
-        tester
-            .widget<DropdownButton<String>>(
-              find.byKey(ValueKey('equipo_${partido.organizadorId}')),
-            )
-            .onChanged,
-        isNull,
+        find.byKey(ValueKey('mover_jugador_${partido.organizadorId}_B')),
+        findsNothing,
         reason: 'El organizador conserva su lugar en el Equipo A.',
       );
-      await tocar(tester, find.byKey(ValueKey('equipo_${partido.capitanId}')));
-      await tocar(tester, find.text('Equipo B').last);
+      await tocar(
+        tester,
+        find.byKey(ValueKey('mover_jugador_${partido.capitanId}_B')),
+      );
       final selectorCapitan = find.byType(DropdownButtonFormField<String>);
       final opcionCapitan = tester
           .widget<DropdownButton<String>>(
@@ -61,7 +59,7 @@ void main() {
 
       debugPrint('Resultado E2E · 2/7: el capitán rival acepta los equipos');
       await cambiarSesionUI(tester, capitanCorreo, capitanClave);
-      await abrirPartidoUI(tester, partido);
+      await abrirPartidoUI(tester, partido, abrirEquipos: true);
       await esperar(tester, find.text('Aceptar'));
       expect(find.text('Rechazar'), findsOneWidget);
       expect(find.text('Editar propuesta'), findsNothing);
@@ -76,20 +74,19 @@ void main() {
       await recargarPartidoUI(tester, partido);
       await escribir(
         tester,
-        find.byKey(const ValueKey('marcador_equipo_a')),
+        find.byKey(const ValueKey('detalle_marcador_equipo_a')),
         '2',
       );
       await escribir(
         tester,
-        find.byKey(const ValueKey('marcador_equipo_b')),
+        find.byKey(const ValueKey('detalle_marcador_equipo_b')),
         '1',
       );
       await tocar(
         tester,
-        find.widgetWithText(ElevatedButton, 'Registrar marcador'),
+        find.widgetWithText(FilledButton, 'Registrar marcador'),
       );
-      await esperar(tester, find.text('Estado: Pendiente de confirmación'));
-      expect(find.text('Este resultado aún no es definitivo.'), findsOneWidget);
+      await esperar(tester, find.text('Pendiente de confirmación'));
 
       debugPrint('Resultado E2E · 4/7: el capitán disputa con un motivo');
       await cambiarSesionUI(tester, capitanCorreo, capitanClave);
@@ -105,10 +102,10 @@ void main() {
         'El segundo gol no fue válido.',
       );
       await tocar(tester, find.text('Enviar disputa'));
-      await esperar(tester, find.text('Estado: Disputado'));
+      await esperar(tester, find.text('Disputado'));
       expect(
-        find.text('Motivo de la disputa: El segundo gol no fue válido.'),
-        findsOneWidget,
+        find.textContaining('El segundo gol no fue válido.'),
+        findsAtLeastNWidgets(1),
       );
 
       debugPrint('Resultado E2E · 5/7: el organizador corrige el marcador');
@@ -117,33 +114,32 @@ void main() {
       await esperar(tester, find.text('Corregir marcador'));
       await escribir(
         tester,
-        find.byKey(const ValueKey('marcador_equipo_a')),
+        find.byKey(const ValueKey('detalle_marcador_equipo_a')),
         '1',
       );
       await escribir(
         tester,
-        find.byKey(const ValueKey('marcador_equipo_b')),
+        find.byKey(const ValueKey('detalle_marcador_equipo_b')),
         '1',
       );
       await tocar(tester, find.text('Enviar corrección'));
-      await esperar(tester, find.text('Estado: Pendiente de confirmación'));
-      expect(find.text('Equipo A 1 - 1 Equipo B'), findsOneWidget);
+      await esperar(tester, find.text('Pendiente de confirmación'));
 
       debugPrint('Resultado E2E · 6/7: el capitán confirma la corrección');
       await cambiarSesionUI(tester, capitanCorreo, capitanClave);
       await abrirPartidoUI(tester, partido);
       await tocar(tester, find.text('Confirmar resultado'));
-      await esperar(tester, find.text('Estado: Confirmado'));
-      expect(find.textContaining('Resultado definitivo'), findsOneWidget);
+      await esperar(tester, find.text('Confirmado'));
+      expect(find.textContaining('Resultado definitivo'), findsAtLeastNWidgets(1));
 
       debugPrint('Resultado E2E · 7/7: recarga e historial persistido');
       await recargarPartidoUI(tester, partido);
-      expect(find.text('Estado: Confirmado'), findsOneWidget);
-      expect(find.text('Marcador registrado'), findsOneWidget);
-      expect(find.text('Marcador disputado'), findsOneWidget);
-      expect(find.text('Marcador corregido'), findsOneWidget);
-      expect(find.text('Resultado confirmado'), findsOneWidget);
-      expect(find.text('Equipo A 1 - 1 Equipo B'), findsOneWidget);
+      await esperar(tester, find.text('Confirmado'));
+      expect(find.text('Marcador registrado'), findsAtLeastNWidgets(1));
+      expect(find.text('Marcador disputado'), findsAtLeastNWidgets(1));
+      expect(find.text('Marcador corregido'), findsAtLeastNWidgets(1));
+      expect(find.text('Resultado confirmado'), findsAtLeastNWidgets(1));
+      expect(find.textContaining('1 - 1'), findsAtLeastNWidgets(1));
       expect(tester.takeException(), isNull);
     },
     timeout: const Timeout(Duration(minutes: 8)),

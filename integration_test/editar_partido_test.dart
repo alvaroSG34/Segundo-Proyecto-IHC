@@ -267,9 +267,9 @@ void main() {
         debugPrint('Editar E2E · 5/8: cancelar descarta cambios');
         await _escribir(tester, 'partido_titulo', tituloDescartado);
         await _escribir(tester, 'partido_ubicacion', 'Lugar descartado E2E');
-        await tester.pageBack();
+        await _volver(tester);
         await _esperar(tester, find.text('Detalles del partido'));
-        await tester.pageBack();
+        await _volver(tester);
         await _esperar(tester, _tarjeta(abierto.id));
         expect(
           tester
@@ -366,7 +366,7 @@ void main() {
 
         debugPrint('Editar E2E · 8/8: resultado y persistencia');
         await _esperar(tester, find.text('Partido "$tituloNuevo" actualizado'));
-        await tester.pageBack();
+        await _volver(tester);
         await _esperar(tester, find.byType(VistaMisPartidos));
         await _comprobarTarjeta(
           tester,
@@ -426,7 +426,7 @@ void main() {
           abierto.id,
           reason: 'La única fila debe conservar el ID.',
         );
-        await tester.pageBack();
+        await _volver(tester);
         await _esperar(tester, find.byType(VistaPrincipal));
         await _tocar(tester, find.bySemanticsLabel('Mis\nPartidos'));
         await _comprobarTarjeta(
@@ -460,6 +460,11 @@ Finder _tarjeta(String id) => find.byWidgetPredicate(
   (w) => w is TarjetaMisPartidos && w.partido.id == id,
   description: 'tarjeta de Mis partidos por ID',
 );
+
+Future<void> _volver(WidgetTester tester) async {
+  await tester.binding.handlePopRoute();
+  await tester.pumpAndSettle();
+}
 
 Future<void> _abrirEdicion(WidgetTester tester, String id) async {
   final detalle = find.byKey(Key('mis_partidos_detalle_$id'));

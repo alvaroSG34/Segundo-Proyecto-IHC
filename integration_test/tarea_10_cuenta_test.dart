@@ -103,7 +103,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.ensureVisible(eliminar);
       await tester.pumpAndSettle();
-      await tester.tap(eliminar);
+      await tester.tapAt(tester.getTopLeft(eliminar) + const Offset(12, 12));
       await tester.pumpAndSettle();
       expect(
         find.textContaining('Esta acción no se puede deshacer'),

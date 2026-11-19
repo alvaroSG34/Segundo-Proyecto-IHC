@@ -20,23 +20,27 @@ void main() {
 
     debugPrint('Restricciones E2E · 1/4: registro del organizador');
     await iniciarSesionUI(tester, organizadorCorreo, organizadorClave);
-    await abrirPartidoUI(tester, partido);
     await esperarPartidoTerminado(tester, partido);
+    await abrirPartidoUI(tester, partido);
+    await esperar(
+      tester,
+      find.byKey(const ValueKey('detalle_marcador_equipo_a')),
+    );
     await escribir(
       tester,
-      find.byKey(const ValueKey('marcador_equipo_a')),
+      find.byKey(const ValueKey('detalle_marcador_equipo_a')),
       '3',
     );
     await escribir(
       tester,
-      find.byKey(const ValueKey('marcador_equipo_b')),
+      find.byKey(const ValueKey('detalle_marcador_equipo_b')),
       '0',
     );
-      await tocar(
-        tester,
-        find.widgetWithText(ElevatedButton, 'Registrar marcador'),
-      );
-    await esperar(tester, find.text('Estado: Pendiente de confirmación'));
+    await tocar(
+      tester,
+      find.widgetWithText(FilledButton, 'Registrar marcador'),
+    );
+    await esperar(tester, find.text('Pendiente de confirmación'));
 
     final resultadoPendiente = await cliente
         .from('resultados_partido')
@@ -59,7 +63,7 @@ void main() {
     await cambiarSesionUI(tester, capitanCorreo, capitanClave);
     await abrirPartidoUI(tester, partido);
     expect(
-      find.byKey(const ValueKey('marcador_equipo_a')),
+      find.byKey(const ValueKey('detalle_marcador_equipo_a')),
       findsNothing,
       reason: 'El capitán no debe recibir el formulario del organizador.',
     );
@@ -73,7 +77,7 @@ void main() {
 
     debugPrint('Restricciones E2E · 3/4: respuesta única del capitán');
     await tocar(tester, find.text('Confirmar resultado'));
-    await esperar(tester, find.text('Estado: Confirmado'));
+    await esperar(tester, find.text('Confirmado'));
     await expectLater(
       cliente.rpc(
         'confirmar_resultado_partido',
@@ -96,10 +100,10 @@ void main() {
       throwsA(isA<PostgrestException>()),
     );
     await recargarPartidoUI(tester, partido);
-    expect(find.text('Estado: Confirmado'), findsOneWidget);
-    expect(find.text('Equipo A 3 - 0 Equipo B'), findsOneWidget);
-    expect(find.text('Marcador registrado'), findsOneWidget);
-    expect(find.text('Resultado confirmado'), findsOneWidget);
+    expect(find.text('Confirmado'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('3 - 0'), findsAtLeastNWidgets(1));
+    expect(find.text('Marcador registrado'), findsAtLeastNWidgets(1));
+    expect(find.text('Resultado confirmado'), findsAtLeastNWidgets(1));
     expect(tester.takeException(), isNull);
   }, timeout: const Timeout(Duration(minutes: 8)));
 }

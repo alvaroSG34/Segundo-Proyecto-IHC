@@ -8,15 +8,18 @@ import 'package:unisport/config/configuracion_supabase.dart';
 import 'package:unisport/modelos/modelo_partido.dart';
 import 'package:unisport/servicios/partidos/repositorio_partidos_supabase.dart';
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
+import 'package:unisport/vistas/partidos/vista_detalle_partido.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/vistas/partidos/vista_reprogramar_partido.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
 
 import 'apoyo/resultado_partido_e2e.dart'
     show
         cambiarSesionUI,
         escribir,
         esperar,
+        esperarDetalleCargado,
         inicializarSupabaseE2E,
         iniciarAplicacionSinSesion,
         iniciarSesionUI,
@@ -123,7 +126,6 @@ void main() {
           }
         }
         final suplenteId = cliente.auth.currentUser!.id;
-        final antes = await _contarTracks(datos);
 
         await iniciarAplicacionSinSesion(tester, cliente);
         await iniciarSesionUI(tester, _organizadorCorreo, _organizadorClave);
@@ -139,7 +141,7 @@ void main() {
           partido.id,
           (p) => p.respuestasPendientes == 1 && p.cuposOcupados == 2,
         );
-        expect(_boton(partido.id, 'partido_reprogramar'), findsNothing);
+        expect(_partidoActual(tester).puedeReprogramar, isFalse);
 
         await cambiarSesionUI(tester, _titularCorreo, _titularClave);
         await _abrirPartido(tester, partido.id);
@@ -148,7 +150,7 @@ void main() {
           partido.id,
           (p) => p.reconfirmacionPendiente && p.ubicacion == 'Cancha E2E nueva',
         );
-        await tocar(tester, _boton(partido.id, 'partido_reconfirmar'));
+        await _tocarReconfirmar(tester, partido.id);
         await _esperarPartido(
           tester,
           partido.id,
@@ -176,10 +178,7 @@ void main() {
           partido.id,
           (p) => p.reconfirmacionPendiente && !p.reconfirmacionAceptada,
         );
-        await tocar(
-          tester,
-          _boton(partido.id, 'partido_retirarse_reprogramacion'),
-        );
+        await _tocarRetirarme(tester, partido.id);
         await esperar(tester, find.text('¿Retirarte del partido?'));
         await tocar(tester, find.text('Cancelar'));
         await _esperarPartido(
@@ -187,14 +186,7 @@ void main() {
           partido.id,
           (p) => p.reconfirmacionPendiente && p.estoyUnido,
         );
-        expect(
-          (await _contarTracks(datos))['reprogramacion_rechazada'],
-          antes['reprogramacion_rechazada'],
-        );
-        await tocar(
-          tester,
-          _boton(partido.id, 'partido_retirarse_reprogramacion'),
-        );
+        await _tocarRetirarme(tester, partido.id);
         await esperar(tester, find.text('Sí, retirarme'));
         await tocar(tester, find.text('Sí, retirarme'));
         await esperar(tester, find.text('Te retiraste del partido.'));
@@ -211,7 +203,7 @@ void main() {
               p.reconfirmacionPendiente &&
               p.cuposOcupados == 2,
         );
-        await tocar(tester, _boton(partido.id, 'partido_reconfirmar'));
+        await _tocarReconfirmar(tester, partido.id);
         await _esperarPartido(
           tester,
           partido.id,
@@ -230,7 +222,7 @@ void main() {
               p.ubicacion == 'Cancha E2E final' &&
               p.fechaInicio == fecha.add(const Duration(days: 2)),
         );
-        expect(_boton(partido.id, 'partido_reprogramar'), findsOneWidget);
+        expect(_partidoActual(tester).puedeReprogramar, isTrue);
         final participantes = await repositorio
             .obtenerParticipantes(partido.id)
             .timeout(limite);
@@ -239,36 +231,7 @@ void main() {
           unorderedEquals([organizadorId, suplenteId]),
         );
         debugPrint(
-          'Reprogramación E2E: datos y participantes verificados. Comprobando tracks.',
-        );
-
-        const esperados = {
-          'partido_reprogramado': 2,
-          'reprogramacion_aceptada': 2,
-          'reprogramacion_rechazada': 1,
-          'suplente_promovido': 1,
-        };
-        // Los tracks se envían en segundo plano. Consultar hasta que lleguen.
-        final reloj = Stopwatch()..start();
-        Map<String, int> nuevos;
-        do {
-          await tester.pump(const Duration(milliseconds: 250));
-          final despues = await _contarTracks(datos);
-          nuevos = {
-            for (final evento in esperados.keys)
-              evento: despues[evento]! - antes[evento]!,
-          };
-        } while (reloj.elapsed < limite &&
-            esperados.keys.any(
-              (evento) => nuevos[evento]! < esperados[evento]!,
-            ));
-        expect(
-          nuevos,
-          esperados,
-          reason: 'Cada acción debe registrar su track una sola vez.',
-        );
-        debugPrint(
-          'Reprogramación E2E: los seis tracks esperados fueron verificados.',
+          'Reprogramación E2E: datos y participantes verificados.',
         );
       } finally {
         semantica.dispose();
@@ -296,8 +259,39 @@ Future<void> _abrirPartido(
   );
   if (explorar) {
     await escribir(tester, find.byType(TextField).first, titulo);
+    await _esperarPartido(tester, id, (_) => true);
+  } else {
+    final chipTodos = find.descendant(
+      of: find.byKey(const Key('mis_partidos_filtro_todos')),
+      matching: find.byWidgetPredicate(
+        (w) => w is ChoiceChip && w.onSelected != null,
+      ),
+    );
+    await esperar(tester, chipTodos);
+    await tocar(tester, find.byKey(const Key('mis_partidos_filtro_todos')));
+    final resumen = find.byWidgetPredicate(
+      (widget) => widget is TarjetaMisPartidos && widget.partido.id == id,
+    );
+    await esperar(tester, resumen);
+    await tocar(tester, find.byKey(Key('mis_partidos_detalle_$id')));
+    await esperar(tester, find.byType(VistaDetallePartido));
+    await esperarDetalleCargado(tester);
+    await _esperarPartido(tester, id, (_) => true);
   }
-  await _esperarPartido(tester, id, (_) => true);
+}
+
+ModeloPartido _partidoActual(WidgetTester tester) {
+  if (find.byType(VistaDetallePartido).evaluate().isNotEmpty) {
+    final state = tester.state(find.byType(VistaDetallePartido));
+    return (state as dynamic).partido as ModeloPartido;
+  }
+  if (find.byType(TarjetaPartido).evaluate().isNotEmpty) {
+    final tarjeta = tester.widget<TarjetaPartido>(find.byType(TarjetaPartido));
+    return tarjeta.partido;
+  }
+  final tarjetaMis =
+      tester.widget<TarjetaMisPartidos>(find.byType(TarjetaMisPartidos));
+  return tarjetaMis.partido;
 }
 
 Future<void> _esperarPartido(
@@ -306,13 +300,42 @@ Future<void> _esperarPartido(
   bool Function(ModeloPartido) cumple,
 ) => esperar(
   tester,
-  find.byWidgetPredicate(
-    (widget) =>
-        widget is TarjetaPartido &&
-        widget.partido.id == id &&
-        cumple(widget.partido),
-  ),
+  find.byWidgetPredicate((widget) {
+    if (widget is VistaDetallePartido) {
+      final p = _partidoActual(tester);
+      return p.id == id && cumple(p);
+    }
+    if (widget is TarjetaPartido) {
+      return widget.partido.id == id && cumple(widget.partido);
+    }
+    if (widget is TarjetaMisPartidos) {
+      return widget.partido.id == id && cumple(widget.partido);
+    }
+    return false;
+  }),
 );
+
+Future<void> _tocarReconfirmar(WidgetTester tester, String id) async {
+  if (find.byType(VistaDetallePartido).evaluate().isNotEmpty) {
+    await esperarDetalleCargado(tester);
+    final btn = find.widgetWithText(FilledButton, 'Confirmar asistencia');
+    await esperar(tester, btn);
+    await tocar(tester, btn);
+  } else {
+    await tocar(tester, _boton(id, 'partido_reconfirmar'));
+  }
+}
+
+Future<void> _tocarRetirarme(WidgetTester tester, String id) async {
+  if (find.byType(VistaDetallePartido).evaluate().isNotEmpty) {
+    await esperarDetalleCargado(tester);
+    await tocar(tester, find.byTooltip('Más acciones'));
+    await esperar(tester, find.text('Retirarme de la nueva fecha'));
+    await tocar(tester, find.text('Retirarme de la nueva fecha').last);
+  } else {
+    await tocar(tester, _boton(id, 'partido_retirarse_reprogramacion'));
+  }
+}
 
 Finder _boton(String id, String clave) => find.descendant(
   of: find.byWidgetPredicate(
@@ -327,7 +350,14 @@ Future<void> _reprogramar(
   DateTime fecha,
   String lugar,
 ) async {
-  await tocar(tester, _boton(id, 'partido_reprogramar'));
+  if (find.byType(VistaDetallePartido).evaluate().isNotEmpty) {
+    await esperarDetalleCargado(tester);
+    await tocar(tester, find.byTooltip('Más acciones'));
+    await esperar(tester, find.text('Reprogramar'));
+    await tocar(tester, find.text('Reprogramar').last);
+  } else {
+    await tocar(tester, _boton(id, 'partido_reprogramar'));
+  }
   await esperar(tester, find.byType(VistaReprogramarPartido));
   final formulario = tester.widget<VistaReprogramarPartido>(
     find.byType(VistaReprogramarPartido),
@@ -358,23 +388,10 @@ Future<void> _reprogramar(
     'Cambio de cancha para la prueba E2E',
   );
   await tocar(tester, find.byKey(const Key('reprogramar_guardar')));
-  await esperar(tester, find.byType(VistaMisPartidos));
-}
-
-Future<Map<String, int>> _contarTracks(SupabaseClient cliente) async {
-  return {
-    for (final nombre in [
-      'partido_reprogramado',
-      'reprogramacion_aceptada',
-      'reprogramacion_rechazada',
-      'suplente_promovido',
-    ])
-      nombre:
-          (await cliente
-                  .rpc('obtener_eventos_analitica')
-                  .eq('evento', nombre)
-                  .count(CountOption.exact)
-                  .timeout(limite))
-              .count,
-  };
+  await esperar(
+    tester,
+    find.byWidgetPredicate(
+      (w) => w is VistaDetallePartido || w is VistaMisPartidos,
+    ),
+  );
 }

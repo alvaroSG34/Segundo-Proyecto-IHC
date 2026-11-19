@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -35,7 +34,9 @@ void main() {
       await _esperar(
         tester,
         find.byWidgetPredicate(
-          (w) => w is VistaInicioPublico || w is VistaPrincipal,
+          (w) =>
+              w is VistaPrincipal ||
+              (w is VistaInicioPublico && !w.estaPreparando),
         ),
         motivo: 'La aplicación debe arrancar conectada a Supabase.',
       );
@@ -47,6 +48,11 @@ void main() {
       if (find.byType(VistaPrincipal).evaluate().isNotEmpty) {
         await _tocar(tester, find.text('CERRAR SESIÓN'));
         await _esperar(tester, find.byType(VistaInicioPublico));
+      }
+      final esperaInicial = Stopwatch()..start();
+      while (cliente.auth.currentSession != null &&
+          esperaInicial.elapsed < const Duration(seconds: 45)) {
+        await tester.pump(const Duration(milliseconds: 100));
       }
       expect(
         cliente.auth.currentSession == null,
@@ -94,6 +100,11 @@ void main() {
         find.byType(VistaInicioPublico),
         motivo: 'Cerrar sesión debe llevar a la portada pública.',
       );
+      final esperaCierre = Stopwatch()..start();
+      while (cliente.auth.currentSession != null &&
+          esperaCierre.elapsed < const Duration(seconds: 45)) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // 3. Validar cierre y protección de las rutas privadas.
       debugPrint('Cierre E2E · 3/3: Sesión eliminada y acceso bloqueado');

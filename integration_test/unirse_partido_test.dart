@@ -16,6 +16,7 @@ import 'package:unisport/vistas/inicio/vista_principal.dart';
 import 'package:unisport/vistas/partidos/vista_explorar_partidos.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/widgets/tarjeta_partido.dart';
+import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
 
 const _correo = String.fromEnvironment('E2E_CORREO');
 const _clave = String.fromEnvironment('E2E_CLAVE');
@@ -218,7 +219,9 @@ void main() {
 
         debugPrint('Unirse E2E · 2/5: cancelar sin ocupar cupo');
         await _abrirConfirmacion(tester, partido.id, titulo);
-        final cancelar = _dialogo(find.widgetWithText(OutlinedButton, 'Cancelar'));
+        final cancelar = _dialogo(
+          find.widgetWithText(OutlinedButton, 'Cancelar'),
+        );
         await _visible(tester, cancelar);
         _accesible(
           tester,
@@ -285,7 +288,7 @@ void main() {
           find.byKey(const Key('explorar_cargando')),
           ausente: true,
         );
-        await _comprobarUnion(tester, partido.id);
+        await _comprobarUnionExplorar(tester, partido.id);
 
         debugPrint(
           'Unirse E2E · 4/5: inscripción única en Supabase antes de limpiar',
@@ -342,6 +345,10 @@ void main() {
           tester,
           find.byKey(const Key('mis_partidos_cargando')),
           ausente: true,
+        );
+        await _tocar(
+          tester,
+          find.byKey(const Key('mis_partidos_filtro_unido')),
         );
         await _comprobarUnion(tester, partido.id);
         expect(
@@ -406,8 +413,15 @@ Future<void> _abrirConfirmacion(
 }
 
 Future<void> _comprobarUnion(WidgetTester tester, String id) async {
-  await _esperar(tester, _tarjeta(id));
-  final p = tester.widget<TarjetaPartido>(_tarjeta(id)).partido;
+  final tarjeta = find.byKey(Key('tarjeta_mis_partidos_$id'));
+  await _esperar(tester, tarjeta);
+  final p = tester
+      .widget<TarjetaMisPartidos>(
+        find.byWidgetPredicate(
+          (widget) => widget is TarjetaMisPartidos && widget.partido.id == id,
+        ),
+      )
+      .partido;
   expect(
     p.estoyUnido,
     isTrue,
@@ -433,7 +447,10 @@ Future<void> _comprobarUnion(WidgetTester tester, String id) async {
     EstadoPartido.cuposAbiertos,
     reason: 'La tarjeta debe conservar el estado abierto.',
   );
-  final cupos = find.descendant(of: _tarjeta(id), matching: find.text('2/6'));
+  final cupos = find.descendant(
+    of: tarjeta,
+    matching: find.text('2/6 jugadores'),
+  );
   await _visible(tester, cupos);
   expect(
     cupos.hitTestable(),
@@ -441,21 +458,17 @@ Future<void> _comprobarUnion(WidgetTester tester, String id) async {
     reason: 'Los cupos actualizados deben ser visibles.',
   );
   expect(
-    find.descendant(
-      of: _tarjeta(id),
-      matching: find.text('Ya formas parte de este equipo.'),
-    ),
+    find.descendant(of: tarjeta, matching: find.text('Inscrito')),
     findsOneWidget,
-    reason: 'Debe mostrarse el estado de pertenencia.',
+    reason: 'Debe mostrarse el estado de jugador inscrito.',
   );
-  expect(
-    find.descendant(
-      of: _tarjeta(id),
-      matching: find.widgetWithText(ElevatedButton, 'Unirme al equipo'),
-    ),
-    findsNothing,
-    reason: 'No debe ofrecer inscribirse otra vez.',
-  );
+}
+
+Future<void> _comprobarUnionExplorar(WidgetTester tester, String id) async {
+  await _esperar(tester, _tarjeta(id));
+  final p = tester.widget<TarjetaPartido>(_tarjeta(id)).partido;
+  expect(p.estoyUnido, isTrue, reason: 'En Explorar debe reconocerse al jugador.');
+  expect(p.cuposOcupados, 2, reason: 'En Explorar deben verse 2 cupos ocupados.');
 }
 
 void _accesible(
