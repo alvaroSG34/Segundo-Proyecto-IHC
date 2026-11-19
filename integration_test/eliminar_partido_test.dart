@@ -13,6 +13,7 @@ import 'package:unisport/tema/tema_app.dart';
 import 'package:unisport/vistas/autenticacion/vista_login.dart';
 import 'package:unisport/vistas/inicio/vista_inicio_publico.dart';
 import 'package:unisport/vistas/inicio/vista_principal.dart';
+import 'package:unisport/vistas/partidos/vista_detalle_partido.dart';
 import 'package:unisport/vistas/partidos/vista_mis_partidos.dart';
 import 'package:unisport/vistas/partidos/vista_historial.dart';
 import 'package:unisport/widgets/tarjeta_mis_partidos.dart';
