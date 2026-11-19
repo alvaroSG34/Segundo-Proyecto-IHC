@@ -1,5 +1,11 @@
 # UniSport ⚽🏀🏐 - Proyecto 2 IHC
 
+[![CI Tests & Coverage](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/actions/workflows/test-coverage.yml)
+[![Tests Locales](https://img.shields.io/badge/Tests%20Locales-280%2F280%20passed-brightgreen.svg)](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/actions)
+[![E2E Tests](https://img.shields.io/badge/E2E%20Android-18%2F18%20passed-brightgreen.svg)](evidencias/reporte-pruebas-automatizadas.md)
+[![Cobertura](https://img.shields.io/badge/Cobertura-88.2%25-brightgreen.svg)](evidencias/reporte-pruebas-automatizadas.md)
+[![Deploy to Cloudflare Pages](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/actions/workflows/deploy-cloudflare.yml/badge.svg)](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/actions/workflows/deploy-cloudflare.yml)
+
 > **Materia:** Interacción Humano-Computador (Clase 12 / Proyecto 2)  
 > **Modalidad P2:** Con IA  
 > **Integrantes:**  
@@ -63,9 +69,14 @@ flutter run --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-de
   flutter run -d linux      # En Linux
   ```
 
-### 5. Ejecutar pruebas automatizadas
+### 5. Ejecutar pruebas automatizadas con reporte de cobertura
 ```bash
-flutter test
+# Ejecutar todas las pruebas con reporte tabular de cobertura (estilo pnpm test --coverage):
+./scripts/test_coverage.sh
+
+# O ejecutar directamente con Flutter:
+flutter test --coverage
+dart run tool/reporte_cobertura.dart
 ```
 
 Solo las pruebas unitarias de la Tarea 2 (cambio de estado del partido):
