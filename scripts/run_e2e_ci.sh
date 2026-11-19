@@ -49,7 +49,21 @@ if ! command -v flutter &>/dev/null; then
 fi
 
 # Detectar dispositivo
-DEVICE=$($FLUTTER_BIN devices 2>/dev/null | grep -E "android|emulator" | head -n 1 | awk '{print $2}' || true)
+DEVICE="${DEVICE:-}"
+if [ -z "$DEVICE" ]; then
+  if command -v adb &>/dev/null; then
+    DEVICE=$(adb devices 2>/dev/null | grep -o 'emulator-[0-9]\+' | head -n 1 || true)
+  fi
+fi
+
+if [ -z "$DEVICE" ]; then
+  DEVICE=$($FLUTTER_BIN devices 2>/dev/null | grep -o 'emulator-[0-9]\+' | head -n 1 || true)
+fi
+
+if [ -z "$DEVICE" ]; then
+  DEVICE=$($FLUTTER_BIN devices 2>/dev/null | grep -E "android|emulator" | head -n 1 | awk -F'•' '{print $2}' | tr -d ' ' || true)
+fi
+
 if [ -z "$DEVICE" ]; then
   DEVICE="emulator-5554"
 fi
