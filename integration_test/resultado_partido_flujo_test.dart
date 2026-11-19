@@ -82,7 +82,7 @@ void main() {
         find.byKey(const ValueKey('detalle_marcador_equipo_b')),
         '1',
       );
-      await tocar(
+      await tocarEnDetalle(
         tester,
         find.widgetWithText(FilledButton, 'Registrar marcador'),
       );
@@ -91,7 +91,7 @@ void main() {
       debugPrint('Resultado E2E · 4/7: el capitán disputa con un motivo');
       await cambiarSesionUI(tester, capitanCorreo, capitanClave);
       await abrirPartidoUI(tester, partido);
-      await tocar(tester, find.text('Disputar resultado'));
+      await tocarEnDetalle(tester, find.text('Disputar resultado'));
       await esperar(tester, find.text('Disputar marcador'));
       await escribir(
         tester,
@@ -122,13 +122,13 @@ void main() {
         find.byKey(const ValueKey('detalle_marcador_equipo_b')),
         '1',
       );
-      await tocar(tester, find.text('Enviar corrección'));
+      await tocarEnDetalle(tester, find.text('Enviar corrección'));
       await esperar(tester, find.text('Pendiente de confirmación'));
 
       debugPrint('Resultado E2E · 6/7: el capitán confirma la corrección');
       await cambiarSesionUI(tester, capitanCorreo, capitanClave);
       await abrirPartidoUI(tester, partido);
-      await tocar(tester, find.text('Confirmar resultado'));
+      await tocarEnDetalle(tester, find.text('Confirmar resultado'));
       await esperar(tester, find.text('Confirmado'));
       expect(find.textContaining('Resultado definitivo'), findsAtLeastNWidgets(1));
 

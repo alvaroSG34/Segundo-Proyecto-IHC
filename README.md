@@ -7,11 +7,22 @@
 [![Deploy to Cloudflare Pages](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/actions/workflows/deploy-cloudflare.yml/badge.svg)](https://github.com/alvaroSG34/Segundo-Proyecto-IHC/actions/workflows/deploy-cloudflare.yml)
 
 > **Materia:** Interacción Humano-Computador (Clase 12 / Proyecto 2)  
-> **Modalidad P2:** Con IA  
+> **Modalidad P2:** Sin IA  
 > **Integrantes:**  
-> - Diego Astete Paz  
-> - Lorgio Leonardo Choque Severiche  
+> - Alvaro Sonco Guzman  
+> - Juan Carlos Laura Cespedes  
 > **Tecnología:** Flutter (Dart) - Móvil
+
+## 🔗 Entregables y acceso
+
+| Recurso | Enlace |
+| :--- | :--- |
+| Aplicación web en la nube | [unisport-ihc.pages.dev](https://unisport-ihc.pages.dev) |
+| Aplicación Android (prueba interna) | [Abrir UniSport en Google Play](https://play.google.com/apps/internaltest/4699615402617333592) |
+| Diseño en Figma | [UniSport — diseño](https://www.figma.com/design/rswVxifNTJCj6lFnmACt1S/UniSport?node-id=103-10388&t=wmBEoql9VXiGHzFd-1) |
+| Diapositivas | [Presentación del proyecto](https://docs.google.com/presentation/d/1rLG0SZ_su5EFKt9rx1LqtYEtY_DGxNwHrPbyZJeNMj0/edit?slide=id.p1#slide=id.p1) |
+| Video de demostración | [Ver en YouTube](https://youtu.be/hd-L2inwud4?si=8Faq6FQI72eCqfLp) |
+| Informe en PDF | [Descargar Informe_Unisport.pdf](docs/Informe_Unisport.pdf) |
 
 ---
 
@@ -25,8 +36,8 @@
 ## 🚀 Guía de Ejecución
 
 ### 1. Requisitos Previos
-* Flutter SDK (3.x o superior) instalado y configurado en el sistema (Windows, macOS o Linux).
-* Emulador Android / iOS, dispositivo móvil conectado, o navegador Web (Chrome / Edge).
+* Flutter instalado con un SDK compatible con Dart 3.13.0 o superior (ver `environment` en [`pubspec.yaml`](pubspec.yaml)); comprueba la instalación con `flutter doctor`.
+* Para Android: Android Studio, Android SDK y un emulador iniciado o un teléfono con depuración USB. Para Web: Chrome. La app puede ejecutarse también en los destinos de escritorio soportados por Flutter.
 
 ### 2. Instalar dependencias
 ```bash
@@ -48,26 +59,30 @@ Los datos (cuentas, partidos e inscripciones) se guardan en **Supabase**, una ba
 Guía completa, arquitectura y cómo comprobarlo con dos teléfonos: [`docs/base-de-datos-supabase.md`](docs/base-de-datos-supabase.md).
 
 ### 4. Ejecutar la aplicación
-Ejecutar pasando las variables de Supabase (o habiéndolas definido localmente):
+Ejecuta desde la raíz del repositorio. Si aún no configuraste las variables localmente, pásalas en cada comando:
 ```bash
 flutter run --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-define=SUPABASE_KEY=tu_clave_publica
 ```
 
-*Si se desea especificar una plataforma concreta:*
-* **En Navegador Web:**
-  ```bash
-  flutter run -d chrome
-  ```
-* **En Emulador o Teléfono Móvil:**
-  ```bash
-  flutter run -d android
-  ```
-* **En Escritorio (Windows / macOS / Linux):**
-  ```bash
-  flutter run -d windows    # En Windows
-  flutter run -d macos      # En macOS
-  flutter run -d linux      # En Linux
-  ```
+Para elegir destino, agrega `-d` y el identificador mostrado por `flutter devices` (por ejemplo, `chrome` o `emulator-5554`):
+
+```bash
+# Web
+flutter run -d chrome --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-define=SUPABASE_KEY=tu_clave_publica
+
+# Android (reemplaza el ID por el mostrado en flutter devices)
+flutter run -d emulator-5554 --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-define=SUPABASE_KEY=tu_clave_publica
+```
+
+También puedes ejecutar en escritorios soportados, indicando el destino correspondiente:
+
+```bash
+flutter run -d windows  # Windows
+flutter run -d macos    # macOS
+flutter run -d linux    # Linux
+```
+
+La app publicada está disponible en [la versión web](https://unisport-ihc.pages.dev); la instalación Android está en [Google Play, canal de prueba interna](https://play.google.com/apps/internaltest/4699615402617333592).
 
 ### 5. Ejecutar pruebas automatizadas con reporte de cobertura
 ```bash
@@ -111,8 +126,10 @@ flutter test test/supabase_integracion_test.dart --dart-define=PRUEBAS_SUPABASE=
 
 Con Android iniciado y visible en `flutter devices`, ejecutar desde la raíz:
 
-```powershell
-flutter test integration_test/crear_partido_test.dart -d emulator-5554 --dart-define=E2E_CORREO=diego@unisport.edu --dart-define=E2E_CLAVE=tu_clave_registrada
+```bash
+flutter test integration_test/crear_partido_test.dart -d emulator-5554 \
+  --dart-define=E2E_CORREO=alvaro@unisport.edu \
+  --dart-define=E2E_CLAVE=tu_clave_registrada
 ```
 
 Reemplazar el identificador del dispositivo y las credenciales por las de una cuenta registrada en tu entorno de pruebas.
@@ -135,13 +152,13 @@ Con el emulador iniciado y el esquema de Supabase aplicado, usa tres cuentas
 distintas ya registradas. Cambia `emulator-5554` por el ID que muestre
 `flutter devices` y reemplaza los valores de ejemplo por tus credenciales:
 
-```powershell
-flutter test integration_test/flujo_suplentes_test.dart -d emulator-5554 `
-  --dart-define=E2E_ORGANIZADOR_CORREO=correo_organizador `
-  --dart-define=E2E_ORGANIZADOR_CLAVE=clave_organizador `
-  --dart-define=E2E_TITULAR_CORREO=correo_titular `
-  --dart-define=E2E_TITULAR_CLAVE=clave_titular `
-  --dart-define=E2E_SUPLENTE_CORREO=correo_suplente `
+```bash
+flutter test integration_test/flujo_suplentes_test.dart -d emulator-5554 \
+  --dart-define=E2E_ORGANIZADOR_CORREO=alvaro@unisport.edu \
+  --dart-define=E2E_ORGANIZADOR_CLAVE=clave_organizador \
+  --dart-define=E2E_TITULAR_CORREO=juan.carlos@unisport.edu \
+  --dart-define=E2E_TITULAR_CLAVE=clave_titular \
+  --dart-define=E2E_SUPLENTE_CORREO=suplente@unisport.edu \
   --dart-define=E2E_SUPLENTE_CLAVE=clave_suplente
 ```
 
@@ -160,8 +177,8 @@ Las cuentas viven en Supabase. Después de configurar el proyecto, regístrenlas
 
 | Estudiante | Correo sugerido | Contraseña | Carrera | Deporte |
 | :--- | :--- | :--- | :--- | :--- |
-| **Diego Astete** | `diego@unisport.edu` | *(Definida por el evaluador al registrarse)* | Ingeniería en Sistemas | Futsal |
-| **Lorgio Choque** | `lorgio@unisport.edu` | *(Definida por el evaluador al registrarse)* | Ingeniería en Sistemas | Básquetbol |
+| **Alvaro Sonco Guzman** | `alvaro@unisport.edu` | *(Definida por el evaluador al registrarse)* | Ingeniería en Sistemas | Futsal |
+| **Juan Carlos Laura Cespedes** | `juan.carlos@unisport.edu` | *(Definida por el evaluador al registrarse)* | Ingeniería en Sistemas | Básquetbol |
 
 *Cualquier estudiante puede crear su cuenta en el formulario de **Registro**; la cuenta sirve en todos los dispositivos.*
 

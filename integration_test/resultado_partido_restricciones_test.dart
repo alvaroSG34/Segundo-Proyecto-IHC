@@ -36,7 +36,7 @@ void main() {
       find.byKey(const ValueKey('detalle_marcador_equipo_b')),
       '0',
     );
-    await tocar(
+    await tocarEnDetalle(
       tester,
       find.widgetWithText(FilledButton, 'Registrar marcador'),
     );

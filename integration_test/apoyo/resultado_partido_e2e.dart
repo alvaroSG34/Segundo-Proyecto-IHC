@@ -370,6 +370,19 @@ Future<void> tocar(WidgetTester tester, Finder objetivo) async {
   await tester.pump(const Duration(milliseconds: 600));
 }
 
+Future<void> tocarEnDetalle(WidgetTester tester, Finder objetivo) async {
+  final scroll = find.descendant(
+    of: find.byType(VistaDetallePartido),
+    matching: find.byType(Scrollable),
+  );
+  if (scroll.evaluate().isNotEmpty) {
+    try {
+      await tester.scrollUntilVisible(objetivo, 150, scrollable: scroll.first);
+    } catch (_) {}
+  }
+  await tocar(tester, objetivo);
+}
+
 Future<void> esperar(
   WidgetTester tester,
   Finder objetivo, {
