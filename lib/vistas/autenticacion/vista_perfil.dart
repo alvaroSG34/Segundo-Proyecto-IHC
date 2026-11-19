@@ -364,7 +364,7 @@ class _VistaPerfilState extends State<VistaPerfil> {
   Widget _cabecera(String nombre, String correo) => Container(
     padding: const EdgeInsets.all(20),
     decoration: const BoxDecoration(
-      gradient: LinearGradient(colors: [Color(0xFF0BAA60), Color(0xFF10786F)]),
+      gradient: LinearGradient(colors: [Color(0xFF0B7C55), Color(0xFF10786F)]),
       borderRadius: BorderRadius.all(Radius.circular(22)),
     ),
     child: Row(
