@@ -180,7 +180,7 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF16A34A), Color(0xFF0F766E)],
+          colors: [Color(0xFF15803D), Color(0xFF0F766E)],
         ),
         boxShadow: const [
           BoxShadow(
@@ -210,7 +210,7 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: TemaApp.verdeOscuro,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
@@ -241,7 +241,7 @@ class _VistaInicioPublicoState extends State<VistaInicioPublico> {
                   'La plataforma universitaria para coordinar encuentros deportivos sin fricción.',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xE6FFFFFF),
+                    color: Colors.white,
                     height: 1.45,
                   ),
                 ),
